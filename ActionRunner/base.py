@@ -1,7 +1,36 @@
 import logging
+import time
+from threading import Thread
+from multiprocessing.pool import ThreadPool
 from Data.Model import Action
 
 class Runner(object):
+        
+    class ExecutionHandle(Thread):
+        
+        def __init__(self, action):
+            super(Runner.ExecutionHandle, self).__init__()
+            self._action = action
+            self._handles = []
+            self._handle = None
+            self._result = False
+
+        @property
+        def result(self):
+            return self._result.value
+                    
+        def waitForComplete(self):
+            handles = self._handles or [self._handle, ] if self._handle else []
+            while any([h.isAlive() for h in handles]):
+                time.sleep(0.01)
+            
+            self._result = all([h.result for h in handles])
+        
+        def stop(self):
+            handles = self._handles or [self._handle, ] if self._handle else []
+            handles = [h for h in handles if h.isAlive()]
+            pool = ThreadPool(processes=len(handles))
+            pool.map(lambda h: h.stop(), handles)
     
     @property
     @staticmethod
@@ -17,4 +46,12 @@ class Runner(object):
         return action != None
     
     def execute(self, action):
-        pass
+        handle = self._getHandle()
+        handle.start()
+        handle.waitForComplete()
+        return handle.result
+        
+    def executeAsync(self, action):
+        handle = self._getHandle()
+        handle.start()
+        return handle

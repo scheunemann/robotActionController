@@ -4,6 +4,23 @@ from actionRunner import ActionRunner
 
 class SequenceRunner(Runner):
 
+    class SequenceHandle(Runner.ExecutionHandle):
+        
+        def __init__(self, sequence, robot):
+            super(SequenceRunner.SequenceHandle, self).__init__(sequence)
+            self._sequence = sequence
+            self._robot = robot
+        
+        def run(self):
+            ar = ActionRunner(self._robot)
+            for orderedAction in sorted(self._sequence.actions, key=lambda a: a.order):
+                self._handle = ar.executeAsync(orderedAction.action)
+                self._handle.waitForComplete()
+                if self._cancel:
+                    self._result = False
+                else:
+                    self._result = self._result and self._handle.result
+                
     @property
     @staticmethod
     def supportedClass():
@@ -19,7 +36,6 @@ class SequenceRunner(Runner):
             if not valid:
                 break
 
-    def execute(self, sequence):
-        ar = ActionRunner(self._robot)
-        for orderedAction in sorted(sequence.actions, key=lambda a: a.order):
-            ar.execute(orderedAction.action)
+    def _getHandle(self, action):
+        handle = SequenceRunner.SequenceHandle(action, self._robot)
+        return handle

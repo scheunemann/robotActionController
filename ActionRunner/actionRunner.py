@@ -2,7 +2,30 @@ from base import Runner
 
 class ActionRunner(Runner):
     
+    class ActionExecutionHandle(Runner.ExecutionHandle):
+        
+        def __init__(self, action, runner):
+            super(ActionRunner.ActionExecutionHandle, self).__init__(action)
+            self._runner = runner
+        
+        def run(self):
+            self._handle = self._runner.executeAsync(self._action)
+            return self.waitForComplete()
+    
     _runnerClasses = None
+    
+    def __init__(self, robot):
+        super(ActionRunner, self).__init__(robot)
+
+    def isValid(self, action):
+        return self._getRunner(action).isValid(action)
+    
+    def _getHandle(self, action):
+        try:
+            return ActionRunner.ActionExecutionHandle(action, ActionRunner._runners[type(action)](self._robot))
+        except:
+            self._logger.critical("Could not determine action runner for type %s" % (type(action)))
+            raise ValueError("Could not determine action runner for type %s" % (type(action)))
     
     @property
     @staticmethod
@@ -12,22 +35,6 @@ class ActionRunner(Runner):
         
         return ActionRunner._runnerClasses
 
-    def __init__(self, robot):
-        super(ActionRunner, self).__init__(robot)
-
-    def execute(self, action):
-        self._getRunner(action).execute(action)
-
-    def isValid(self, action):
-        return self._getRunner(action).isValid(action)
-    
-    def _getRunner(self, action):
-        try:
-            return ActionRunner._runners[type(action)](self._robot)
-        except:
-            self._logger.critical("Could not determine action runner for type %s" % (type(action)))
-            raise ValueError("Could not determine action runner for type %s" % (type(action)))
-    
     @staticmethod
     def registerRunner(type_, runner):
         ActionRunner._runners[type_] = runner
