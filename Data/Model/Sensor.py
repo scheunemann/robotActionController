@@ -4,6 +4,9 @@ from sqlalchemy.orm import relationship
 
 class Sensor(StandardMixin, Base):
     
+    name = Column(String(50))
+    type = Column(String(50))
+    
     model_id = Column(Integer, ForeignKey("SensorModel.id")) 
     model = relationship("SensorModel")
     
@@ -82,5 +85,5 @@ class SensorConfig(StandardMixin, Base):
     robot_id = Column(Integer, ForeignKey("Robot.id"))
     robot = relationship("Robot", backref="sensorConfigs")
     
-    type_id = Column(Integer, ForeignKey("SensorType.id")) 
-    type = relationship("SensorType")
+    model_id = Column(Integer, ForeignKey("SensorModel.id")) 
+    model = relationship("SensorModel")

@@ -49,9 +49,9 @@ class Pose(Action):
     __mapper_args__ = {
             'polymorphic_identity':'Pose',
     }
-                
+
     jointPositions = relationship("JointPosition", backref="pose")
-                
+
 class Expression(Action):
                 
     id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)

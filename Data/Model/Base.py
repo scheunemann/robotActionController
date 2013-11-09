@@ -72,8 +72,8 @@ class Base(Data.config.modelBase):
                         for o in dels:
                             attrList.remove(session.query(itemType).get(o))
                     else:
-                        if getattr(newObj, attr.key).id != newData:
-                            setattr(newObj, attr.key, session.query(itemType).get(o))
+                        if getattr(newObj, attr.key).id != newData['ids'][0]:
+                            setattr(newObj, attr.key, session.query(itemType).get(newData['ids'][0]))
                 else:
                     #newData can be [{objectDict}, ...], {objectDict}
                     if attr.uselist == True:
@@ -85,9 +85,12 @@ class Base(Data.config.modelBase):
                     else:
                         setattr(newObj, attr.key, Base.deserialize(itemType, newData, session))
             elif isinstance(attr, ColumnProperty):
-                if attr.columns[0].type.python_type == datetime.datetime:
-                    item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
-                else:
+                try:
+                    if attr.columns[0].type.python_type == datetime.datetime:
+                        item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
+                    else:
+                        item = dictObj[attr.key]
+                except Exception as e:
                     item = dictObj[attr.key]
                 
                 if not getattr(newObj, attr.key) == item:

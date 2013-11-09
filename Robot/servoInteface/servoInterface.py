@@ -30,10 +30,12 @@ class ServoInterface(object):
             if not ServoInterface.interfaces().has_key(servo):
                 if 'disconnected' not in globals() or not disconnected:  # Global flag
                     try:
-                        servoInt = ServoInterface.interfaces()[servo.type.name](servo)
+                        servoInt = ServoInterface.interfaces()[servo.model.name]
                     except:
-                        logging.getLogger(__name__).critical("No known interface for servo type: %s", servo.type.name)
-                        raise ValueError("No known interface for servo type: %s" % servo.type.name)
+                        logging.getLogger(__name__).critical("No known interface for servo model: %s", servo.model.name)
+                        raise ValueError("No known interface for servo type: %s" % servo.model.name)
+                    else:
+                        servoInt = servoInt(servo)
                 else:
                     servoInt = Dummy(servo)
                  
@@ -42,23 +44,27 @@ class ServoInterface(object):
             return ServoInterface.interfaces()[servo]
 
     def __init__(self, servo):
-        self._servo = servo
         
-        # servo properties
-        self._minPos = servo.minPosition
-        self._maxPos = servo.maxPosition
-        self._defaultPos = servo.defaultPosition
-        self._minSpeed = servo.minSpeed
-        self._maxSpeed = servo.maxSpeed
-        self._defaultSpeed = servo.defaultSpeed
-
         # servo type properties
-        config = filter(lambda c: c.type == servo.type, servo.robot.servoConfigs)[0]
+        configs = filter(lambda c: c.model == servo.model, servo.robot.servoConfigs)
+        if not configs:
+            raise ValueError('Config could not be found for model %s on robot %s' % (servo.model, servo.robot))
+        else:
+            config = configs[0]
         self._port = config.port
         self._portSpeed = config.portSpeed
-        self._speedScaleValue = config.speedScale
-        self._posScaleValue = config.rotationScale
-        self._posOffset = config.rotationOffset
+        
+        # servo properties
+        self._servo = servo
+        self._minPos = servo.minPosition or servo.model.minPosition
+        self._maxPos = servo.maxPosition or servo.model.maxPosition
+        self._defaultPos = servo.defaultPosition or servo.type.defaultPosition
+        self._minSpeed = servo.minSpeed or servo.model.minSpeed
+        self._maxSpeed = servo.maxSpeed or servo.model.maxSpeed
+        self._defaultSpeed = servo.defaultSpeed or servo.model.defaultSpeed
+        self._posOffset = servo.positionOffset or servo.model.positionOffset
+        self._speedScaleValue = servo.model.speedScale
+        self._posScaleValue = servo.model.positionScale
         
         self._logger = logging.getLogger(__name__)
                         

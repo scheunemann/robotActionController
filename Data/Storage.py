@@ -33,48 +33,6 @@ class StorageFactory(object):
         elif dbtype == 'Sqlite':
             return SqliteDataStore(
                                    StorageFactory.config['engine']['file'])
-
-    @staticmethod
-    def _flushAndFillTestData():
-        StorageFactory.config['debug'] = True
-        from Model import Base
-        Base.metadata.drop_all(StorageFactory.getDefaultDataStore().engine)
-        Base.metadata.create_all(StorageFactory.getDefaultDataStore().engine)
-         
-        from Data.Model import Operator, User, Sound, CustomAction, TimeTrigger, CustomTrigger, Pose, Sequence
-        o = Operator('oNathan', 'oNathan Burke')
-        o.password = '1234'
-        u = User('uNathan', 'uNathan Burke')
-        s = Sound('aSound')
-        cs = Sound('cSound')
-        ca = CustomAction()
-        ca.overridden = s
-        ca.redirect = cs
-        u.customActions.append(ca)
-        p = Pose('aPose')
-        cp = Pose('cPose')
-        ca = CustomAction('Custom_Pose')
-        ca.overridden = p
-        ca.redirect = cp
-        u.customActions.append(ca)
-        
-        t = TimeTrigger('tTime')
-        ct = TimeTrigger('cTime')
-        ctr = CustomTrigger('Custom_Time')
-        ctr.overridden = t
-        ctr.redirect = ct
-        u.customTriggers.append(ctr)
-        
-        o.users.append(u)
-        
-        sq = Sequence('aSequence')
-        sq.actions.append(s)
-        sq.actions.append(p)
-         
-        session = StorageFactory.getNewSession()
-        session.add(sq)
-        session.add(o)
-        session.commit()
     
 class DataStore(object):
     
@@ -105,6 +63,3 @@ class MySQLDataStore(DataStore):
                                                              'db': db }
         
         super(MySQLDataStore, self).__init__(uri, StorageFactory.config['debug'])
-        
-if __name__ == '__main__':
-    StorageFactory.__flushAndFillTestData()

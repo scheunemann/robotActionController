@@ -24,6 +24,7 @@ class Servo(StandardMixin, Base):
     maxPosition = Column(Integer)
     defaultPosition = Column(Integer)
     defaultSpeed = Column(Integer)
+    positionOffset = Column(Float)
     poseable = Column(Boolean)
     extraData = Column(PickleType)
     
@@ -53,8 +54,9 @@ class ServoModel(StandardMixin, Base):
     maxPosition = Column(Integer)
     defaultPosition = Column(Integer)
     defaultSpeed = Column(Integer)
-    offset = Column(Integer)
-    scale = Column(Float)
+    positionScale = Column(Float)
+    speedScale = Column(Float)
+    positionOffset = Column(Float)
     poseable = Column(Boolean)
     extraData = Column(PickleType)
 
@@ -69,9 +71,6 @@ class ServoConfig(StandardMixin, Base):
     model_id = Column(Integer, ForeignKey("ServoModel.id")) 
     model = relationship("ServoModel")
 
-    rotationOffset = Column(Float)
-    rotationScale = Column(Float)
-    speedScale = Column(Float)
     port = Column(String(50))
     portSpeed = Column(Integer)
     extraData = Column(PickleType)
