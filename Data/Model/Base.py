@@ -81,9 +81,11 @@ class Base(Data.config.modelBase):
                         map(attrList.remove, attrList)
                         
                         for o in newData:
-                            attrList.append(Base.deserialize(itemType, o, session))
+                            #attrList.append(Base.deserialize(itemType, o, session))
+                            attrList.append(session.query(itemType).get(o['id']))
                     else:
-                        setattr(newObj, attr.key, Base.deserialize(itemType, newData, session))
+                        #setattr(newObj, attr.key, Base.deserialize(itemType, newData, session))
+                        setattr(newObj, attr.key, session.query(itemType).get(newData['id']))
             elif isinstance(attr, ColumnProperty):
                 try:
                     if attr.columns[0].type.python_type == datetime.datetime:
