@@ -9,7 +9,7 @@ import event
 
 __all__ = ['SensorProcessor', ]
 
-SensorDataEvent = namedtuple('SensorDataEvent', ['sensor_id', 'value'])
+SensorDataEventArg = namedtuple('SensorDataEvent', ['sensor_id', 'value'])
 
 
 class SensorProcessor(object):
@@ -49,6 +49,6 @@ class _SensorHandler(Thread):
             value = self._sensorInt.getCurrentValue()
             if value != last_value and datetime.now() - last_update <= self._maxUpdateFrequency:
                 last_update = datetime.now()
-                self._updateEvent(SensorDataEvent(self._sensor.id, value))
+                self._updateEvent(SensorDataEventArg(self._sensor.id, value))
 
             time.sleep(max(self._maxUpdateFrequency - (datetime.now() - last_update), self._maxPollRate))

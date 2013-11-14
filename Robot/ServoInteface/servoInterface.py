@@ -323,8 +323,11 @@ def Robot(ServoInterface):
         self._robot = Factory.getRobotInterface(servo.robot)
 
     def getPosition(self):
-        (_, posSteps) = self._robot.getComponentState(self._componentName, True)
-        return self._realToScalePos(posSteps)
+        if self._componentName == 'base':
+            (_, posRaw) = self._robot.getLocation()
+        else:
+            (_, posRaw) = self._robot.getComponentState(self._componentName)
+        return self._realToScalePos(posRaw)
 
     def setPosition(self, position, speed):
         scaledPosition = self._scaleToRealPos(position)

@@ -54,7 +54,7 @@ class Robot(object):
     def executeFunction(self, funcName, kwargs):
         return self._robInt.runFunction(funcName, kwargs)
 
-    def getLocation(self, dontResolveName=False):
+    def getLocation(self, resolve_name=False):
         return ('', (None, None, None))
 
     def setLight(self, colour):
@@ -70,7 +70,7 @@ class Robot(object):
     def getComponents(self):
         return []
 
-    def getComponentState(self, componentName, dontResolveName=False):
+    def getComponentState(self, componentName, resolve_name=False):
         ret = {'name': '', 'positions': [], 'goals': [], 'joints': []}
         return ('', ret)
 
@@ -170,7 +170,7 @@ class ROSRobot(Robot):
 
         return imgBytes.getvalue()
 
-    def getLocation(self, dontResolveName=False):
+    def getLocation(self, resolve_name=False):
         tf = self._transform
         if tf == None:
             return ('', (None, None, None))
@@ -202,7 +202,7 @@ class ROSRobot(Robot):
     def getComponents(self):
         return self._ros.getParam(self._serverTopic).keys()
 
-    def getComponentState(self, componentName, dontResolveName=False):
+    def getComponentState(self, componentName, resolve_name=False):
         topic = '/%(name)s_controller/state' % {'name': componentName}
         state = self._ros.getSingleMessage(topic)
 
@@ -212,10 +212,10 @@ class ROSRobot(Robot):
             print "Error retrieving joint state"
             ret = {'name': componentName, 'positions': (), 'goals': (), 'joints': ()}
 
-        if dontResolveName:
-            return ('', ret)
-        else:
+        if resolve_name:
             return self.resolveComponentState(componentName, ret)
+        else:
+            return ('', ret)
 
 
 class ActionLib(object):
