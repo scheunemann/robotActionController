@@ -1,5 +1,5 @@
 from base import StandardMixin, Base
-from sqlalchemy import Column, String, Integer, ForeignKey, Float
+from sqlalchemy import Column, String, Integer, ForeignKey, Float, PickleType
 from sqlalchemy.orm import relationship
 
 
@@ -17,6 +17,8 @@ class Sensor(StandardMixin, Base):
     value_type_id = Column(Integer, ForeignKey("SensorValueType.id"))
     value_type = relationship("SensorValueType", backref="sensor")
 
+    extraData = Column(PickleType)
+    
     __mapper_args__ = {
             'polymorphic_identity': 'Sensor',
             'polymorphic_on': type
@@ -27,24 +29,33 @@ class Sensor(StandardMixin, Base):
 
     def isValid(self, value):
         return value != None
+    
+    def __init__(self, name=None):
+        self.name = name
 
 
 class RobotSensor(Sensor):
 
+    id = Column(Integer, ForeignKey('%s.id' % 'Sensor'), primary_key=True)
     robot_id = Column(Integer, ForeignKey("Robot.id"))
     robot = relationship("Robot", backref="sensors")
     __mapper_args__ = {
-            'polymorphic_identity': 'Sensor',
-            'polymorphic_on': type
+            'polymorphic_identity': 'RobotSensor',
     }
+    
+    def __init__(self, name):
+        super(RobotSensor, self).__init__(name)
 
 
 class ExternalSensor(Sensor):
 
+    id = Column(Integer, ForeignKey('%s.id' % 'Sensor'), primary_key=True)
     __mapper_args__ = {
-            'polymorphic_identity': 'Sensor',
-            'polymorphic_on': type
+            'polymorphic_identity': 'ExternalSensor',
     }
+    
+    def __init__(self, name):
+        super(ExternalSensor, self).__init__(name)
 
 
 class DiscreteSensorValues(StandardMixin, Base):
@@ -55,12 +66,18 @@ class DiscreteSensorValues(StandardMixin, Base):
 
 
 class SensorValueType(StandardMixin, Base):
-    pass
+    
+    type = Column(String(50))
+
+    __mapper_args__ = {
+            'polymorphic_identity': '',
+            'polymorphic_on': type
+    }
 
 
 class DiscreteValueType(SensorValueType):
 
-    id = Column(Integer, ForeignKey('Sensor.id'), primary_key=True)
+    id = Column(Integer, ForeignKey('SensorValueType.id'), primary_key=True)
     __mapper_args__ = {
             'polymorphic_identity': 'Discrete',
     }
@@ -70,7 +87,7 @@ class DiscreteValueType(SensorValueType):
 
 
 class ContinuousValueType(SensorValueType):
-    id = Column(Integer, ForeignKey('Sensor.id'), primary_key=True)
+    id = Column(Integer, ForeignKey('SensorValueType.id'), primary_key=True)
     __mapper_args__ = {
             'polymorphic_identity': 'Continuous',
     }

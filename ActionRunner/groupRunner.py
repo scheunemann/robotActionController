@@ -3,23 +3,20 @@ from actionRunner import ActionRunner
 from base import Runner
 
 class GroupRunner(Runner):
-    
+
     class GroupHandle(Runner.ExecutionHandle):
-        
+
         def __init__(self, group, robot):
             super(GroupRunner.GroupHandle, self).__init__(group)
             self._group = group
             self._robot = robot
-        
-        def run(self):            
+
+        def run(self):
             self._handles = [ActionRunner(self._robot).executeAsync(a) for a in self._actions]
             self.waitForComplete()
-    
-    @property
-    @staticmethod
-    def supportedClass():
-        return Group
-    
+
+    supportedClass = Group
+
     def __init__(self, robot):
         super(GroupRunner, self).__init__(robot)
 

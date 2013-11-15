@@ -5,12 +5,12 @@ from actionRunner import ActionRunner
 class SequenceRunner(Runner):
 
     class SequenceHandle(Runner.ExecutionHandle):
-        
+
         def __init__(self, sequence, robot):
             super(SequenceRunner.SequenceHandle, self).__init__(sequence)
             self._sequence = sequence
             self._robot = robot
-        
+
         def run(self):
             ar = ActionRunner(self._robot)
             for orderedAction in sorted(self._sequence.actions, key=lambda a: a.order):
@@ -20,15 +20,12 @@ class SequenceRunner(Runner):
                     self._result = False
                 else:
                     self._result = self._result and self._handle.result
-                
-    @property
-    @staticmethod
-    def supportedClass():
-        return Sequence
+
+    supportedClass = Sequence
 
     def __init__(self, robot):
         super(SequenceRunner, self).__init__(robot)
-        
+
     def isValid(self, sequence):
         valid = True
         for action in sequence.actions:

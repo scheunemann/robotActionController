@@ -29,6 +29,9 @@ class Servo(StandardMixin, Base):
     poseable = Column(Boolean)
     extraData = Column(PickleType)
 
+    def __init__(self, jointName=None):
+        self.jointName = jointName
+
     def __repr__(self):
         if self.robot != None:
             return "<%s: %s('%s' on '%s')>" % (self.id, self.__class__.__name__, self.jointName, self.robot.name)
@@ -67,6 +70,16 @@ class ServoModel(StandardMixin, Base):
     def __init__(self, name=None):
         super(ServoModel, self).__init__()
         self.name = name
+        self.minSpeed = 1
+        self.maxSpeed = 300
+        self.minPosition = -180
+        self.maxPosition = 180
+        self.defaultPosition = 0
+        self.defaultSpeed = 100
+        self.positionOffset = 0
+        self.positionScale = 1
+        self.speedScale = 1
+        self.poseable = False
 
 
 class ServoConfig(StandardMixin, Base):

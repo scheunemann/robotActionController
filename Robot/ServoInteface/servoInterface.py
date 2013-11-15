@@ -7,15 +7,13 @@ __all__ = ['ServoInterface', ]
 
 class ServoInterface(object):
 
-    _interfaceClasses = None
     _servoInterfaces = {}
     _globalLock = RLock()
     _interfaces = {}
 
     """have to do it this way to get around circular referencing in the parser"""
     @staticmethod
-    @property
-    def _interfaceClasses():
+    def _getInterfaceClasses():
         return {
                 "AX12": AX12,
                 "MINISSC": MINISSC,
@@ -28,10 +26,10 @@ class ServoInterface(object):
     @staticmethod
     def getServoInterface(servo):
         with ServoInterface._globalLock:
-            if servo not in ServoInterface.interfaces():
+            if servo not in ServoInterface._interfaces:
                 if 'disconnected' not in globals() or not disconnected:  # Global flag
                     try:
-                        servoInt = ServoInterface._interfaceClasses[servo.model.name]
+                        servoInt = ServoInterface._getInterfaceClasses()[servo.model.name]
                     except:
                         logging.getLogger(__name__).critical("No known interface for servo model: %s", servo.model.name)
                         raise ValueError("No known interface for servo type: %s" % servo.model.name)
@@ -47,7 +45,7 @@ class ServoInterface(object):
     def __init__(self, servo):
 
         # servo type properties
-        configs = filter(lambda c: c.model == servo.model, servo.robot.servoConfigs)
+        configs = filter(lambda c: c.model_id == servo.model_id, servo.robot.servoConfigs)
         if not configs:
             raise ValueError('Config could not be found for model %s on robot %s' % (servo.model, servo.robot))
         else:
@@ -59,7 +57,7 @@ class ServoInterface(object):
         self._servo = servo
         self._minPos = servo.minPosition or servo.model.minPosition
         self._maxPos = servo.maxPosition or servo.model.maxPosition
-        self._defaultPos = servo.defaultPosition or servo.type.defaultPosition
+        self._defaultPos = servo.defaultPosition or servo.model.defaultPosition
         self._minSpeed = servo.minSpeed or servo.model.minSpeed
         self._maxSpeed = servo.maxSpeed or servo.model.maxSpeed
         self._defaultSpeed = servo.defaultSpeed or servo.model.defaultSpeed

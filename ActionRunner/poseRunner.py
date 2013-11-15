@@ -1,6 +1,7 @@
 import time
-from Robot.servoInteface.servoInterface import ServoInterface
+from Robot.ServoInteface.servoInterface import ServoInterface
 from base import Runner
+from Data.Model import Pose
 
 class PoseRunner(Runner):
     
@@ -36,6 +37,8 @@ class PoseRunner(Runner):
             self._cancel = True
             self.waitForComplete()
         
+    supportedClass = Pose
+    
     def __init__(self, robot):
         super(PoseRunner, self).__init__(robot)
 

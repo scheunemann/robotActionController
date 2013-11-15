@@ -16,10 +16,10 @@ class SensorProcessor(object):
 
     newSensorData = event.Event('Sensor update event')
 
-    def __init__(self, sensors, maxUpdateFrequency=None):
+    def __init__(self, sensors, maxUpdateInterval=None):
         self._handlers = []
         for sensor in sensors:
-            handler = _SensorHandler(sensor)
+            handler = _SensorHandler(sensor, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
             handler.start()
             self._handlers.append(handler)
 
@@ -30,10 +30,11 @@ class SensorProcessor(object):
 
 class _SensorHandler(Thread):
 
-    def __init__(self, sensor, updateEvent, maxUpdateFrequency=None, maxPollRate=None):
+    def __init__(self, sensor, updateEvent, maxUpdateInterval=None, maxPollRate=None):
+        super(_SensorHandler, self).__init__()
         self._sensor = sensor
         self._sensorInt = SensorInterface.getSensorInterface(sensor)
-        self._maxUpdateFrequency = maxUpdateFrequency
+        self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
         self._updateEvent = updateEvent
         self._cancel = False
@@ -47,8 +48,8 @@ class _SensorHandler(Thread):
         last_value = None
         while not self._cancel:
             value = self._sensorInt.getCurrentValue()
-            if value != last_value and datetime.now() - last_update <= self._maxUpdateFrequency:
+            if value != last_value and datetime.now() - last_update <= self._maxUpdateInterval:
                 last_update = datetime.now()
                 self._updateEvent(SensorDataEventArg(self._sensor.id, value))
-
-            time.sleep(max(self._maxUpdateFrequency - (datetime.now() - last_update), self._maxPollRate))
+            
+            time.sleep(max(self._maxUpdateInterval - (datetime.now() - last_update), self._maxPollRate).total_seconds())

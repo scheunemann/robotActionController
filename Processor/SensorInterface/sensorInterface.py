@@ -15,12 +15,11 @@ class SensorInterface(object):
 
     """have to do it this way to get around circular referencing in the parser"""
     @staticmethod
-    @property
-    def _interfaceClasses():
+    def _getInterfaceClasses():
         if SensorInterface._interfaceClasses == None:
             SensorInterface._interfaceClasses = {
-                                 "ExternalSensor": External,
-                                 "RobotSensor": Robot,
+                                 'ExternalSensor': External,
+                                 'RobotSensor': Robot,
                                  }
 
         return SensorInterface._interfaceClasses
@@ -28,13 +27,13 @@ class SensorInterface(object):
     @staticmethod
     def getSensorInterface(sensor):
         with SensorInterface._globalLock:
-            if sensor not in SensorInterface.interfaces():
+            if sensor not in SensorInterface._interfaces:
                 if 'disconnected' not in globals() or not disconnected:  # Global flag
                     try:
-                        servoInt = SensorInterface._interfaceClasses[type(sensor)]
+                        servoInt = SensorInterface._getInterfaceClasses()[sensor.type]
                     except:
-                        logging.getLogger(__name__).critical("No known interface for servo model: %s", sensor.model.name)
-                        raise ValueError("No known interface for servo type: %s" % sensor.model.name)
+                        logging.getLogger(__name__).critical("No known interface for sensor type: %s", sensor.type)
+                        raise ValueError("No known interface for sensor type: %s" % sensor.type)
                     else:
                         servoInt = servoInt(sensor)
                 else:
@@ -48,7 +47,8 @@ class SensorInterface(object):
 
         # servo type properties
         if type(sensor) == RobotSensor:
-            configs = filter(lambda c: c.model == sensor.model, sensor.robot.servoConfigs)
+            #TODO: Stop using the servoConfig for sensor configs
+            configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.servoConfigs)
             if not configs:
                 raise ValueError('Config could not be found for model %s on robot %s' % (sensor.model, sensor.robot))
             else:
@@ -75,7 +75,8 @@ class Robot(SensorInterface):
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
 
-        self._sensorInt = ServoInterface.getServoInterface(sensor)
+        servos = [s for s in sensor.robot.servos if s.jointName == sensor.name] 
+        self._sensorInt = ServoInterface.getServoInterface(servos[0])
 
     def getCurrentValue(self):
         return self._sensorInt.getPosition()
