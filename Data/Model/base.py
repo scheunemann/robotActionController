@@ -45,11 +45,11 @@ class Base(Data.config.modelBase):
 
     @staticmethod
     def deserialize(cls, dictObj, session):
-        mapper = inspect(cls)
         if 'id' in dictObj:
             newObj = session.query(cls).get(dictObj['id'])
         else:
             newObj = cls()
+        mapper = inspect(newObj.__class__)
         for attr in mapper.attrs:
             if attr.key not in dictObj:
                 continue
@@ -91,6 +91,12 @@ class Base(Data.config.modelBase):
                 try:
                     if attr.columns[0].type.python_type == datetime.datetime:
                         item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
+                    elif attr.columns[0].type.python_type:
+                        try:
+                            item = attr.columns[0].type.python_type(dictObj[attr.key])
+                        except Exception as e:
+                            #TODO: Error logging
+                            item = None
                     else:
                         item = dictObj[attr.key]
                 except Exception as e:
@@ -156,9 +162,9 @@ class DisplayMixin(object):
 
     def __repr__(self):
         if hasattr(self, 'name'):
-            return "<%s('%s')>" % (self.__class__.__name__, self.name)
+            return "%s('%s')" % (self.__class__.__name__, self.name)
         else:
-            return "<%s('%s')>" % (self.__class__.__name__, self.id)
+            return "%s('%s')" % (self.__class__.__name__, self.id)
 
 
 class StandardMixin(DisplayMixin, SettingMixin):

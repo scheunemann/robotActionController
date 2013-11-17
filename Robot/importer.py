@@ -40,6 +40,15 @@ class RobotImporter(object):
                             'SCALE_SPEED': 100.0 / 1023.0,
                             'SCALE_POS': 360.0 / 1023.0,
                             },
+                'DUMMY': {
+                            'MAX_POS': 360,
+                            'MIN_POS': 0,
+                            'MAX_SPEED': 300,
+                            'MIN_SPEED': 1,
+                            'POSEABLE': False,
+                            'SCALE_SPEED': 1,
+                            'SCALE_POS': 1,
+                          },
                 'ROS': {
                         'MAX_POS': math.pi,
                         'MIN_POS': math.pi * -1,

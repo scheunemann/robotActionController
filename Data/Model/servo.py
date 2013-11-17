@@ -34,9 +34,9 @@ class Servo(StandardMixin, Base):
 
     def __repr__(self):
         if self.robot != None:
-            return "<%s: %s('%s' on '%s')>" % (self.id, self.__class__.__name__, self.jointName, self.robot.name)
+            return "%s('%s' on '%s', id: %s)" % (self.__class__.__name__, self.jointName, self.robot.name, self.id)
         else:
-            return "<%s: %s('%s')>" % (self.id, self.__class__.__name__, self.jointName)
+            return "%s('%s', id: %s)" % (self.__class__.__name__, self.jointName, self.id)
 
 
 Index('robot_joints', Servo.jointName, Servo.robot_id, unique=True)

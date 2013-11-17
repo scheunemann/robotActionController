@@ -1,8 +1,11 @@
 import logging
 import time
-from threading import Thread
+from datetime import datetime
+from threading import Thread, current_thread
 from multiprocessing.pool import ThreadPool
 from Data.Model import Action
+from Data.storage import StorageFactory
+
 
 class Runner(object):
 
@@ -10,38 +13,69 @@ class Runner(object):
 
         def __init__(self, action):
             super(Runner.ExecutionHandle, self).__init__()
-            self._action = action
+            self._actionId = action.id
             self._handles = []
             self._handle = None
             self._result = False
+            self._output = []
+
+        @property
+        def _safeHandles(self):
+            return self._handles or [self._handle, ] if self._handle else []
 
         @property
         def result(self):
             return self._result
 
+        @property
+        def output(self):
+            output = self._output
+            output.extend([o for h in self._safeHandles for o in h.output])
+            output.sort(key=lambda (ts, _): ts)
+            return output
+
         def waitForComplete(self):
-            handles = self._handles or [self._handle, ] if self._handle else []
-            while any([h.isAlive() for h in handles]):
+            # Wait for the sub-thread to start
+            while not self._safeHandles:
                 time.sleep(0.01)
 
-            self._result = all([h.result for h in handles])
+            results = map(lambda h: h.waitForComplete(), self._safeHandles)
+
+            self._result = all(results)
+            return self._result
+
+        def runInternal(self, action):
+            return False
+
+        def run(self):
+            session = StorageFactory.getNewSession()
+            action = session.query(Action).get(self._actionId)
+            self._output.append((datetime.now(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
+
+            self._result = self._runInternal(action, session)
+
+            if self._result:
+                self._output.append((datetime.now(), '%s: Completed %s' % (self.__class__.__name__, action.name)))
+            else:
+                self._output.append((datetime.now(), '%s: Failed %s' % (self.__class__.__name__, action.name)))
+
+            session.close()
 
         def stop(self):
-            handles = self._handles or [self._handle, ] if self._handle else []
-            handles = [h for h in handles if h.isAlive()]
+            handles = [h for h in self._safeHandles if h.isAlive()]
             pool = ThreadPool(processes=len(handles))
             pool.map(lambda h: h.stop(), handles)
 
     supportedClass = Action
 
     def __init__(self, robot):
-        self._robot = robot;
+        self._robot = robot
         self._logger = logging.getLogger(__name__)
 
     @staticmethod
     def isValid(action):
         return action != None
-    
+
     def _getHandle(self, action):
         return Runner.ExecutionHandle(action)
 
@@ -54,4 +88,5 @@ class Runner(object):
     def executeAsync(self, action):
         handle = self._getHandle(action)
         handle.start()
+        time.sleep(0.01)
         return handle

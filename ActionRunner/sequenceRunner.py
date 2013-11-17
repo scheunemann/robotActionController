@@ -1,6 +1,7 @@
-from Data.Model import Sequence
+from Data.Model import Sequence, Robot
 from base import Runner
 from actionRunner import ActionRunner
+
 
 class SequenceRunner(Runner):
 
@@ -8,18 +9,21 @@ class SequenceRunner(Runner):
 
         def __init__(self, sequence, robot):
             super(SequenceRunner.SequenceHandle, self).__init__(sequence)
-            self._sequence = sequence
             self._robot = robot
 
-        def run(self):
-            ar = ActionRunner(self._robot)
-            for orderedAction in sorted(self._sequence.actions, key=lambda a: a.order):
-                self._handle = ar.executeAsync(orderedAction.action)
-                self._handle.waitForComplete()
+        def _runInternal(self, action, session):
+            robot = session.query(Robot).get(self._robotId)
+            ar = ActionRunner(robot)
+            result = True
+            for orderedAction in sorted(action.actions, key=lambda a: a.order):
+                actionResult = ar.execute(orderedAction.action)
                 if self._cancel:
-                    self._result = False
+                    result = False
+                    break
                 else:
-                    self._result = self._result and self._handle.result
+                    result = result and actionResult
+
+            return result
 
     supportedClass = Sequence
 
@@ -34,5 +38,4 @@ class SequenceRunner(Runner):
                 break
 
     def _getHandle(self, action):
-        handle = SequenceRunner.SequenceHandle(action, self._robot)
-        return handle
+        return SequenceRunner.SequenceHandle(action, self._robot)

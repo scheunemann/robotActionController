@@ -1,6 +1,7 @@
-from Data.Model import Group
+from Data.Model import Group, Robot
 from actionRunner import ActionRunner
 from base import Runner
+
 
 class GroupRunner(Runner):
 
@@ -8,12 +9,12 @@ class GroupRunner(Runner):
 
         def __init__(self, group, robot):
             super(GroupRunner.GroupHandle, self).__init__(group)
-            self._group = group
-            self._robot = robot
+            self._robotId = robot.id
 
-        def run(self):
-            self._handles = [ActionRunner(self._robot).executeAsync(a) for a in self._actions]
-            self.waitForComplete()
+        def _runInternal(self, action, session):
+            robot = session.query(Robot).get(self._robotId)
+            self._handles = [ActionRunner(robot).executeAsync(a) for a in action.actions]
+            return self.waitForComplete()
 
     supportedClass = Group
 
@@ -28,5 +29,4 @@ class GroupRunner(Runner):
                 break
 
     def _getHandle(self, action):
-        handle = GroupRunner.GroupHandle(action, self._robot)
-        return handle
+        return GroupRunner.GroupHandle(action, self._robot)

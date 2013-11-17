@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from config import database_config
-from sqlalchemy.orm.session import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.engine import reflection
 from sqlalchemy.schema import (
     MetaData,
@@ -22,7 +22,7 @@ class StorageFactory(object):
         if StorageFactory._sessionMaker == None:
             StorageFactory._sessionMaker = sessionmaker(bind=StorageFactory.getDefaultDataStore().engine)
 
-        return StorageFactory._sessionMaker()
+        return scoped_session(StorageFactory._sessionMaker)
 
     @staticmethod
     def getDefaultDataStore():

@@ -1,4 +1,5 @@
 import logging
+import time
 from threading import RLock
 from connections import Connection
 
@@ -54,6 +55,7 @@ class ServoInterface(object):
         self._portSpeed = config.portSpeed
 
         # servo properties
+        self._moving = False
         self._servo = servo
         self._minPos = servo.minPosition or servo.model.minPosition
         self._maxPos = servo.maxPosition or servo.model.maxPosition
@@ -66,6 +68,13 @@ class ServoInterface(object):
         self._posScaleValue = servo.model.positionScale
 
         self._logger = logging.getLogger(__name__)
+
+    @property
+    def servo(self):
+        return self._servo
+
+    def isMoving(self):
+        return self._moving
 
     def setPositioning(self, enablePositioning):
         raise ValueError('Manual positioning not supported on servo %s', self._servo)
@@ -122,8 +131,10 @@ class AX12(ServoInterface):
         scaledSpeed = self._scaleToRealSpeed(speed)
         scaledPosition = self._scaleToRealPos(position)
         with Connection.getLock(self._conn):
+            self._moving = True
             self._conn.SetMovingSpeed(self._externalId, scaledSpeed)
             self._conn.SetPosition(self._externalId, scaledPosition)
+            self._moving = False
 
     def getPositioning(self):
         return self._positioning
@@ -179,7 +190,9 @@ class MINISSC(ServoInterface):
         self._lastPosition = pos
         send = [0xFF, self._externalId, position]
         with Connection.getLock(self._conn):
+            self._moving = True
             self._conn.write(send)
+            self._moving = False
 
 
 class HerkuleX(ServoInterface):
@@ -208,7 +221,9 @@ class HerkuleX(ServoInterface):
         realSpeed = min(realSpeed, 2856)
 
         with Connection.getLock(self._conn):
+            self._moving = True
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
+            self._moving = False
 
     def getPositioning(self):
         return self._positioning
@@ -260,7 +275,9 @@ class SSC32(ServoInterface):
         send = "#%sP%s T%s\r" % (self._externalId, pos, spd)
         self._logger.info("Sending SSC32 String: %s", send)
         with Connection.getLock(self._conn):
+            self._moving = True
             self._conn.write(send)
+            self._moving = False
 
 
 class Dummy(ServoInterface):
@@ -273,7 +290,7 @@ class Dummy(ServoInterface):
 
     def setPositioning(self, enablePositioning):
         self._posable = enablePositioning
-        self._logger.debug("Servo: %s Set positioning to: %s", self._servo, enablePositioning)
+        self._logger.debug("%s Set positioning to: %s", self._servo, enablePositioning)
         self._writeData()
 
     def getPositioning(self):
@@ -282,12 +299,16 @@ class Dummy(ServoInterface):
 
     def setPosition(self, position, speed):
         self._position = position
-        self._logger.debug("Servo: %s Set position to: %s", self._servo, position)
+        self._moving = True
+        self._logger.debug("%s Seting position to: %s, speed: %s", self._servo, position, speed)
+        time.sleep(1.0 / (speed / 100.0))
         self._writeData()
+        self._logger.debug("%s Set position to: %s", self._servo, position)
+        self._moving = False
 
     def getPosition(self):
         self._readData()
-        self._logger.warning("Servo: %s Got position: %s", self._servo, self._position)
+        self._logger.debug("%s Got position: %s", self._servo, self._position)
         return self._position
 
     def _readData(self):

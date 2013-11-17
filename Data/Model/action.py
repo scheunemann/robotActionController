@@ -54,7 +54,7 @@ class JointPosition(StandardMixin, Base):
         return "<%s('%s':%s)>" % (
                                   self.__class__.__name__,
                                   self.jointName,
-                                  self.angle)
+                                  self.position)
 
 
 class Pose(Action):
@@ -68,7 +68,7 @@ class Pose(Action):
 
     jointPositions = relationship("JointPosition", backref="pose")
 
-    def __init__(self, name=None, jointPositions=None, minLength=None, speedModifier=None):
+    def __init__(self, name=None, jointPositions=[], minLength=None, speedModifier=None):
         super(Pose, self).__init__(name)
         self.jointPositions = jointPositions
         self.minLength = minLength
