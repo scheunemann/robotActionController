@@ -7,6 +7,49 @@ from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
     ServoConfig, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
 
 
+def loadDirectory(subDir):
+
+    poses = {}
+    triggers = {}
+    robots = []
+
+    a = ActionImporter()
+    t = TriggerImporter()
+
+    robotConfig = os.path.join(subDir, 'robot.xml')
+
+    if os.path.isfile(robotConfig):
+        r = RobotImporter().getRobot(robotConfig)
+        robots.append(r)
+
+    searchDir = os.path.join(subDir, 'pos')
+    if os.path.exists(searchDir):
+        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+        for fileName in files:
+            f = open(fileName)
+            lines = f.readlines()
+            pose = a.getPose(lines)
+            if pose.name not in poses:
+                poses[pose.name] = pose
+            else:
+                print "Skipping pose %s, another by the same name already exists" % pose.name
+
+    searchDir = os.path.join(subDir, 'keyMaps')
+    if os.path.exists(searchDir):
+        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+        for fileName in files:
+            f = open(fileName)
+            lines = f.readlines()
+            for trigger in t.getTriggers(lines, poses.values(), triggers.keys()):
+                if trigger.name in triggers:
+                    print "Trigger named %s already imported, skipping" % trigger.name
+                    continue
+                else:
+                    triggers[trigger.name] = trigger
+
+    return (r, poses.values(), triggers.values())
+
+
 class RobotImporter(object):
 
     _types = {}
@@ -90,14 +133,16 @@ class RobotImporter(object):
         servos = []
         for servo in self._get("SERVOLIST/SERVO", node):
             s = Servo()
-            s.jointName = self._getText("NAME", servo)
+            s.jointName = self._getText("NAME", servo).upper()
             s.model = self._getServoModel(servo.get('type', None))
             s.minPosition = self._realToScalePos(self._getText("LIMITS[@type='pos']/MIN", servo), s.model.positionOffset, s.model.positionScale)
             s.maxPosition = self._realToScalePos(self._getText("LIMITS[@type='pos']/MAX", servo), s.model.positionOffset, s.model.positionScale)
             s.defaultPosition = self._realToScalePos(self._getText("DEFAULT/POS", servo), s.model.positionOffset, s.model.positionScale)
             s.minSpeed = self._realToScaleSpeed(self._getText("LIMITS[@type='speed']/MIN", servo), s.model.speedScale)
             s.maxSpeed = self._realToScaleSpeed(self._getText("LIMITS[@type='speed']/MAX", servo), s.model.speedScale)
-            s.extraData = {'externalId': int(servo.get('id', -1))}
+            extId = servo.get('id', None)
+            if extId != None:
+                s.extraData = {'externalId': extId}
             if s.minSpeed > s.maxSpeed:
                 temp = s.minSpeed
                 s.minSpeed = s.maxSpeed
@@ -109,14 +154,14 @@ class RobotImporter(object):
             if s.defaultSpeed > s.maxSpeed:
                 s.defaultSpeed = s.maxSpeed
 
-            s.groups = self._getGroupsForServo(s, servoGroups)
+            s.groups = self._getGroupsForServo(s, servoGroups, node)
             servos.append(s)
 
         return servos
 
-    def _getGroupsForServo(self, servo, groupList):
+    def _getGroupsForServo(self, servo, groupList, rootnode):
         groups = []
-        for node in self._get("SERVOLIST/SERVOGROUP"):
+        for node in self._get("SERVOLIST/SERVOGROUP", rootnode):
             for member in self._get("MEMBER", node):
                 if member.text == servo.jointName:
                     for group in groupList:
@@ -225,7 +270,7 @@ class ActionImporter(object):
     def __init__(self):
         pass
 
-    def getPose(self, poseFile):
+    def getPose(self, poseLines):
         """
             r_down
             JOINT_NAME, position, speed
@@ -247,12 +292,6 @@ class ActionImporter(object):
             EYELIDS,614,330
         """
 
-        if os.path.exists(poseFile) and os.path.isfile(poseFile):
-            poseLines = open(poseFile).readlines()
-
-        else:
-            raise Exception('Cannot locate pose file (path: %s)' % (poseFile))
-
         name = poseLines[0].strip()
         pose = Pose(name=name)
 
@@ -261,7 +300,7 @@ class ActionImporter(object):
             speed = int(spd.strip())
             position = float(pos.strip())
 
-            jp = JointPosition(jointName=jointName)
+            jp = JointPosition(jointName=jointName.upper())
             jp.position = position
             jp.speed = speed
             pose.jointPositions.append(jp)
@@ -274,7 +313,7 @@ class TriggerImporter(object):
     def __init__(self):
         pass
 
-    def getTriggers(self, triggerFile, actions):
+    def getTriggers(self, triggerLines, actions):
         """
             Title:actionName,hotkey/sensor
             Happy:Happy,8
@@ -297,11 +336,6 @@ class TriggerImporter(object):
             RarmUP,.
             head_right,left_arm
         """
-
-        if os.path.exists(triggerFile) and os.path.isfile(triggerFile):
-            triggerLines = open(triggerFile).readlines()
-        else:
-            raise Exception('Cannot locate trigger file (path: %s)' % (triggerFile))
 
         triggers = []
         for line in triggerLines:

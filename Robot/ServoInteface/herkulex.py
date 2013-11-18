@@ -75,7 +75,7 @@ class HerkuleX(object):
         self.mPort = serial.Serial(port=portstring, baudrate=portspeed)
         self.multipleMoveData = []
         self.mIDs = []
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     """
     * @example HerkuleX

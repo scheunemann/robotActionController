@@ -13,6 +13,7 @@ class Runner(object):
 
         def __init__(self, action):
             super(Runner.ExecutionHandle, self).__init__()
+            self._logger = logging.getLogger(self.__class__.__name__)
             self._actionId = action.id
             self._handles = []
             self._handle = None
@@ -53,19 +54,24 @@ class Runner(object):
             self._output.append((datetime.now(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
 
             starttime = datetime.now()
-            self._result = self._runInternal(action, session)
-            endtime = datetime.now()
-            if action.minLength and timedelta(seconds=action.minLength) > (starttime - endtime):
-                sleeptime = (starttime - endtime).total_seconds()
-                self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
-                time.sleep(sleeptime)
-
-            if self._result:
-                self._output.append((datetime.now(), '%s: Completed %s' % (self.__class__.__name__, action.name)))
+            try:
+                self._result = self._runInternal(action, session)
+            except:
+                self._logger.critical("Error running action: %s" % action)
+                self._result = False
             else:
-                self._output.append((datetime.now(), '%s: Failed %s' % (self.__class__.__name__, action.name)))
+                endtime = datetime.now()
+                if action.minLength and timedelta(seconds=action.minLength) > (starttime - endtime):
+                    sleeptime = (starttime - endtime).total_seconds()
+                    self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
+                    time.sleep(sleeptime)
 
-            session.close()
+                if self._result:
+                    self._output.append((datetime.now(), '%s: Completed %s' % (self.__class__.__name__, action.name)))
+                else:
+                    self._output.append((datetime.now(), '%s: Failed %s' % (self.__class__.__name__, action.name)))
+            finally:
+                session.close()
 
         def stop(self):
             handles = [h for h in self._safeHandles if h.isAlive()]
@@ -76,7 +82,7 @@ class Runner(object):
 
     def __init__(self, robot):
         self._robot = robot
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @staticmethod
     def isValid(action):

@@ -61,7 +61,7 @@ class SensorInterface(object):
 
         # sensor properties
         self._sensor = sensor
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def getCurrentValue(self):
         return None

@@ -11,6 +11,7 @@ class ServoInterface(object):
     _servoInterfaces = {}
     _globalLock = RLock()
     _interfaces = {}
+    disconnected = False
 
     """have to do it this way to get around circular referencing in the parser"""
     @staticmethod
@@ -28,7 +29,7 @@ class ServoInterface(object):
     def getServoInterface(servo):
         with ServoInterface._globalLock:
             if servo not in ServoInterface._interfaces:
-                if 'disconnected' not in globals() or not disconnected:  # Global flag
+                if not ServoInterface.disconnected:
                     try:
                         servoInt = ServoInterface._getInterfaceClasses()[servo.model.name]
                     except:
@@ -67,7 +68,7 @@ class ServoInterface(object):
         self._speedScaleValue = servo.model.speedScale
         self._posScaleValue = servo.model.positionScale
 
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def servo(self):
@@ -286,11 +287,11 @@ class Dummy(ServoInterface):
         super(Dummy, self).__init__(servo)
         self._position = 0
         self._posable = False
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def setPositioning(self, enablePositioning):
         self._posable = enablePositioning
-        self._logger.debug("%s Set positioning to: %s", self._servo, enablePositioning)
+        self._logger.log(1, "%s Set positioning to: %s", self._servo, enablePositioning)
         self._writeData()
 
     def getPositioning(self):
@@ -300,7 +301,7 @@ class Dummy(ServoInterface):
     def setPosition(self, position, speed):
         self._position = position
         self._moving = True
-        self._logger.debug("%s Seting position to: %s, speed: %s", self._servo, position, speed)
+        self._logger.log(1, "%s Seting position to: %s, speed: %s", self._servo, position, speed)
         time.sleep(1.0 / (speed / 100.0))
         self._writeData()
         self._logger.debug("%s Set position to: %s", self._servo, position)
@@ -308,7 +309,7 @@ class Dummy(ServoInterface):
 
     def getPosition(self):
         self._readData()
-        self._logger.debug("%s Got position: %s", self._servo, self._position)
+        self._logger.log(1, "%s Got position: %s", self._servo, self._position)
         return self._position
 
     def _readData(self):
