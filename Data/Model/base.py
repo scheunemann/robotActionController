@@ -47,6 +47,8 @@ class Base(Data.config.modelBase):
     def deserialize(cls, dictObj, session):
         if 'id' in dictObj:
             newObj = session.query(cls).get(dictObj['id'])
+            if not newObj:
+                raise ValueError("Invalid id specified: %s %s", (cls.__name__, dictObj['id']))
         else:
             newObj = cls()
         mapper = inspect(newObj.__class__)
@@ -73,7 +75,9 @@ class Base(Data.config.modelBase):
                         for o in dels:
                             attrList.remove(session.query(itemType).get(o))
                     else:
-                        if getattr(newObj, attr.key).id != newData['ids'][0]:
+                        if len(newData['ids']) == 0:
+                            setattr(newObj, attr.key, None)
+                        elif getattr(newObj, attr.key) == None or getattr(newObj, attr.key).id != newData['ids'][0]:
                             setattr(newObj, attr.key, session.query(itemType).get(newData['ids'][0]))
                 else:
                     # newData can be [{objectDict}, ...], {objectDict}
@@ -93,7 +97,10 @@ class Base(Data.config.modelBase):
                         item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
                     elif attr.columns[0].type.python_type:
                         try:
-                            item = attr.columns[0].type.python_type(dictObj[attr.key])
+                            if dictObj[attr.key] == None:
+                                item = None
+                            else:
+                                item = attr.columns[0].type.python_type(dictObj[attr.key])
                         except Exception as e:
                             #TODO: Error logging
                             item = None
@@ -121,7 +128,11 @@ class Base(Data.config.modelBase):
                              'uri': ''
                     }
                     if urlResolver != None:
-                        proxy['uri'] = urlResolver(attr.mapper.class_)
+                        if type(urlResolver) == str:
+                            proxy['uri'] = urlResolver
+                            urlResolver = None
+                        else:
+                            proxy['uri'] = urlResolver(attr.mapper.class_)
 
                     if attr.uselist == True:
                         for item in getattr(self, attr.key):

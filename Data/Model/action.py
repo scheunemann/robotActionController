@@ -15,6 +15,9 @@ class Action(StandardMixin, Base):
 
     name = Column(String(50))
     type = Column(String(50))
+
+    # minimum action length, in seconds
+    minLength = Column(Float)
     next_actions = relationship("Action", secondary=nextActions_table)
 
     __mapper_args__ = {
@@ -61,7 +64,7 @@ class Pose(Action):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
     speedModifier = Column(Integer)
-    minLength = Column(Float)
+
     __mapper_args__ = {
             'polymorphic_identity': 'Pose',
     }

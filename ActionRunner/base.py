@@ -1,7 +1,7 @@
 import logging
 import time
-from datetime import datetime
-from threading import Thread, current_thread
+from datetime import datetime, timedelta
+from threading import Thread
 from multiprocessing.pool import ThreadPool
 from Data.Model import Action
 from Data.storage import StorageFactory
@@ -52,7 +52,13 @@ class Runner(object):
             action = session.query(Action).get(self._actionId)
             self._output.append((datetime.now(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
 
+            starttime = datetime.now()
             self._result = self._runInternal(action, session)
+            endtime = datetime.now()
+            if action.minLength and timedelta(seconds=action.minLength) > (starttime - endtime):
+                sleeptime = (starttime - endtime).total_seconds()
+                self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
+                time.sleep(sleeptime)
 
             if self._result:
                 self._output.append((datetime.now(), '%s: Completed %s' % (self.__class__.__name__, action.name)))
