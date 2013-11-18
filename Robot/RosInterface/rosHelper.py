@@ -184,7 +184,7 @@ class ROS(object):
                         diffEnv[key] = value.replace(baseEnv[key], '').strip(':')
 
                 # Add in any overrides from the config file
-                if 'envVars' not in ros_config:
+                if 'envVars' in ros_config:
                     diffEnv.update(ros_config['envVars'])
                     rosEnv.update(ros_config['envVars'])
             else:

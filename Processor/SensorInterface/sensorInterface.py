@@ -2,6 +2,7 @@ import logging
 from threading import RLock
 from Data.Model import RobotSensor, ExternalSensor
 from Robot.ServoInteface import ServoInterface
+from Processor.SensorInterface import rosSensors
 
 __all__ = ['SensorInterface', ]
 
@@ -12,6 +13,7 @@ class SensorInterface(object):
     _servoInterfaces = {}
     _globalLock = RLock()
     _interfaces = {}
+    disconnected = False
 
     """have to do it this way to get around circular referencing in the parser"""
     @staticmethod
@@ -20,6 +22,7 @@ class SensorInterface(object):
             SensorInterface._interfaceClasses = {
                                  'ExternalSensor': External,
                                  'RobotSensor': Robot,
+                                 'DummySensor': Dummy
                                  }
 
         return SensorInterface._interfaceClasses
@@ -28,7 +31,7 @@ class SensorInterface(object):
     def getSensorInterface(sensor):
         with SensorInterface._globalLock:
             if sensor not in SensorInterface._interfaces:
-                if 'disconnected' not in globals() or not disconnected:  # Global flag
+                if not SensorInterface.disconnected:
                     try:
                         servoInt = SensorInterface._getInterfaceClasses()[sensor.type]
                     except:
@@ -37,7 +40,7 @@ class SensorInterface(object):
                     else:
                         servoInt = servoInt(sensor)
                 else:
-                    servoInt = Robot(sensor)
+                    servoInt = Dummy(sensor)
 
                 SensorInterface._interfaces[sensor] = servoInt
 
@@ -47,14 +50,12 @@ class SensorInterface(object):
 
         # servo type properties
         if type(sensor) == RobotSensor:
-            #TODO: Stop using the servoConfig for sensor configs
-            configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.servoConfigs)
+            # TODO: Stop using the servoConfig for sensor configs
+            configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.sensorConfigs)
             if not configs:
                 raise ValueError('Config could not be found for model %s on robot %s' % (sensor.model, sensor.robot))
             else:
                 config = configs[0]
-            self._port = config.port
-            self._portSpeed = config.portSpeed
         elif type(sensor) == ExternalSensor:
             # TODO: External Sensors
             config = None
@@ -67,6 +68,21 @@ class SensorInterface(object):
         return None
 
 
+class Dummy(SensorInterface):
+
+    def __init__(self, sensor):
+        super(Dummy, self).__init__(sensor)
+        self._externalId = sensor.extraData.get('externalId', None)
+        if self._externalId == None:
+            self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
+
+        servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
+        self._sensorInt = ServoInterface.getServoInterface(servos[0])
+
+    def getCurrentValue(self):
+        return self._sensorInt.getPosition()
+
+
 class Robot(SensorInterface):
 
     def __init__(self, sensor):
@@ -75,14 +91,19 @@ class Robot(SensorInterface):
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
 
-        servos = [s for s in sensor.robot.servos if s.jointName == sensor.name] 
-        self._sensorInt = ServoInterface.getServoInterface(servos[0])
+        servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
+
+        if sensor.model.name == 'SONAR':
+            self._sensorInt = rosSensors.SonarSensor(sensor)
+        else:
+            # TODO: Other sensors
+            self._sensorInt = ServoInterface.getServoInterface(servos[0])
 
     def getCurrentValue(self):
-        return self._sensorInt.getPosition()
+        return self._sensorInt.getValue()
 
 
-def External(ServoInterface):
+def External(SensorInterface):
 
     def __init__(self, sensor):
         super(External, self).__init__(sensor)

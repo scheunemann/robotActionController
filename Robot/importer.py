@@ -4,7 +4,7 @@ import math
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
+    ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
 
 
 def loadDirectory(subDir):
@@ -52,6 +52,11 @@ def loadDirectory(subDir):
 
 class RobotImporter(object):
 
+    _valueTypes = {
+                   'continuous': ContinuousValueType(),
+                   'discrete': DiscreteValueType(),
+                   }
+    _sensorModels = {}
     _types = {}
     _models = {}
     _configs = {
@@ -117,6 +122,8 @@ class RobotImporter(object):
         r.servoGroups = self._getServoGroups(config)
         r.servos = self._getServos(config, r.servoGroups)
         r.servoConfigs = self._getServoConfigs(config)
+        r.sensors = self._getSensors(config)
+        r.sensorConfigs = self._getSensorConfigs(config)
 
         return r
 
@@ -128,6 +135,44 @@ class RobotImporter(object):
             RobotImporter._models[modelName] = RobotModel(modelName)
 
         return self._models[modelName]
+
+    def _getValueType(self, typeName):
+        if typeName in RobotImporter._valueTypes:
+            return RobotImporter._valueTypes[typeName]
+        else:
+            return None
+
+    def _getSensorModel(self, modelName):
+        if modelName == None:
+            return None
+
+        if modelName not in RobotImporter._sensorModels:
+            RobotImporter._sensorModels[modelName] = SensorModel(modelName)
+
+        return self._sensorModels[modelName]
+
+    def _getSensors(self, node):
+        sensors = []
+        for sensor in self._get("SENSORLIST/SENSOR", node):
+            datatype = sensor.get('datatype', 'continuous')
+
+            s = RobotSensor()
+            s.name = self._getText("NAME", sensor).upper()
+            s.value_type = self._getValueType(datatype)
+            s.model = self._getSensorModel(sensor.get('type', None))
+            s.minPosition = self._getText("LIMITS[@type='pos']/MIN", sensor)
+            s.maxPosition = self._getText("LIMITS[@type='pos']/MAX", sensor)
+            extId = sensor.get('id', None)
+            if extId != None:
+                s.extraData = {'externalId': extId}
+            else:
+                s.extraData = {}
+            extra = sensor.get('extraData', '')
+            for line in extra.split(','):
+                (key, value) = line.split(':')
+                s.extraData[key] = value
+            sensors.append(s)
+        return sensors
 
     def _getServos(self, node, servoGroups):
         servos = []
@@ -201,7 +246,7 @@ class RobotImporter(object):
             return
 
         if modelName.lower() not in RobotImporter._types:
-            config = RobotImporter._configs[modelName.upper()] if modelName.upper() in RobotImporter._configs else RobotImporter._configs['DEFAULT']
+            config = RobotImporter._configs[modelName.upper()] if modelName.upper() in RobotImporter._configs else RobotImporter._configs['DUMMY']
             s = ServoModel(name=modelName)
             s.minSpeed = self._realToScaleSpeed(config['MIN_SPEED'], config['SCALE_SPEED'])
             s.maxSpeed = self._realToScaleSpeed(config['MAX_SPEED'], config['SCALE_SPEED'])
@@ -217,25 +262,37 @@ class RobotImporter(object):
 
         return RobotImporter._types[modelName.lower()]
 
-    def _getServoConfigs(self, node):
+    def _getSensorConfigs(self, node):
         configs = []
-        for name in self._configs.keys():
-            config = self._getServoConfig(name, node)
+        for configGroup in self._get('SENSORCONFIGS', node):
+            for configNode in configGroup.getchildren():
+                config = self._getSensorConfig(configNode)
             if config != None:
                 configs.append(config)
 
         return configs
 
-    def _getServoConfig(self, servoName, node):
-        config = self._getSingle(servoName, node)
-        if config == None:
-            return None
+    def _getSensorConfig(self, config):
+        c = SensorConfig()
+        c.model = self._getSensorModel(config.tag)
+        return c
 
+    def _getServoConfigs(self, node):
+        configs = []
+        for configGroup in self._get('SERVOCONFIGS', node):
+            for configNode in configGroup.getchildren():
+                config = self._getServoConfig(configNode)
+                if config != None:
+                    configs.append(config)
+
+        return configs
+
+    def _getServoConfig(self, config):
         c = ServoConfig()
         c.port = self._getText("PORT", config, "")
         c.portSpeed = self._getText("SPEED", config, 115200)
         c.rotationOffset = 0
-        c.model = self._getServoModel(servoName)
+        c.model = self._getServoModel(config.tag)
         return c
 
     def _getText(self, xpath, node, default=None):

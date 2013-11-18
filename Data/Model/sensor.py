@@ -18,7 +18,7 @@ class Sensor(StandardMixin, Base):
     value_type = relationship("SensorValueType", backref="sensor")
 
     extraData = Column(PickleType)
-    
+
     __mapper_args__ = {
             'polymorphic_identity': 'Sensor',
             'polymorphic_on': type
@@ -29,7 +29,7 @@ class Sensor(StandardMixin, Base):
 
     def isValid(self, value):
         return value != None
-    
+
     def __init__(self, name=None):
         self.name = name
 
@@ -42,8 +42,8 @@ class RobotSensor(Sensor):
     __mapper_args__ = {
             'polymorphic_identity': 'RobotSensor',
     }
-    
-    def __init__(self, name):
+
+    def __init__(self, name=None):
         super(RobotSensor, self).__init__(name)
 
 
@@ -53,7 +53,7 @@ class ExternalSensor(Sensor):
     __mapper_args__ = {
             'polymorphic_identity': 'ExternalSensor',
     }
-    
+
     def __init__(self, name):
         super(ExternalSensor, self).__init__(name)
 
@@ -66,7 +66,7 @@ class DiscreteSensorValues(StandardMixin, Base):
 
 
 class SensorValueType(StandardMixin, Base):
-    
+
     type = Column(String(50))
 
     __mapper_args__ = {
