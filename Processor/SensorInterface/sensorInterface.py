@@ -72,15 +72,38 @@ class Dummy(SensorInterface):
 
     def __init__(self, sensor):
         super(Dummy, self).__init__(sensor)
-        self._externalId = sensor.extraData.get('externalId', None)
-        if self._externalId == None:
-            self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
-
-        servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
-        self._sensorInt = ServoInterface.getServoInterface(servos[0])
+        import os
+        basePath = os.path.dirname(os.path.abspath(__file__))
+        basePath = os.path.join(basePath, 'sensorData')
+        if not os.path.exists(basePath):
+            os.makedirs(basePath)
+        fileName = 'dummySensorData_%s' % self._sensor.id
+        self._fileName = os.path.join(basePath, fileName)
+        self._value = self._readData()
+        if self._value == None:
+            self.writeData(sensor.id)
 
     def getCurrentValue(self):
-        return self._sensorInt.getPosition()
+        self._readData()
+        return self._value
+
+    def _readData(self):
+        import pickle
+        try:
+            f = open(self._fileName, 'r')
+            data = pickle.load(f)
+            self._value = data['value']
+        except Exception as e:
+            pass
+
+    def writeData(self, value):
+        import pickle
+        try:
+            data = {'value': value}
+            f = open(self._fileName, 'w')
+            pickle.dump(data, f)
+        except Exception:
+            pass
 
 
 class Robot(SensorInterface):

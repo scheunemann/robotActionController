@@ -288,6 +288,13 @@ class Dummy(ServoInterface):
         self._position = 0
         self._posable = False
         self._logger = logging.getLogger(self.__class__.__name__)
+        import os
+        basePath = os.path.dirname(os.path.abspath(__file__))
+        basePath = os.path.join(basePath, 'servoData')
+        if not os.path.exists(basePath):
+            os.makedirs(basePath)
+        fileName = 'dummyServoData_%s' % self._servo.id
+        self._fileName = os.path.join(basePath, fileName)
 
     def setPositioning(self, enablePositioning):
         self._posable = enablePositioning
@@ -315,7 +322,7 @@ class Dummy(ServoInterface):
     def _readData(self):
         import pickle
         try:
-            data = pickle.load(open(str(self._servo.id) + '_dummyData', 'r'))
+            data = pickle.load(self._fileName, 'r')
             self._position = data['position']
             self._posable = data['posable']
         except:
@@ -325,7 +332,7 @@ class Dummy(ServoInterface):
         import pickle
         try:
             data = {'position': self._position, 'posable': self._posable}
-            pickle.dump(data, open(str(self._servo.id) + '_dummyData', 'w'))
+            pickle.dump(data, self._fileName, 'w')
         except:
             pass
 
