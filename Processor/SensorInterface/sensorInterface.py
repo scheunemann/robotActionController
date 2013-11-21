@@ -99,7 +99,7 @@ class Dummy(SensorInterface):
     def writeData(self, value):
         import pickle
         try:
-            data = {'value': value}
+            data = {'value': value, 'name': self._sensor.name}
             f = open(self._fileName, 'w')
             pickle.dump(data, f)
         except Exception:

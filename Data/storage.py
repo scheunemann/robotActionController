@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from config import database_config
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.engine import reflection
 from sqlalchemy.schema import (
     MetaData,
@@ -22,7 +22,7 @@ class StorageFactory(object):
         if StorageFactory._sessionMaker == None:
             StorageFactory._sessionMaker = sessionmaker(bind=StorageFactory.getDefaultDataStore().engine)
 
-        return scoped_session(StorageFactory._sessionMaker)
+        return StorageFactory._sessionMaker(autocommit=True)
 
     @staticmethod
     def getDefaultDataStore():
@@ -94,10 +94,10 @@ class MySQLDataStore(DataStore):
 
     def __init__(self, host, user, pw, db):
         # uri = "mysql://anonymous@%(host)s/%(db)s"
-        uri = "mysql://%(user)s:%(pass)s@%(host)s/%(db)s" % {
+        uri = "mysql+mysqlconnector://%(user)s:%(pass)s@%(host)s/%(db)s" % {
                                                              'user': user,
                                                              'pass': pw,
                                                              'host': host,
-                                                             'db': db }
+                                                             'db': db}
 
         super(MySQLDataStore, self).__init__(uri, StorageFactory.config['debug'])
