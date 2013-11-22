@@ -6,8 +6,15 @@ from sqlalchemy.orm import relationship
 class Robot(StandardMixin, Base):
     name = Column(String(50))
     version = Column(String(50))
+
     model_id = Column(Integer, ForeignKey("RobotModel.id"))
     model = relationship("RobotModel")
+
+    sensors = relationship("RobotSensor", back_populates="robot")
+    servos = relationship("Servo", back_populates="robot")
+    servoGroups = relationship("ServoGroup", back_populates="robot")
+    sensorConfigs = relationship("SensorConfig", back_populates="robot")
+    servoConfigs = relationship("ServoConfig", back_populates="robot")
 
     def __init__(self, name=None, version=None, model=None):
         super(Robot, self).__init__()

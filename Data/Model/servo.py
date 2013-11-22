@@ -15,9 +15,9 @@ class Servo(StandardMixin, Base):
     model = relationship("ServoModel")
 
     robot_id = Column(Integer, ForeignKey("Robot.id"))
-    robot = relationship("Robot", backref="servos")
+    robot = relationship("Robot", back_populates="servos")
 
-    groups = relationship("ServoGroup", secondary=servoGroups_table, backref="servos")
+    groups = relationship("ServoGroup", secondary=servoGroups_table, back_populates="servos")
 
     minSpeed = Column(Integer)
     maxSpeed = Column(Integer)
@@ -46,7 +46,9 @@ class ServoGroup(StandardMixin, Base):
     name = Column(String(50))
 
     robot_id = Column(Integer, ForeignKey("Robot.id"))
-    robot = relationship("Robot", backref="servoGroups")
+    robot = relationship("Robot", back_populates="servoGroups")
+
+    servos = relationship("Servo", secondary=servoGroups_table, back_populates="groups")
 
     def __init__(self, name=None):
         super(ServoGroup, self).__init__()
@@ -84,7 +86,7 @@ class ServoModel(StandardMixin, Base):
 
 class ServoConfig(StandardMixin, Base):
     robot_id = Column(Integer, ForeignKey("Robot.id"))
-    robot = relationship("Robot", backref="servoConfigs")
+    robot = relationship("Robot", back_populates="servoConfigs")
 
     model_id = Column(Integer, ForeignKey("ServoModel.id"))
     model = relationship("ServoModel")

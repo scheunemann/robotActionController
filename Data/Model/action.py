@@ -19,6 +19,8 @@ class Action(StandardMixin, Base):
     # minimum action length, in seconds
     minLength = Column(Float)
     next_actions = relationship("Action", secondary=nextActions_table)
+    triggers = relationship("Trigger", back_populates="action")
+    overrides = relationship("CustomAction", back_populates="overridden", foreign_keys="CustomAction.overridden_id")
 
     __mapper_args__ = {
             'polymorphic_identity': 'Action',
@@ -45,7 +47,9 @@ class JointPosition(StandardMixin, Base):
     jointName = Column(String(50))
     position = Column(Float)
     speed = Column(Integer)
+
     pose_id = Column(Integer, ForeignKey('Pose.id'))
+    pose = relationship("Pose", back_populates="jointPositions")
 
     def __init__(self, jointName=None, position=None, speed=None):
         super(JointPosition, self).__init__()
@@ -69,7 +73,7 @@ class Pose(Action):
             'polymorphic_identity': 'Pose',
     }
 
-    jointPositions = relationship("JointPosition", backref="pose")
+    jointPositions = relationship("JointPosition", back_populates="pose")
 
     def __init__(self, name=None, jointPositions=[], minLength=None, speedModifier=None):
         super(Pose, self).__init__(name)
@@ -89,20 +93,24 @@ class Expression(Action):
 class Sequence(Action):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
+
     __mapper_args__ = {
             'polymorphic_identity': 'Sequence',
     }
 
-    ordered_actions = relationship("OrderedAction", order_by="OrderedAction.order", collection_class=ordering_list("order"), backref="sequence")
+    ordered_actions = relationship("OrderedAction", order_by="OrderedAction.order", collection_class=ordering_list("order"), back_populates="sequence")
     actions = association_proxy('ordered_actions', 'action')
 
 
 class OrderedAction(StandardMixin, Base):
 
     order = Column(Integer)
+
     action_id = Column(Integer, ForeignKey('Action.id'))
     action = relationship("Action")
+
     sequence_id = Column(Integer, ForeignKey('Sequence.id'))
+    sequence = relationship("Sequence", back_populates="ordered_actions", foreign_keys=sequence_id)
 
     def __init__(self, action):
         self.action = action

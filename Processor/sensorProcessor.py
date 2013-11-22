@@ -32,7 +32,7 @@ class _SensorHandler(Thread):
 
     def __init__(self, sensor, updateEvent, maxUpdateInterval=None, maxPollRate=None):
         super(_SensorHandler, self).__init__()
-        self._sensor = sensor
+        self._sensorId = sensor.id
         self._sensorInt = SensorInterface.getSensorInterface(sensor)
         self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
@@ -51,7 +51,7 @@ class _SensorHandler(Thread):
             if value != last_value and datetime.now() - last_update >= self._maxUpdateInterval:
                 last_update = datetime.now()
                 last_value = value
-                self._updateEvent(SensorDataEventArg(self._sensor.id, value))
+                self._updateEvent(SensorDataEventArg(self._sensorId, value))
 
             sleepTime = max(self._maxUpdateInterval - (datetime.now() - last_update), self._maxPollRate).total_seconds()
             time.sleep(sleepTime)

@@ -7,8 +7,8 @@ class User(StandardMixin, Base):
     name = Column(String(50))
     fullname = Column(String(50))
     speedmodifier = Column(Integer)
-    customTriggers = relationship("CustomTrigger", backref="user")
-    customActions = relationship("CustomAction", backref="user")
+    customTriggers = relationship("CustomTrigger")
+    customActions = relationship("CustomAction")
 
     def __init__(self, name=None, fullname=None):
         super(User, self).__init__()
@@ -21,10 +21,12 @@ class CustomTrigger(StandardMixin, Base):
     name = Column(String(50))
 
     user_id = Column(Integer, ForeignKey('User.id'))
-    overridden_id = Column(Integer, ForeignKey('Trigger.id'))
-    redirect_id = Column(Integer, ForeignKey('Trigger.id'))
+    user = relationship("User", back_populates="customTriggers")
 
-    overridden = relationship("Trigger", backref="overrides", foreign_keys=overridden_id)
+    overridden_id = Column(Integer, ForeignKey('Trigger.id'))
+    overridden = relationship("Trigger", back_populates="overrides", foreign_keys=overridden_id)
+
+    redirect_id = Column(Integer, ForeignKey('Trigger.id'))
     redirect = relationship("Trigger", foreign_keys=redirect_id)
 
     def __init__(self, name=None):
@@ -36,10 +38,12 @@ class CustomAction(StandardMixin, Base):
     name = Column(String(50))
 
     user_id = Column(Integer, ForeignKey('User.id'))
-    overridden_id = Column(Integer, ForeignKey('Action.id'))
-    redirect_id = Column(Integer, ForeignKey('Action.id'))
+    user = relationship("User", back_populates="customActions")
 
-    overridden = relationship("Action", backref="overrides", foreign_keys=overridden_id)
+    overridden_id = Column(Integer, ForeignKey('Action.id'))
+    overridden = relationship("Action", back_populates="overrides", foreign_keys=overridden_id)
+
+    redirect_id = Column(Integer, ForeignKey('Action.id'))
     redirect = relationship("Action", foreign_keys=redirect_id)
 
     def __init__(self, name=None):

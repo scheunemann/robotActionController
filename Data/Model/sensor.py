@@ -12,10 +12,10 @@ class Sensor(StandardMixin, Base):
     model = relationship("SensorModel")
 
     group_id = Column(Integer, ForeignKey("SensorGroup.id"))
-    group = relationship("SensorGroup", backref="sensors")
+    group = relationship("SensorGroup", back_populates="sensors")
 
     value_type_id = Column(Integer, ForeignKey("SensorValueType.id"))
-    value_type = relationship("SensorValueType", backref="sensor")
+    value_type = relationship("SensorValueType", back_populates="sensor")
 
     extraData = Column(PickleType)
 
@@ -37,8 +37,10 @@ class Sensor(StandardMixin, Base):
 class RobotSensor(Sensor):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Sensor'), primary_key=True)
+
     robot_id = Column(Integer, ForeignKey("Robot.id"))
-    robot = relationship("Robot", backref="sensors")
+    robot = relationship("Robot", back_populates="sensors")
+
     __mapper_args__ = {
             'polymorphic_identity': 'RobotSensor',
     }
@@ -50,6 +52,7 @@ class RobotSensor(Sensor):
 class ExternalSensor(Sensor):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Sensor'), primary_key=True)
+
     __mapper_args__ = {
             'polymorphic_identity': 'ExternalSensor',
     }
@@ -62,12 +65,13 @@ class DiscreteSensorValues(StandardMixin, Base):
 
     value = Column(String(500))
     value_type_id = Column(Integer, ForeignKey("DiscreteValueType.id"))
-    value_type = relationship("DiscreteValueType", backref="values")
+    value_type = relationship("DiscreteValueType", back_populates="values")
 
 
 class SensorValueType(StandardMixin, Base):
 
     type = Column(String(50))
+    sensor = relationship("Sensor", back_populates="value_type")
 
     __mapper_args__ = {
             'polymorphic_identity': '',
@@ -78,6 +82,9 @@ class SensorValueType(StandardMixin, Base):
 class DiscreteValueType(SensorValueType):
 
     id = Column(Integer, ForeignKey('SensorValueType.id'), primary_key=True)
+
+    values = relationship("DiscreteSensorValues", back_populates="value_type")
+
     __mapper_args__ = {
             'polymorphic_identity': 'Discrete',
     }
@@ -107,6 +114,7 @@ class ContinuousValueType(SensorValueType):
 
 class SensorGroup(StandardMixin, Base):
     name = Column(String(50))
+    sensors = relationship("Sensor", back_populates="group")
 
     def __init__(self, name=None):
         super(SensorGroup, self).__init__()
@@ -125,7 +133,7 @@ class SensorModel(StandardMixin, Base):
 class SensorConfig(StandardMixin, Base):
 
     robot_id = Column(Integer, ForeignKey("Robot.id"))
-    robot = relationship("Robot", backref="sensorConfigs")
+    robot = relationship("Robot", back_populates="sensorConfigs")
 
     model_id = Column(Integer, ForeignKey("SensorModel.id"))
     model = relationship("SensorModel")
