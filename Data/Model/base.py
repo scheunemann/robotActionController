@@ -95,6 +95,8 @@ class Base(Data.config.modelBase):
                 try:
                     if attr.columns[0].type.python_type == datetime.datetime:
                         item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
+                    elif attr.columns[0].type.__visit_name__ == 'large_binary':
+                        continue
                     elif attr.columns[0].type.python_type:
                         try:
                             if dictObj[attr.key] == None:
@@ -102,7 +104,7 @@ class Base(Data.config.modelBase):
                             else:
                                 item = attr.columns[0].type.python_type(dictObj[attr.key])
                         except Exception as e:
-                            #TODO: Error logging
+                            # TODO: Error logging
                             item = None
                     else:
                         item = dictObj[attr.key]
@@ -154,6 +156,8 @@ class Base(Data.config.modelBase):
                         obj[attr.key] = getattr(self, attr.key).serialize()
             elif isinstance(attr, ColumnProperty):
                 item = getattr(self, attr.key)
+                if attr.columns[0].type.__visit_name__ == 'large_binary':
+                    continue
                 if type(item) == datetime.datetime:
                     item = Base._utcDateTime(item)
 

@@ -14,7 +14,7 @@ class Runner(object):
         def __init__(self, action):
             super(Runner.ExecutionHandle, self).__init__()
             self._logger = logging.getLogger(self.__class__.__name__)
-            self._actionId = action.id
+            self._action = action
             self._handles = []
             self._handle = None
             self._result = False
@@ -50,7 +50,9 @@ class Runner(object):
 
         def run(self):
             session = StorageFactory.getNewSession()
-            action = session.query(Action).get(self._actionId)
+#             action = session.query(Action).get(self._actionId)
+#             action = self._action
+            action = session.merge(self._action, load=False)
             self._output.append((datetime.now(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
 
             starttime = datetime.now()
@@ -58,6 +60,8 @@ class Runner(object):
                 self._result = self._runInternal(action, session)
             except:
                 self._logger.critical("Error running action: %s" % action)
+                import traceback
+                self._logger.critical(traceback.format_exc())
                 self._result = False
             else:
                 endtime = datetime.now()

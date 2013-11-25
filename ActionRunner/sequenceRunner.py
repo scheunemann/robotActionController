@@ -10,13 +10,14 @@ class SequenceRunner(Runner):
         def __init__(self, sequence, robot):
             super(SequenceRunner.SequenceHandle, self).__init__(sequence)
             self._robot = robot
+            self._cancel = False
 
         def _runInternal(self, action, session):
-            robot = session.query(Robot).get(self._robotId)
+            robot = session.merge(self._robot, load=False)
             ar = ActionRunner(robot)
             result = True
-            for orderedAction in sorted(action.actions, key=lambda a: a.order):
-                actionResult = ar.execute(orderedAction.action)
+            for action in action.actions:
+                actionResult = ar.execute(action)
                 if self._cancel:
                     result = False
                     break
@@ -24,6 +25,10 @@ class SequenceRunner(Runner):
                     result = result and actionResult
 
             return result
+
+        def stop(self):
+            self._cancel = True
+            self.waitForComplete()
 
     supportedClass = Sequence
 

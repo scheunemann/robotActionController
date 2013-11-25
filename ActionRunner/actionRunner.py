@@ -23,10 +23,10 @@ class ActionRunner(Runner):
 
     def _getHandle(self, action):
         try:
-            return ActionRunner.ActionExecutionHandle(action, ActionRunner._getRunners()[type(action)](self._robot))
+            return ActionRunner.ActionExecutionHandle(action, ActionRunner._getRunners()[action.type](self._robot))
         except:
-            self._logger.critical("Could not determine action runner for type %s" % (type(action)))
-            raise ValueError("Could not determine action runner for type %s" % (type(action)))
+            self._logger.critical("Could not determine action runner for type %s" % action.type)
+            raise ValueError("Could not determine action runner for type %s" % action.type)
 
     @staticmethod
     def _getRunners():
@@ -67,7 +67,7 @@ class ActionRunner(Runner):
                 module = __import__(moduleName, globals(), locals())
                 for _, type_ in inspect.getmembers(module, inspect.isclass):
                     if issubclass(type_, ofType) and not type_ == ofType:
-                        ret[type_.supportedClass] = type_
+                        ret[type_.supportedClass.__name__] = type_
 
             except Exception as e:
                 print >> sys.stderr, "Unable to import module %s, Exception: %s" % (module, e)

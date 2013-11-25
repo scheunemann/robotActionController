@@ -1,5 +1,5 @@
-from Robot.ServoInteface.dynamixel import ServoController as AX12Controller
-from Robot.ServoInteface.herkulex import HerkuleX
+from Robot.ServoInterface.dynamixel import ServoController as AX12Controller
+from Robot.ServoInterface.herkulex import HerkuleX
 from threading import RLock
 import serial
 
@@ -25,7 +25,10 @@ class Connection(object):
             # TODO: Check for closed connections
             if port not in Connection._connections:
                 if connectionType == "AX12":
-                    Connection._connections[port] = AX12Controller(port, speed)
+                    try:
+                        Connection._connections[port] = AX12Controller(port, speed)
+                    except serial.serialutil.SerialException as e:
+                        return None
                 elif connectionType == "HERKULEX":
                     Connection._connections[port] = HerkuleX(port, speed)
                 else:

@@ -33,6 +33,7 @@
 import sys
 import serial
 import time
+from threading import RLock
 
 __all__ = ['ServoController', ]
 
@@ -143,8 +144,8 @@ class ServoController:
         Provide the name of the serial port to which the servos are connected.
         """
         self.portstring = portstring
+        self.portLock = RLock()
         self.port = serial.Serial(port=self.portstring, baudrate=portspeed, timeout=5)  # Picked from a hat.
-        self.port.open()
 
     def Close(self):
         """Close the serial port."""
@@ -171,14 +172,15 @@ class ServoController:
         """
         _VerifyID(id_)
         P = [id_, len(packet) + 1] + packet
-        self.port.write("".join(map(chr, [0xFF, 0xFF] + P + [_Checksum(P)])))
-        self.port.flushOutput()
-        time.sleep(0.05)
+        with self.portLock:
+            self.port.write("".join(map(chr, [0xFF, 0xFF] + P + [_Checksum(P)])))
+            self.port.flushOutput()
+            time.sleep(0.05)
 
-        # Handle the read.
-        res = []
-        while self.port.inWaiting() > 0:
-            res.append(self.port.read())
+            # Handle the read.
+            res = []
+            while self.port.inWaiting() > 0:
+                res.append(self.port.read())
         return Response(map(ord, res)).Verify()
 
     # From here on out, you're looking at functions that really do something to
@@ -220,7 +222,7 @@ class ServoController:
         """
         _VerifyID(id_)
         if not (0 <= position <= 1023):
-            raise ValueError("Invalid position!")
+            raise ValueError("Invalid position! (%s)", position)
         packet = WRITE_DATA + [0x1e] + _EnWire(position)
         self.Interact(id_, packet).Verify()
 

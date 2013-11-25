@@ -27,6 +27,7 @@ import sys
 import serial
 import time
 import logging
+from threading import RLock
 
 __all__ = ['HerkuleX', ]
 
@@ -72,6 +73,7 @@ class HerkuleX(object):
     H_ERROR_EEPREG_DISTORT = 0x40
 
     def __init__(self, portstring, portspeed):
+        self.portLock = RLock()
         self.mPort = serial.Serial(port=portstring, baudrate=portspeed)
         self.multipleMoveData = []
         self.mIDs = []
@@ -234,14 +236,7 @@ class HerkuleX(object):
         optData[1] = 0x02  # Length
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HRAMREAD, optData)
-        self.sendData(packetBuf)
-
-        try:
-            time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
-        except:
-            self._logger.error(sys.exc_info()[0])
-
-        readBuf = self.readData()
+        readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
             return 0
@@ -301,14 +296,7 @@ class HerkuleX(object):
         optData[1] = 0x02  # Length
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HRAMREAD, optData)
-        self.sendData(packetBuf)
-
-        try:
-            time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
-        except:
-            self._logger.error(sys.exc_info()[0])
-
-        readBuf = self.readData()
+        readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
             return -1
@@ -523,14 +511,7 @@ class HerkuleX(object):
             return 0x00
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HSTAT, None)
-        self.sendData(packetBuf)
-
-        try:
-            time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
-        except:
-            self._logger.error(sys.exc_info()[0])
-
-        readBuf = self.readData()
+        readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
             return -1
@@ -549,14 +530,8 @@ class HerkuleX(object):
         optData[1] = 0x01  # Length
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HEEPREAD, optData)
-        self.sendData(packetBuf)
 
-        try:
-            time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
-        except:
-            self._logger.error(sys.exc_info()[0])
-
-        readBuf = self.readData()
+        readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
             return -1
@@ -688,23 +663,32 @@ class HerkuleX(object):
         return (~chksum1) & 0xFE
 
     def sendData(self, buf):
-        self.mPort.write(''.join([chr(x) for x in buf]))
+        with self.portLock:
+            self.mPort.write(''.join([chr(x) for x in buf]))
 
-    def readData(self):
-        retBuf = []
+    def sendDataForResult(self, buf):
+        with self.portLock:
+            self.sendData(buf)
 
-        while self.mPort.inWaiting() > 0:
-            inBuffer = self.mPort.read(1)
-            retBuf.append(ord(inBuffer) & 0xFF)
+            try:
+                time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
+            except:
+                self._logger.error(sys.exc_info()[0])
 
-        return retBuf
+            readBuf = []
+            while self.mPort.inWaiting() > 0:
+                inBuffer = self.mPort.read(1)
+                readBuf.append(ord(inBuffer) & 0xFF)
+
+        return readBuf
+
 
 if __name__ == '__main__':
-    h = HerkuleX('COM4', 115200)
+    h = HerkuleX('COM11', 115200)
     ids = h.performIDScan()
     for sid in ids:
         h.torqueOFF(sid)
     while(True):
         for sid in ids:
-            print h.getPosition(sid)
+            print '%s: %s' % (sid, h.getPosition(sid))
         time.sleep(1)

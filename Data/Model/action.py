@@ -1,5 +1,7 @@
+import os
+import uuid
 from base import StandardMixin, Base
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, Float, Binary
+from sqlalchemy import Column, String, Integer, ForeignKey, Table, Float, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.orderinglist import ordering_list
@@ -39,7 +41,44 @@ class Sound(Action):
             'polymorphic_identity': 'Sound',
     }
 
-    data = Column(Binary)
+    uuid = Column(String(36))
+
+    @property
+    def data(self):
+        if not self.uuid:
+            return None
+
+        fileName = self._fileName
+        if os.path.isfile(fileName):
+            with open(fileName, 'rb') as f:
+                b = f.read()
+            return b
+        else:
+            return None
+
+    @property
+    def _fileName(self):
+        self._basePath = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soundFiles'))
+        if not os.path.isdir(self._basePath):
+            os.makedirs(self._basePath)
+
+        if self.uuid == None:
+            self.uuid = str(uuid.uuid1())
+
+        return os.path.join(self._basePath, self.uuid)
+
+    @data.setter
+    def data(self, value):
+        if value:
+            with open(self._fileName, 'wb') as f:
+                f.write(value)
+        elif self.uuid != None:
+            os.remove(self._fileName)
+            self.uuid = None
+
+    def __init__(self, name=None):
+        super(Sound, self).__init__()
+        self.name = name
 
 
 class JointPosition(StandardMixin, Base):
@@ -73,7 +112,7 @@ class Pose(Action):
             'polymorphic_identity': 'Pose',
     }
 
-    jointPositions = relationship("JointPosition", back_populates="pose")
+    jointPositions = relationship("JointPosition", back_populates="pose", lazy=False)
 
     def __init__(self, name=None, jointPositions=[], minLength=None, speedModifier=None):
         super(Pose, self).__init__(name)
@@ -98,7 +137,7 @@ class Sequence(Action):
             'polymorphic_identity': 'Sequence',
     }
 
-    ordered_actions = relationship("OrderedAction", order_by="OrderedAction.order", collection_class=ordering_list("order"), back_populates="sequence")
+    ordered_actions = relationship("OrderedAction", order_by="OrderedAction.order", collection_class=ordering_list("order"), lazy=False)
     actions = association_proxy('ordered_actions', 'action')
 
 
@@ -107,7 +146,7 @@ class OrderedAction(StandardMixin, Base):
     order = Column(Integer)
 
     action_id = Column(Integer, ForeignKey('Action.id'))
-    action = relationship("Action")
+    action = relationship("Action", foreign_keys=action_id)
 
     sequence_id = Column(Integer, ForeignKey('Sequence.id'))
     sequence = relationship("Sequence", back_populates="ordered_actions", foreign_keys=sequence_id)

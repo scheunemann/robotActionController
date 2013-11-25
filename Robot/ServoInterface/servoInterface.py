@@ -28,7 +28,7 @@ class ServoInterface(object):
     @staticmethod
     def getServoInterface(servo):
         with ServoInterface._globalLock:
-            if servo not in ServoInterface._interfaces:
+            if servo.id not in ServoInterface._interfaces:
                 if not ServoInterface.disconnected:
                     try:
                         servoInt = ServoInterface._getInterfaceClasses()[servo.model.name]
@@ -40,9 +40,9 @@ class ServoInterface(object):
                 else:
                     servoInt = Dummy(servo)
 
-                ServoInterface._interfaces[servo] = servoInt
+                ServoInterface._interfaces[servo.id] = servoInt
 
-            return ServoInterface._interfaces[servo]
+            return ServoInterface._interfaces[servo.id]
 
     def __init__(self, servo):
 
@@ -58,13 +58,13 @@ class ServoInterface(object):
         # servo properties
         self._moving = False
         self._servo = servo
-        self._minPos = servo.minPosition or servo.model.minPosition
-        self._maxPos = servo.maxPosition or servo.model.maxPosition
-        self._defaultPos = servo.defaultPosition or servo.model.defaultPosition
-        self._minSpeed = servo.minSpeed or servo.model.minSpeed
-        self._maxSpeed = servo.maxSpeed or servo.model.maxSpeed
-        self._defaultSpeed = servo.defaultSpeed or servo.model.defaultSpeed
-        self._posOffset = servo.positionOffset or servo.model.positionOffset
+        self._minPos = servo.minPosition if servo.minPosition != None else servo.model.minPosition
+        self._maxPos = servo.maxPosition if servo.maxPosition != None else servo.model.maxPosition
+        self._defaultPos = servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition
+        self._minSpeed = servo.minSpeed if servo.minSpeed != None else servo.model.minSpeed
+        self._maxSpeed = servo.maxSpeed if servo.maxSpeed != None else servo.model.maxSpeed
+        self._defaultSpeed = servo.defaultSpeed if servo.defaultSpeed != None else servo.model.defaultSpeed
+        self._posOffset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
         self._speedScaleValue = servo.model.speedScale
         self._posScaleValue = servo.model.positionScale
 
@@ -90,11 +90,11 @@ class ServoInterface(object):
         raise ValueError('Getting position not supported on servo %s', self._servo)
 
     def _scaleToRealPos(self, value):
-        real = (value / self._posScaleValue) + self._posOffset
+        real = (value + self._posOffset) / self._posScaleValue
         return round(real, 2)
 
     def _realToScalePos(self, value):
-        scaled = (value - self._posOffset) * self._posScaleValue
+        scaled = (value * self._posScaleValue) - self._posOffset
         return round(scaled, 2)
 
     def _scaleToRealSpeed(self, value):
@@ -120,29 +120,36 @@ class AX12(ServoInterface):
             self._logger.critical("AX12 servo %s is missing its external Id!", servo.name)
 
         self._conn = Connection.getConnection("AX12", self._port, self._portSpeed)
+        if self._conn == None:
+            raise ValueError("Error creating servo connection")
         self._checkMinMaxValues()
         self._positioning = False
+        self._nextPosition = None
+        self._nextSpeed = None
 
     def getPosition(self):
         with Connection.getLock(self._conn):
             posSteps = self._conn.GetPosition(self._externalId)
-            return self._realToScalePos(posSteps)
+
+        return self._realToScalePos(posSteps)
 
     def setPosition(self, position, speed):
-        scaledSpeed = self._scaleToRealSpeed(speed)
-        scaledPosition = self._scaleToRealPos(position)
+        realSpeed = int(round(self._scaleToRealSpeed(float(speed))))
+        realPosition = int(round(self._scaleToRealPos(float(position))))
+#         with Connection.getLock(self._conn):
+        self._conn.SetMovingSpeed(self._externalId, realSpeed)
+        self._conn.SetPosition(self._externalId, realPosition)
+
+    def isMoving(self):
         with Connection.getLock(self._conn):
-            self._moving = True
-            self._conn.SetMovingSpeed(self._externalId, scaledSpeed)
-            self._conn.SetPosition(self._externalId, scaledPosition)
-            self._moving = False
+            return self._conn.Moving(self._externalId)
 
     def getPositioning(self):
         return self._positioning
 
     def setPositioning(self, enablePositioning):
         with Connection.getLock(self._conn):
-            self._conn.SetTorqueEnable(self._externalId, int(not enablePositioning))
+            self._conn.SetTorqueEnable(self._externalId, int(not bool(enablePositioning)))
             self._positioning = enablePositioning
 
     def _checkMinMaxValues(self):
@@ -150,19 +157,20 @@ class AX12(ServoInterface):
         with Connection.getLock(self._conn):
             readMinPos = self._conn.GetCWAngleLimit(self._externalId)
             readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
+        minPos = round(self._scaleToRealPos(self._minPos))
+        maxPos = round(self._scaleToRealPos(self._maxPos))
 
-        if readMinPos > self._minPos:
+        if readMinPos > minPos:
             # The motor doesn't allow for the minimum defined so far!
-            self._logger.warning("Requested minimum value of %s lower than hardware limits (%s) for servo %s", self._minPos, readMinPos, self._externalId)
-            self._minPos = readMinPos
-        if readMaxPos < self._maxPos:
+            self._logger.warning("Requested minimum value of %s lower than hardware limits (%s) for servo %s", minPos, readMinPos, self._externalId)
+            self._minPos = self._realToScalePos(readMinPos)
+        if readMaxPos < maxPos:
             # The motor doesn't allow for the maximum defined so far!
-            self._logger.warning("Requested maximum value of %s higher than hardware limits (%s) for servo %s", self._maxPos, readMaxPos, self._externalId)
-            self._maxPos = readMaxPos
-        # TODO: posScaleValue isn't used like this anymore???
-        if self._defaultPos < 0 or self._defaultPos > self._posScaleValue:
+            self._logger.warning("Requested maximum value of %s higher than hardware limits (%s) for servo %s", maxPos, readMaxPos, self._externalId)
+            self._maxPos = self._realToScalePos(readMaxPos)
+        if self._defaultPos < self._minPos or self._defaultPos > self._maxPos:
             # The motor doesn't allow for this d!
-            self._logger.warning("Requested default value of %s outside allowed interval [0,%s] for servo %s", self._defaultPos, self._posScaleValue, self._externalId)
+            self._logger.warning("Requested default value of %s outside allowed interval [%s,%s] for servo %s", self._defaultPos, self._minPos, self._maxPos, self._externalId)
             self._defaultPos = self._posScaleValue / 2
 
 

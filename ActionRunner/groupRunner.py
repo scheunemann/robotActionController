@@ -9,10 +9,10 @@ class GroupRunner(Runner):
 
         def __init__(self, group, robot):
             super(GroupRunner.GroupHandle, self).__init__(group)
-            self._robotId = robot.id
+            self._robot = robot
 
         def _runInternal(self, action, session):
-            robot = session.query(Robot).get(self._robotId)
+            robot = session.merge(self._robot, load=False)
             self._handles = [ActionRunner(robot).executeAsync(a) for a in action.actions]
             return self.waitForComplete()
 

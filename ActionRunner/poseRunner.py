@@ -1,5 +1,5 @@
 import threading
-from Robot.ServoInteface.servoInterface import ServoInterface
+from Robot.ServoInterface.servoInterface import ServoInterface
 from base import Runner
 from Data.Model import Pose, Robot
 from multiprocessing.pool import ThreadPool as Pool
@@ -11,13 +11,15 @@ class PoseRunner(Runner):
 
         def __init__(self, pose, robot):
             super(PoseRunner.PoseHandle, self).__init__(pose)
-            self._robotId = robot.id
+            self._robot = robot
 
         def _runInternal(self, action, session):
             self._cancel = False
             interfaces = {}
-            robot = session.query(Robot).get(self._robotId)
+            robot = session.merge(self._robot, load=False)
             pool = Pool(processes=len(action.jointPositions))
+
+            l = []
             for jointPosition in action.jointPositions:
                 servos = filter(lambda s: s.jointName == jointPosition.jointName, robot.servos)
                 if len(servos) != 1:
@@ -27,16 +29,19 @@ class PoseRunner(Runner):
                 speed = jointPosition.speed or servo.defaultSpeed or servo.model.defaultSpeed or 100
                 speed = speed * (action.speedModifier or 1)
                 position = jointPosition.position or servo.defaultPosition or servo.model.defaultPosition or 0
-                servoInterface = ServoInterface.getServoInterface(servo)
-                pool.apply_async(servoInterface.setPosition, args=(position, speed))
+                try:
+                    servoInterface = ServoInterface.getServoInterface(servo)
+                except ValueError as e:
+                    self._logger.critical("Servo %s is in an error state", servo)
+                    self._logger.critical(e)
+                    pass
+                l.append((position, speed, servoInterface))
                 interfaces[jointPosition] = servoInterface
+
+            [pool.apply_async(servoInterface.setPosition, args=(position, speed)) for (position, speed, servoInterface) in l]
 
             pool.close()
             pool.join()
-#             for (jointPosition, interface) in interfaces.iteritems():
-#                 # TODO: better tolerance calculation
-#                 while not self._cancel and interface.isMoving() and abs(interface.getPosition() - jointPosition.position) > 10:
-#                     time.sleep(0.001)
 
             if self._cancel:
                 result = False

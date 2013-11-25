@@ -11,10 +11,10 @@ class Robot(StandardMixin, Base):
     model = relationship("RobotModel")
 
     sensors = relationship("RobotSensor", back_populates="robot")
-    servos = relationship("Servo", back_populates="robot")
+    servos = relationship("Servo", back_populates="robot", lazy=False)
     servoGroups = relationship("ServoGroup", back_populates="robot")
     sensorConfigs = relationship("SensorConfig", back_populates="robot")
-    servoConfigs = relationship("ServoConfig", back_populates="robot")
+    servoConfigs = relationship("ServoConfig", back_populates="robot", lazy=False)
 
     def __init__(self, name=None, version=None, model=None):
         super(Robot, self).__init__()

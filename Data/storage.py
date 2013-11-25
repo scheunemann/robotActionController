@@ -94,7 +94,7 @@ class MySQLDataStore(DataStore):
 
     def __init__(self, host, user, pw, db):
         # uri = "mysql://anonymous@%(host)s/%(db)s"
-        uri = "mysql+mysqlconnector://%(user)s:%(pass)s@%(host)s/%(db)s" % {
+        uri = "mysql://%(user)s:%(pass)s@%(host)s/%(db)s" % {
                                                              'user': user,
                                                              'pass': pw,
                                                              'host': host,
