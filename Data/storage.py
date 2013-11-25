@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from config import database_config
-from sqlalchemy.orm import sessionmaker, Session
+import threading
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import reflection
 from sqlalchemy.schema import (
     MetaData,
@@ -22,7 +23,9 @@ class StorageFactory(object):
         if StorageFactory._sessionMaker == None:
             StorageFactory._sessionMaker = sessionmaker(bind=StorageFactory.getDefaultDataStore().engine)
 
-        return StorageFactory._sessionMaker(autocommit=True)
+        session = StorageFactory._sessionMaker(autocommit=True)
+        session._thread = threading.current_thread()
+        return session
 
     @staticmethod
     def getDefaultDataStore():

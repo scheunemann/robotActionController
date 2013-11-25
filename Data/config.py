@@ -6,5 +6,6 @@ database_config = {
                               'type': 'Sqlite',
                               'file': ':memory:',
                               },
-                   'debug': False
+                   'debug': False,
+                   'autocommit': False
                    }

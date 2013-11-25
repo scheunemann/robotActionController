@@ -25,10 +25,16 @@ class Sensor(StandardMixin, Base):
         }
 
     def normalize(self, value):
-        return value
+        if self.value_type != None:
+            return self.value_type.normalize(value)
+        else:
+            return value
 
     def isValid(self, value):
-        return value != None
+        if self.value_type != None:
+            return self.value_type.isValid(value)
+        else:
+            return value != None
 
     def __init__(self, name=None):
         self.name = name
@@ -88,6 +94,9 @@ class DiscreteValueType(SensorValueType):
     __mapper_args__ = {
             'polymorphic_identity': 'Discrete',
     }
+
+    def normalize(self, value):
+        return value
 
     def isValid(self, value):
         return value in self.values or not self.values

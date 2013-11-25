@@ -159,9 +159,16 @@ class RobotImporter(object):
             s = RobotSensor()
             s.name = self._getText("NAME", sensor).upper()
             s.value_type = self._getValueType(datatype)
+            if isinstance(s.value_type, ContinuousValueType):
+                s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
+                s.value_type.maxValue = self._getText("LIMITS/MAX", sensor)
+            elif isinstance(s.value_type, DiscreteValueType):
+                # TODO Discrete values
+                pass
+            else:
+                # TODO Error handling
+                pass
             s.model = self._getSensorModel(sensor.get('type', None))
-            s.minPosition = self._getText("LIMITS[@type='pos']/MIN", sensor)
-            s.maxPosition = self._getText("LIMITS[@type='pos']/MAX", sensor)
             extId = sensor.get('id', None)
             if extId != None:
                 s.extraData = {'externalId': extId}

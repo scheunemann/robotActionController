@@ -1,7 +1,7 @@
 import logging
 from threading import RLock
 from Data.Model import RobotSensor, ExternalSensor
-from Robot.ServoInteface import ServoInterface
+from Robot.ServoInterface import ServoInterface
 from Processor.SensorInterface import rosSensors
 
 __all__ = ['SensorInterface', ]
@@ -70,33 +70,48 @@ class SensorInterface(object):
 
 class Dummy(SensorInterface):
 
+    sensor_values = {}
+
     def __init__(self, sensor):
+        from multiprocessing import Value
+        import ctypes
         super(Dummy, self).__init__(sensor)
+        self._sensorId = self._sensor.id
+
         import os
         basePath = os.path.dirname(os.path.abspath(__file__))
         basePath = os.path.join(basePath, 'sensorData')
         if not os.path.exists(basePath):
             os.makedirs(basePath)
-        fileName = 'dummySensorData_%s' % self._sensor.id
+        fileName = 'dummySensorData_%s' % self._sensorId
         self._fileName = os.path.join(basePath, fileName)
-        self._value = self._readData()
-        if self._value == None:
-            self.writeData(sensor.id)
+
+        if self._sensor.id not in Dummy.sensor_values:
+            Dummy.sensor_values[self._sensorId] = Value(ctypes.c_float)
+
+#         value = self._readData()
+#         if value != None:
+        self.setCurrentValue(-1)
+
+    def __del__(self):
+        self.writeData(Dummy.sensor_values[self._sensorId].value)
+
+    def setCurrentValue(self, value):
+        Dummy.sensor_values[self._sensor.id].value = float(value)
 
     def getCurrentValue(self):
-        self._readData()
-        return self._value
+        return Dummy.sensor_values[self._sensorId].value
 
     def _readData(self):
         import pickle
         try:
             f = open(self._fileName, 'r')
             data = pickle.load(f)
-            self._value = data['value']
+            return data['value']
         except Exception as e:
             pass
 
-    def writeData(self, value):
+    def _writeData(self, value):
         import pickle
         try:
             data = {'value': value, 'name': self._sensor.name}

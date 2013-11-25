@@ -364,6 +364,6 @@ if __name__ == "__main__":
     if len(sys.argv) != 1:  # Specifying a port for interactive use
         ps = sys.argv[1]
     else:
-        ps = "/dev/ttyUSB1"
+        ps = "/dev/ttyACM1"
     X = ServoController(ps)
     X.SetPosition(1, 512)  # Set servo id 1 to position 512 (straight up)
