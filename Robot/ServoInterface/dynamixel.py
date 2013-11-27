@@ -156,7 +156,10 @@ class ServoController:
         All this needs to do is shut down, which you can also do by hand using
         Close().
         """
-        self.Close()
+        try:
+            self.Close()
+        except Exception:
+            pass
 
     def Interact(self, id_, packet):
         """
