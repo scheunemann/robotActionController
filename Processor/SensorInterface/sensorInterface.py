@@ -1,3 +1,4 @@
+import random
 import logging
 from threading import RLock
 from Data.Model import RobotSensor, ExternalSensor
@@ -91,16 +92,21 @@ class Dummy(SensorInterface):
 
 #         value = self._readData()
 #         if value != None:
-        self.setCurrentValue(-1)
+#             self.setCurrentValue(value)
 
-    def __del__(self):
-        self.writeData(Dummy.sensor_values[self._sensorId].value)
+#     def __del__(self):
+#         self.writeData(Dummy.sensor_values[self._sensorId].value)
 
     def setCurrentValue(self, value):
+#         self._writeData(value)
         Dummy.sensor_values[self._sensor.id].value = float(value)
 
     def getCurrentValue(self):
-        return Dummy.sensor_values[self._sensorId].value
+#         val = self._readData()
+#         if val == None:
+#             return random.random()
+        val = Dummy.sensor_values[self._sensorId].value
+        return val
 
     def _readData(self):
         import pickle

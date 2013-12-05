@@ -6,7 +6,7 @@ import Data.config
 import datetime
 
 
-class Base(Data.config.modelBase):
+class IDBase(Data.config.modelBase):
 
     @declared_attr
     def __tablename__(cls):
@@ -17,6 +17,9 @@ class Base(Data.config.modelBase):
     id = Column(Integer, Sequence('%s_id_seq' % __tablename__), primary_key=True)
     created = Column(DateTime, nullable=False, default=func.now())
     modified = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+
+class SerializeMixin(object):
 
     @staticmethod
     def getDesc(cls):
@@ -159,17 +162,14 @@ class Base(Data.config.modelBase):
                 if attr.columns[0].type.__visit_name__ == 'large_binary':
                     continue
                 if type(item) == datetime.datetime:
-                    item = Base._utcDateTime(item)
+                    item = SerializeMixin._utcDateTime(item)
 
                 obj[attr.key] = item
 
         return obj
 
-Base = declarative_base(cls=Base)
-
 
 class SettingMixin(object):
-
     __mapper_args__ = {'always_refresh': True}
 
 
@@ -182,5 +182,7 @@ class DisplayMixin(object):
             return "%s('%s')" % (self.__class__.__name__, self.id)
 
 
-class StandardMixin(DisplayMixin, SettingMixin):
+class StandardMixin(DisplayMixin, SettingMixin, SerializeMixin):
     pass
+
+Base = declarative_base(cls=IDBase)
