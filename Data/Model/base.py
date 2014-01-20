@@ -12,7 +12,9 @@ class IDBase(Data.config.modelBase):
     def __tablename__(cls):
         return cls.__name__
 
-    __table_args__ = {'mysql_engine': 'InnoDB'}
+    __table_args__ = (
+                      {'mysql_engine': 'InnoDB'},
+                      )
 
     id = Column(Integer, Sequence('%s_id_seq' % __tablename__), primary_key=True)
     created = Column(DateTime, nullable=False, default=func.now())

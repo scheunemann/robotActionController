@@ -162,6 +162,7 @@ class RobotImporter(object):
             if isinstance(s.value_type, ContinuousValueType):
                 s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
                 s.value_type.maxValue = self._getText("LIMITS/MAX", sensor)
+                s.value_type.precision = self._getText("LIMITS/PRECISION", sensor)
             elif isinstance(s.value_type, DiscreteValueType):
                 # TODO Discrete values
                 pass

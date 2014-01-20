@@ -108,14 +108,15 @@ class ContinuousValueType(SensorValueType):
             'polymorphic_identity': 'Continuous',
     }
 
-    minValue = Column(Float)
-    maxValue = Column(Float)
+    minValue = Column(Float, nullable=False)
+    maxValue = Column(Float, nullable=False)
+    precision = Column(Integer, nullable=False)
 
     def normalize(self, value):
         if not self.isValid(value):
             raise ValueError("Given value is not valid")
 
-        return (value - float(self.minValue)) / (self.maxValue - float(self.minValue))
+        return round((value - float(self.minValue)) / (self.maxValue - float(self.minValue)), self.precision)
 
     def isValid(self, value):
         return value <= self.maxValue and value >= self.minValue
