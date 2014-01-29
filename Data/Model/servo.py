@@ -2,6 +2,10 @@ from base import StandardMixin, Base
 from sqlalchemy import Column, Index, Integer, ForeignKey, Float, String, PickleType, Boolean, Table
 from sqlalchemy.orm import relationship
 
+
+__all__ = ['Servo', 'ServoConfig', 'ServoGroup', 'ServoModel', ]
+
+
 servoGroups_table = Table('servoGroups', Base.metadata,
     Column('Servo_id', Integer, ForeignKey('Servo.id')),
     Column('ServoGroup_id', Integer, ForeignKey('ServoGroup.id'))

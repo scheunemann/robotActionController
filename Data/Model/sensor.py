@@ -3,6 +3,9 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Float, PickleType
 from sqlalchemy.orm import relationship
 
 
+__all__ = ['ContinuousValueType', 'DiscreteSensorValues', 'DiscreteValueType', 'ExternalSensor', 'RobotSensor', 'Sensor', 'SensorGroup', 'SensorConfig', 'SensorModel', 'SensorValueType']
+
+
 class Sensor(StandardMixin, Base):
 
     name = Column(String(50))

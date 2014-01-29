@@ -2,6 +2,8 @@ from base import StandardMixin, Base
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
+__all__ = ['User', 'CustomTrigger', 'CustomAction', ]
+
 
 class User(StandardMixin, Base):
     name = Column(String(50))

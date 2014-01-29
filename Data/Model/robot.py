@@ -3,6 +3,9 @@ from sqlalchemy import Column, Integer, ForeignKey, String, PickleType
 from sqlalchemy.orm import relationship
 
 
+__all__ = ['Robot', 'RobotModel', ]
+
+
 class Robot(StandardMixin, Base):
     name = Column(String(50))
     version = Column(String(50))
