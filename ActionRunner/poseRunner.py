@@ -1,7 +1,7 @@
 import threading
 from Robot.ServoInterface.servoInterface import ServoInterface
 from base import Runner
-from Data.Model import Pose, Robot
+from Data.Model import Pose
 from multiprocessing.pool import ThreadPool as Pool
 
 

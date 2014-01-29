@@ -99,7 +99,10 @@ class SerializeMixin(object):
             elif isinstance(attr, ColumnProperty):
                 try:
                     if attr.columns[0].type.python_type == datetime.datetime:
-                        item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
+                        try:
+                            item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%SZ')
+                        except ValueError:
+                            item = datetime.datetime.strptime(dictObj[attr.key], '%Y-%m-%dT%H:%M:%S.%fZ')
                     elif attr.columns[0].type.__visit_name__ == 'large_binary':
                         continue
                     elif attr.columns[0].type.python_type:
@@ -110,6 +113,7 @@ class SerializeMixin(object):
                                 item = attr.columns[0].type.python_type(dictObj[attr.key])
                         except Exception as e:
                             # TODO: Error logging
+                            print e
                             item = None
                     else:
                         item = dictObj[attr.key]

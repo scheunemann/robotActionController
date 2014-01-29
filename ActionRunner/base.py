@@ -79,8 +79,9 @@ class Runner(object):
 
         def stop(self):
             handles = [h for h in self._safeHandles if h.isAlive()]
-            pool = ThreadPool(processes=len(handles))
-            pool.map(lambda h: h.stop(), handles)
+            if handles:
+                pool = ThreadPool(processes=len(handles))
+                pool.map(lambda h: h.stop(), handles)
 
     supportedClass = Action
 
