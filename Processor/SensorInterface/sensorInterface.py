@@ -114,7 +114,7 @@ class Dummy(SensorInterface):
             f = open(self._fileName, 'r')
             data = pickle.load(f)
             return data['value']
-        except Exception as e:
+        except Exception:
             pass
 
     def _writeData(self, value):

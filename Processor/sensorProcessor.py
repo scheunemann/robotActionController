@@ -1,5 +1,4 @@
 from threading import Thread
-from multiprocessing.pool import ThreadPool
 from datetime import datetime, timedelta
 from collections import namedtuple
 from SensorInterface.sensorInterface import SensorInterface
@@ -23,9 +22,12 @@ class SensorProcessor(object):
             handler.start()
             self._handlers.append(handler)
 
+    def stop(self):
+        map(lambda h: h.stop(), self._handlers)
+        map(lambda h: h.join(), self._handlers)
+
     def __del__(self):
-        pool = ThreadPool()
-        pool.map(lambda h: h.stop(), self._handlers)
+        self.stop()
 
 
 class _SensorHandler(Thread):
