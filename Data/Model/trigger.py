@@ -58,8 +58,7 @@ class ButtonTrigger(Trigger):
 
 class ButtonHotKey(StandardMixin, Base):
 
-    keyCode = Column(Integer)
-    modifiers = Column(String(50))
+    keyString = Column(String(50))
 
     trigger_id = Column(Integer, ForeignKey('ButtonTrigger.id'))
     trigger = relationship("ButtonTrigger", back_populates="hotKeys")

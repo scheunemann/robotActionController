@@ -433,7 +433,7 @@ class TriggerImporter(object):
                     t = ButtonTrigger(name=title)
                     t.action = action
                     hk = ButtonHotKey()
-                    hk.keyName = key
+                    hk.keyString = key
                     t.hotKeys.append(hk)
                     triggers.append(t)
             else:
