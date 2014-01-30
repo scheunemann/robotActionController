@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Float, PickleType
 from sqlalchemy.orm import relationship
 
 
-__all__ = ['ContinuousValueType', 'DiscreteSensorValues', 'DiscreteValueType', 'ExternalSensor', 'RobotSensor', 'Sensor', 'SensorGroup', 'SensorConfig', 'SensorModel', 'SensorValueType']
+__all__ = ['ContinuousValueType', 'DiscreteSensorValue', 'DiscreteValueType', 'ExternalSensor', 'RobotSensor', 'Sensor', 'SensorGroup', 'SensorConfig', 'SensorModel', 'SensorValueType']
 
 
 class Sensor(StandardMixin, Base):
@@ -70,7 +70,7 @@ class ExternalSensor(Sensor):
         super(ExternalSensor, self).__init__(name)
 
 
-class DiscreteSensorValues(StandardMixin, Base):
+class DiscreteSensorValue(StandardMixin, Base):
 
     value = Column(String(500))
     value_type_id = Column(Integer, ForeignKey("DiscreteValueType.id"))
@@ -92,7 +92,7 @@ class DiscreteValueType(SensorValueType):
 
     id = Column(Integer, ForeignKey('SensorValueType.id'), primary_key=True)
 
-    values = relationship("DiscreteSensorValues", back_populates="value_type")
+    values = relationship("DiscreteSensorValue", back_populates="value_type")
 
     __mapper_args__ = {
             'polymorphic_identity': 'Discrete',
@@ -150,3 +150,5 @@ class SensorConfig(StandardMixin, Base):
 
     model_id = Column(Integer, ForeignKey("SensorModel.id"))
     model = relationship("SensorModel")
+
+    type = Column(String(50))

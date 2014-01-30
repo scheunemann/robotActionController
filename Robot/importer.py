@@ -5,6 +5,7 @@ from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
     ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
+from Data.Model.sensor import DiscreteSensorValue
 
 
 def loadDirectory(subDir):
@@ -53,8 +54,8 @@ def loadDirectory(subDir):
 class RobotImporter(object):
 
     _valueTypes = {
-                   'continuous': ContinuousValueType(),
-                   'discrete': DiscreteValueType(),
+                   'continuous': ContinuousValueType,
+                   'discrete': DiscreteValueType,
                    }
     _sensorModels = {}
     _types = {}
@@ -138,7 +139,7 @@ class RobotImporter(object):
 
     def _getValueType(self, typeName):
         if typeName in RobotImporter._valueTypes:
-            return RobotImporter._valueTypes[typeName]
+            return RobotImporter._valueTypes[typeName]()
         else:
             return None
 
@@ -158,6 +159,7 @@ class RobotImporter(object):
 
             s = RobotSensor()
             s.name = self._getText("NAME", sensor).upper()
+            s.model = self._getSensorModel(sensor.get('type', None))
             s.value_type = self._getValueType(datatype)
             if isinstance(s.value_type, ContinuousValueType):
                 s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
@@ -165,11 +167,13 @@ class RobotImporter(object):
                 s.value_type.precision = self._getText("LIMITS/PRECISION", sensor)
             elif isinstance(s.value_type, DiscreteValueType):
                 # TODO Discrete values
-                pass
+                for value in self._get("VALUES/VALUE", sensor):
+                    dsv = DiscreteSensorValue()
+                    dsv.value = value.text
+                    s.value_type.values.append(dsv)
             else:
                 # TODO Error handling
                 pass
-            s.model = self._getSensorModel(sensor.get('type', None))
             extId = sensor.get('id', None)
             if extId != None:
                 s.extraData = {'externalId': extId}
@@ -177,8 +181,9 @@ class RobotImporter(object):
                 s.extraData = {}
             extra = sensor.get('extraData', '')
             for line in extra.split(','):
-                (key, value) = line.split(':')
-                s.extraData[key] = value
+                if line:
+                    (key, value) = line.split(':')
+                    s.extraData[key] = value
             sensors.append(s)
         return sensors
 
@@ -275,14 +280,15 @@ class RobotImporter(object):
         for configGroup in self._get('SENSORCONFIGS', node):
             for configNode in configGroup.getchildren():
                 config = self._getSensorConfig(configNode)
-            if config != None:
-                configs.append(config)
+                if config != None:
+                    configs.append(config)
 
         return configs
 
     def _getSensorConfig(self, config):
         c = SensorConfig()
         c.model = self._getSensorModel(config.tag)
+        c.type = config.get('type', 'active')
         return c
 
     def _getServoConfigs(self, node):
