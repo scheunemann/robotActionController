@@ -20,8 +20,8 @@ class IDBase(Data.config.modelBase):
                       )
 
     id = Column(Integer, Sequence('%s_id_seq' % __tablename__), primary_key=True)
-    created = Column(DateTime, nullable=False, default=func.now())
-    modified = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+#     created = Column(DateTime, nullable=False, default=func.now())
+#     modified = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
 
 class SerializeMixin(object):
