@@ -25,6 +25,15 @@ class RosSensor(object):
         return value
 
 
+class MessageSensor(RosSensor):
+
+    def __init__(self, sensor):
+        super(SonarSensor, self).__init__(sensor, self._dataProcessor)
+
+    def _dataProcessor(self, jointMessage):
+        return jointMessage
+
+
 class SonarSensor(RosSensor):
 
     def __init__(self, sensor):

@@ -123,7 +123,10 @@ class RobotImporter(object):
         r.servoGroups = self._getServoGroups(config)
         r.servos = self._getServos(config, r.servoGroups)
         r.servoConfigs = self._getServoConfigs(config)
-        r.sensors = self._getSensors(config)
+        sensors = []
+        sensors.extend(self._getSensors(config))
+        sensors.extend(self._getServoSensors(config))
+        r.sensors = sensors
         r.sensorConfigs = self._getSensorConfigs(config)
 
         return r
@@ -151,6 +154,33 @@ class RobotImporter(object):
             RobotImporter._sensorModels[modelName] = SensorModel(modelName)
 
         return self._sensorModels[modelName]
+
+    def _getServoSensors(self, root):
+        sensors = []
+        # Add a robotSensor for each readable servo
+        for servoConfig in [c for c in self._get("SERVOCONFIGS", root) if len(c.find("**/IS_UPDATED"))]:
+            for servoType in [c for c in servoConfig if c.find('DEFAULT/IS_UPDATED').text == 'true']:
+                for servo in self._get("SERVOLIST/SERVO[@type='%s']" % servoType.tag, root):
+                    s = RobotSensor()
+                    s.jointName = self._getText("NAME", servo).upper()
+                    s.model = self._getSensorModel(servo.get('type', None))
+                    s.value_type = self._getValueType('continuous')
+                    s.value_type.minValue = self._realToScalePos(self._getText("LIMITS[@type='pos']/MIN", servo), s.model.positionOffset, s.model.positionScale)
+                    s.value_type.maxValue = self._realToScalePos(self._getText("LIMITS[@type='pos']/MAX", servo), s.model.positionOffset, s.model.positionScale)
+                    s.value_type.precision = 3
+                    extId = servo.get('id', None)
+                    if extId != None:
+                        s.extraData = {'externalId': extId}
+                    else:
+                        s.extraData = {}
+                    extra = servo.get('extraData', '')
+                    for line in extra.split(','):
+                        if line:
+                            (key, value) = line.split(':')
+                            s.extraData[key] = value
+
+                    sensors.append(s)
+        return sensors
 
     def _getSensors(self, node):
         sensors = []
@@ -185,6 +215,7 @@ class RobotImporter(object):
                     (key, value) = line.split(':')
                     s.extraData[key] = value
             sensors.append(s)
+
         return sensors
 
     def _getServos(self, node, servoGroups):
@@ -268,6 +299,7 @@ class RobotImporter(object):
             s.maxPosition = self._realToScalePos(config['MAX_POS'], s.positionOffset, config['SCALE_POS'])
             s.defaultSpeed = 100
             s.defaultPosition = 0
+            s.readable = True
             s.poseable = config['POSEABLE']
             s.positionScale = config['SCALE_POS']
             s.speedScale = config['SCALE_SPEED']

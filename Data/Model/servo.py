@@ -31,6 +31,7 @@ class Servo(StandardMixin, Base):
     defaultSpeed = Column(Integer)
     positionOffset = Column(Float)
     poseable = Column(Boolean)
+    readable = Column(Boolean)
     extraData = Column(PickleType)
 
     def __init__(self, jointName=None):
@@ -71,6 +72,7 @@ class ServoModel(StandardMixin, Base):
     speedScale = Column(Float)
     positionOffset = Column(Float)
     poseable = Column(Boolean)
+    readable = Column(Boolean)
     extraData = Column(PickleType)
 
     def __init__(self, name=None):

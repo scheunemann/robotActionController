@@ -23,7 +23,7 @@ class SensorInterface(object):
             SensorInterface._interfaceClasses = {
                                  'ExternalSensor': External,
                                  'RobotSensor': Robot,
-                                 'DummySensor': Dummy
+                                 'DummySensor': Dummy,
                                  }
 
         return SensorInterface._interfaceClasses
@@ -139,6 +139,8 @@ class Robot(SensorInterface):
 
         if sensor.model.name == 'SONAR':
             self._sensorInt = rosSensors.SonarSensor(sensor)
+        elif sensor.model.name == 'ROS':
+            self._sensorInt = rosSensors.MessageSensor(sensor)
         else:
             # TODO: Other sensors
             self._sensorInt = ServoInterface.getServoInterface(servos[0])
