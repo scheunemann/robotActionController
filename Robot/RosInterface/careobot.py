@@ -1,5 +1,5 @@
 import math
-import sys
+import logging
 import robot
 import rosHelper
 from collections import deque
@@ -25,6 +25,21 @@ class CareOBot(robot.ROSRobot):
 
         return angle
 
+    def getComponentState(self, componentName, resolve_name=False):
+        topic = '/%(name)s_controller/state' % {'name': componentName}
+        state = self._ros.getSingleMessage(topic)
+
+        try:
+            ret = {'name': componentName, 'positions': state.actual.positions, 'goals': state.desired.positions, 'joints': state.joint_names}
+        except Exception as e:
+            self._logger.critical("Error retrieving joint state: %s" % e)
+            ret = {'name': componentName, 'positions': (), 'goals': (), 'joints': ()}
+
+        if resolve_name:
+            return self.resolveComponentState(componentName, ret)
+        else:
+            return ('', ret)
+        
     def setComponentState(self, name, value, blocking=True):
         # check if the component has been initialised, and init if it hasn't
         if len(self._ros.getTopics('/%(name)s_controller' % {'name': name})) == 0:
@@ -56,12 +71,12 @@ class CareOBot(robot.ROSRobot):
         try:
             h = float(height)
         except Exception as e:
-            print >> sys.stderr, "Unable to cast height to float, received height: %s" % height
+            self._logger.critical("Unable to cast height to float, received height: %s" % height)
 
         try:
             client = UnloadTrayClient()
         except Exception as e:
-            print >> sys.stderr, "Unable to initialise UnloadTrayClient. Error: %s" % repr(e)
+            self._logger.critical("Unable to initialise UnloadTrayClient. Error: %s" % repr(e))
             return self._ros._states[4]
 
         return client.unloadTray(h, blocking)
@@ -75,12 +90,13 @@ class UnloadTrayClient(object):
         import actionlib
         import accompany_user_tests_year2.msg
         self._ssMsgs = accompany_user_tests_year2.msg
+        self._logger = logging.getLogger(self.__class__.__name__)
 
         self._ros.initROS()
         self._client = actionlib.SimpleActionClient('/unload_tray', self._ssMsgs.UnloadTrayAction)
-        print "Waiting for unload_tray"
+        self._logger.info("Waiting for unload_tray")
         self._client.wait_for_server()
-        print "Connected to unload_tray"
+        self._logger.info("Connected to unload_tray")
 
     def unloadTray(self, height, blocking):
         goal = self._ssMsgs.UnloadTrayGoal()
@@ -178,6 +194,7 @@ class ActionLib(robot.ActionLib):
 class PoseUpdater(robot.PoseUpdater):
     def __init__(self, robot):
         super(PoseUpdater, self).__init__(robot)
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._rangeSensors = robot_config[robot.name]['phidgets']['topics']
         self._rangeThreshold = robot_config[robot.name]['tray']['size'] / 100.0
         self._rangeWindow = robot_config[robot.name]['phidgets']['windowSize']
@@ -206,7 +223,7 @@ class PoseUpdater(robot.PoseUpdater):
             if rangeMsg == None:
                 if topic not in self._warned:
                     self._warned.append(topic)
-                    print "Phidget sensor not ready before timeout for topic: %s" % topic
+                    self._logger.critical("Phidget sensor not ready before timeout for topic: %s" % topic)
 
                 return (None, None)
             else:
@@ -229,7 +246,7 @@ class PoseUpdater(robot.PoseUpdater):
     def getComponentPosition(self, robot, componentName):
         (state, _) = robot.getComponentState(componentName)
         if state == None or state == '':
-            print "No named component state for: %s." % (componentName)
+            self._logger.debug("No named component state for: %s." % (componentName))
             state = 'Unknown'
 
         return (state, state)

@@ -2,6 +2,7 @@ import sys
 import io
 import math
 import time
+import logging
 
 _states = {
         0: 'PENDING',
@@ -20,6 +21,7 @@ class Robot(object):
     _imageFormats = ['BMP', 'EPS', 'GIF', 'IM', 'JPEG', 'PCD', 'PCX', 'PDF', 'PNG', 'PPM', 'TIFF', 'XBM', 'XPM']
 
     def __init__(self, name, robotInterface):
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._name = name
         self._robIntClass = robotInterface
         self._robIntInstance = None
@@ -43,10 +45,10 @@ class Robot(object):
         return None
 
     def play(self, fileName, blocking=True):
-        print "Play: %s" % fileName
+        self._logger.debug("Play: %s" % fileName)
 
     def say(self, text, languageCode="en-gb", blocking=True):
-        print "Say (%s): %s" % (languageCode, text)
+        self._logger.debug("Say (%s): %s" % (languageCode, text))
 
     def sleep(self, milliseconds):
         time.sleep(milliseconds / 1000.0)
@@ -135,15 +137,15 @@ class ROSRobot(Robot):
                 import rosHelper
                 self._tf = rosHelper.Transform(rosHelper=self._rs, toTopic='/map', fromTopic='/base_footprint')
             except Exception as e:
-                print >> sys.stderr, "Error occured while calling transform: %s" % repr(e)
+                self._logger.critical("Error occured while calling transform: %s" % repr(e))
         return self._tf
 
     @property
     def _ros(self):
         if self._rs == None:
-            import rosMulti
+            import rosHelper
             # Wait to configure/initROS ROS till it's actually needed
-            self._rs = rosMulti.ROS()
+            self._rs = rosHelper.ROS()
         return self._rs
 
     def getImage(self, imageTopic, retFormat='PNG'):
@@ -191,10 +193,13 @@ class ROSRobot(Robot):
         # commencing, time delay to attempt to compensate...
         if status != 3 and len(self._ros.getTopics('/gazebo')) > 0:
             time.sleep(1)
-            print >> sys.stderr, 'Gazebo hack: state ' + self._rs._states[status] + ' changed to state ' + self._rs._states[3]
+            self._logger.ward('Gazebo hack: state ' + self._rs._states[status] + ' changed to state ' + self._rs._states[3])
             return _states[3]
 
-        return _states[status]
+        if type(status) == int:
+            return _states[status]
+        else:
+            return status
 
     def getComponentPositions(self, componentName):
         return self._ros.getParam('%s/%s' % (self._serverTopic, componentName))
@@ -202,38 +207,26 @@ class ROSRobot(Robot):
     def getComponents(self):
         return self._ros.getParam(self._serverTopic).keys()
 
-    def getComponentState(self, componentName, resolve_name=False):
-        topic = '/%(name)s_controller/state' % {'name': componentName}
-        state = self._ros.getSingleMessage(topic)
-
-        try:
-            ret = {'name': componentName, 'positions': state.actual.positions, 'goals': state.desired.positions, 'joints': state.joint_names}
-        except:
-            print "Error retrieving joint state"
-            ret = {'name': componentName, 'positions': (), 'goals': (), 'joints': ()}
-
-        if resolve_name:
-            return self.resolveComponentState(componentName, ret)
-        else:
-            return ('', ret)
-
 
 class ActionLib(object):
 
     def __init__(self, controllerName, actionName, goalName):
-        import rosMulti
-        ros = rosMulti.ROS()
+        self._logger = logging.getLogger(self.__class__.__name__)
+        
+        import rosHelper
+        ros = rosHelper.ROS()
         ros.configureROS(packageName='actionlib')
         ros.configureROS(packageName=controllerName)
 
         import actionlib
-        self._controlMsgs = __import__(controllerName, globals(), locals())
+        ns = __import__(controllerName + '.msg', globals(), locals())
+        self._controlMsgs = getattr(ns, 'msg')
         self._goalName = goalName
 
         self._controlClient = actionlib.SimpleActionClient('/%s' % controllerName, getattr(self._controlMsgs, actionName))
-        print "Waiting for %s..." % controllerName
+        self._logger.info("Waiting for %s..." % controllerName)
         self._controlClient.wait_for_server()
-        print "Connected to %s!" % controllerName
+        self._logger.info("Connected to %s!" % controllerName)
 
     def runFunction(self, funcName, kwargs):
         return 5
@@ -250,6 +243,8 @@ class ActionLib(object):
 
     def runComponent(self, name, value, mode=None, blocking=True):
         (namedPosition, joints) = (value, []) if str == type(value) else ('', value)
+        if type(joints) != list:
+            joints = [joints, ]
 
         goal = getattr(self._controlMsgs, self._goalName)(
                                                action='move',

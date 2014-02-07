@@ -31,12 +31,12 @@ class ServoInterface(object):
             if servo.id not in ServoInterface._interfaces:
                 if not ServoInterface.disconnected:
                     try:
-                        servoInt = ServoInterface._getInterfaceClasses()[servo.model.name]
+                        servoIntClass = ServoInterface._getInterfaceClasses()[servo.model.name]
                     except:
                         logging.getLogger(__name__).critical("No known interface for servo model: %s", servo.model.name)
                         raise ValueError("No known interface for servo type: %s" % servo.model.name)
                     else:
-                        servoInt = servoInt(servo)
+                        servoInt = servoIntClass(servo)
                 else:
                     servoInt = Dummy(servo)
 
@@ -58,13 +58,13 @@ class ServoInterface(object):
         # servo properties
         self._moving = False
         self._servo = servo
-        self._minPos = servo.minPosition if servo.minPosition != None else servo.model.minPosition
-        self._maxPos = servo.maxPosition if servo.maxPosition != None else servo.model.maxPosition
-        self._defaultPos = servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition
-        self._minSpeed = servo.minSpeed if servo.minSpeed != None else servo.model.minSpeed
-        self._maxSpeed = servo.maxSpeed if servo.maxSpeed != None else servo.model.maxSpeed
-        self._defaultSpeed = servo.defaultSpeed if servo.defaultSpeed != None else servo.model.defaultSpeed
-        self._posOffset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
+        self._minPos = servo.minPosition
+        self._maxPos = servo.maxPosition
+        self._defaultPos = servo.defaultPosition
+        self._minSpeed = servo.minSpeed
+        self._maxSpeed = servo.maxSpeed
+        self._defaultSpeed = servo.defaultSpeed
+        self._posOffset = servo.positionOffset
         self._speedScaleValue = servo.model.speedScale
         self._posScaleValue = servo.model.positionScale
 
@@ -345,25 +345,29 @@ class Dummy(ServoInterface):
             pass
 
 
-def Robot(ServoInterface):
+class Robot(ServoInterface):
 
     def __init__(self, servo):
         super(Robot, self).__init__(servo)
-        self._componentName = servo.extraData.get('componentName', None)
+        self._componentName = servo.extraData.get('externalId', None)
         if self._componentName == None:
-            self._logger.critical("Servo %s is missing its component name!", servo.name)
+            self._logger.critical("Servo %s is missing its component name (externalId)!", servo.name)
 
-        self._checkMinMaxValues()
+        #         self._checkMinMaxValues()
         from Robot.RosInterface.robotFactory import Factory
         self._robot = Factory.getRobotInterface(servo.robot)
+        if not self._robot:
+            raise ValueError("Robot attached to servo could not be resolved")
 
     def getPosition(self):
         if self._componentName == 'base':
-            (_, posRaw) = self._robot.getLocation()
+            (_, (x, y, theta)) = self._robot.getLocation()
+            posRaw = [x, y, theta]
         else:
-            (_, posRaw) = self._robot.getComponentState(self._componentName)
+            (_, posDict) = self._robot.getComponentState(self._componentName)
+            posRaw = posDict['positions'][0]
         return self._realToScalePos(posRaw)
 
     def setPosition(self, position, speed):
         scaledPosition = self._scaleToRealPos(position)
-        self._robot.setComponentState(self._componentName, scaledPosition)
+        return self._robot.setComponentState(self._componentName, scaledPosition) == 'SUCCEEDED'

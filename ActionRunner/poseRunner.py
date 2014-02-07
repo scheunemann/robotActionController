@@ -23,18 +23,18 @@ class PoseRunner(Runner):
             for jointPosition in action.jointPositions:
                 servos = filter(lambda s: s.jointName == jointPosition.jointName, robot.servos)
                 if len(servos) != 1:
-                    self._logger.critical("Could not determine appropriate servo on Robot(%s).  Expected 1 match, got %s" % (robot.name, len(servos)))
-                    raise ValueError("Could not determine appropriate servo on Robot(%s).  Expected 1 match, got %s" % (robot.name, len(servos)))
+                    self._logger.critical("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, robot.name, len(servos)))
+                    raise ValueError("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, robot.name, len(servos)))
                 servo = servos[0]
-                speed = jointPosition.speed or servo.defaultSpeed or servo.model.defaultSpeed or 100
+                speed = jointPosition.speed or servo.defaultSpeed
                 speed = speed * (action.speedModifier or 1)
-                position = jointPosition.position or servo.defaultPosition or servo.model.defaultPosition or 0
+                position = jointPosition.position or servo.defaultPosition
                 try:
                     servoInterface = ServoInterface.getServoInterface(servo)
                 except ValueError as e:
                     self._logger.critical("Servo %s is in an error state", servo)
                     self._logger.critical(e)
-                    continue
+                    return False
 
                 l.append((position, speed, servoInterface))
                 interfaces[jointPosition] = servoInterface
@@ -47,6 +47,8 @@ class PoseRunner(Runner):
             if self._cancel:
                 result = False
             else:
+                # TODO: use the result from setPosition to determin success
+                # TODO: add result to setPosition as needed 
                 result = all([(abs(interface.getPosition() - joint.position) <= 10) for (joint, interface) in interfaces.iteritems()])
 
             return result

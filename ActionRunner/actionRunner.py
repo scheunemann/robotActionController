@@ -1,4 +1,5 @@
 from base import Runner
+import logging
 
 
 class ActionRunner(Runner):
@@ -70,6 +71,7 @@ class ActionRunner(Runner):
                         ret[type_.supportedClass.__name__] = type_
 
             except Exception as e:
-                print >> sys.stderr, "Unable to import module %s, Exception: %s" % (module, e)
+                logger = logging.getLogger(ActionRunner.__name__)
+                logger.critical("Unable to import module %s, Exception: %s" % (module, e))
 
         return ret

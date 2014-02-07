@@ -18,9 +18,11 @@ class SensorProcessor(object):
     def __init__(self, sensors, maxUpdateInterval=None):
         self._handlers = []
         for sensor in sensors:
-            handler = _SensorHandler(sensor, self.newSensorData, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
-            handler.start()
-            self._handlers.append(handler)
+            config = [c for c in sensor.robot.sensorConfigs if c.model == sensor.model]
+            if config and config[0].type == 'active':
+                handler = _SensorHandler(sensor, self.newSensorData, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
+                handler.start()
+                self._handlers.append(handler)
 
     def stop(self):
         map(lambda h: h.stop(), self._handlers)

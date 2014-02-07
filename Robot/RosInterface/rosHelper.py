@@ -1,6 +1,7 @@
 import time
 import os
 import sys
+import logging
 from subprocess import Popen, PIPE
 
 ros_config = {}
@@ -16,6 +17,7 @@ class ROS(object):
     _userVars = None
 
     def __init__(self, *args, **kwargs):
+        self._logger = logging.getLogger(self.__class__.__name__)
         ROS.configureROS(packageName='rospy')
         import rospy
         self._rospy = rospy
@@ -24,8 +26,9 @@ class ROS(object):
         self.initROS()
 
     def __del__(self):
-        for sub in self._subscribers.values():
-            sub.unregister()
+        if hasattr(self, '_subscribers'):
+            for sub in self._subscribers.values():
+                sub.unregister()
 
     def initROS(self, name='rosHelper'):
         with _threadLock:
@@ -65,7 +68,7 @@ class ROS(object):
             import rospy
             return rospy.get_param(paramName)
         except Exception as e:
-            print >> sys.stderr, "Unable to connect to ros parameter server, Error: %s" % e
+            self._logger.critical("Unable to connect to ros parameter server, Error: %s" % e)
             return []
 
     def getTopics(self, baseFilter='', exactMatch=False, retry=10):
@@ -85,7 +88,7 @@ class ROS(object):
             try:
                 allTopics = self._rospy.get_published_topics()
             except Exception as e:
-                print "Error while retrieving topics, will retry %s more times. Error: %s" % (retry, e)
+                self._logger.warn("Error while retrieving topics, will retry %s more times. Error: %s" % (retry, e))
                 if(retry > 0):
                     return self.getTopics(baseFilter, exactMatch, retry - 1)
                 else:
@@ -138,7 +141,7 @@ class ROS(object):
     def _locateRosOverlayPath():
         env = ROS._getUserVars()
 
-        if 'ROS_PACKAGE_PATH' not in env:
+        if 'ROS_PACKAGE_PATH' in env:
             return env['ROS_PACKAGE_PATH']
 
         return None
@@ -150,18 +153,13 @@ class ROS(object):
             if 'ROS_DISTRO' not in env:
                 ROS._activeVersion = env['ROS_DISTRO']
             else:
-                bash = open("%s/.bashrc" % os.getenv("HOME"), "r")
-                bashlines = bash.readlines()
-                # assume the source line is closest to the end
-                for n in range(len(bashlines) - 1, 0, -1):
-                    # strip lines of white spaces, look for source /opt/ros/.../setup.bash command,
-                    # distribution name is between ros/ and next /
-                    if bashlines[n].strip().find("source /opt/ros/") == 0:
-                        line = bashlines[n].strip()
-                        version = line[16:line.find("/", 16)]
-                        print "Active ROS version found: ", version
-                        ROS._activeVersion = version
-                        break
+                # This is a bit more dangerous as it loads the users .bashrc file in a forced interactive shell
+                # while not actually being in an interactive shell.  any prompts could cause lockups
+                command = ['bash', '-i', '-c', ('%s; roscd; pwd' % ". %s/.bashrc" % os.getenv("HOME")).strip('; ')]
+                pipe = Popen(command, stdout=PIPE, stderr=PIPE)
+                (data, _) = pipe.communicate()
+                version = data[data.rfind('/') + 1:]
+                ROS._activeVersion = version.strip()
 
         return ROS._activeVersion
 
@@ -188,7 +186,8 @@ class ROS(object):
                     diffEnv.update(ros_config['envVars'])
                     rosEnv.update(ros_config['envVars'])
             else:
-                print >> sys.stderr, "Unable to read ros bash script, file not found: %s" % bashScript
+                logger = logging.getLogger(ROS.__name__)
+                logger.critical("Unable to read ros bash script, file not found: %s" % bashScript)
 
             ROS._envVars[version] = (diffEnv, rosEnv)
 
@@ -312,6 +311,7 @@ class RosSubscriber(object):
 
 class Transform(object):
     def __init__(self, rosHelper=None, fromTopic=None, toTopic=None):
+        self._logger = logging.getLogger(self.__class__.__name__)
         if(rosHelper == None):
             self._ros = ROS()
         else:
@@ -348,7 +348,7 @@ class Transform(object):
                     self._listener.waitForTransform(toTopic, fromTopic, now, self._rospy.Duration(1.0))
                 except self._tf.Exception as e:
                     # if str(e) != 'Unable to lookup transform, cache is empty, when looking up transform from frame [' + baseTopic + '] to frame [' + mapTopic + ']':
-                    print >> sys.stderr, "Error while waiting for transform: " + str(e)
+                    self._logger.critical("Error while waiting for transform: " + str(e))
                     return ((None, None, None), None)
 
             try:
@@ -356,13 +356,13 @@ class Transform(object):
                 (_, _, orientation) = self._tf.transformations.euler_from_quaternion(heading)
                 return (xyPos, orientation)
             except (self._tf.LookupException, self._tf.ConnectivityException, self._tf.ExtrapolationException) as e:
-                print >> sys.stderr, "Error while looking up transform: " + str(e)
+                self._logger.critical("Error while looking up transform: " + str(e))
                 return ((None, None, None), None)
         else:
             # this takes significantly less processing time, but requires ipa_navigation
             poseMsg = self._ros.getSingleMessage('/base_pose')
             if poseMsg == None:
-                print >> sys.stderr, "No message recieved from /base_pose"
+                self._logger.critical("No message recieved from /base_pose")
                 return ((None, None, None), None)
             pose = poseMsg.pose
             xyPos = (pose.position.x, pose.position.y, pose.position.z)

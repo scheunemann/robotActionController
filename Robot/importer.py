@@ -98,14 +98,14 @@ class RobotImporter(object):
                             'SCALE_SPEED': 1,
                             'SCALE_POS': 1,
                           },
-                'ROS': {
+                'ROBOT': {
                         'MAX_POS': math.pi,
                         'MIN_POS': math.pi * -1,
                         'MAX_SPEED': 100,
                         'MIN_SPEED': 1,
                         'POSEABLE': False,
                         'SCALE_SPEED': 1,
-                        'SCALE_POS': math.pi / 180,
+                        'SCALE_POS': 180 / math.pi,
                         }
                 }
 
@@ -119,7 +119,7 @@ class RobotImporter(object):
             raise Exception('Cannot locate robot config (path: %s)' % (robotConfig))
 
         r = Robot(name=config.get('name'), version=config.get('version'))
-        r.model = self._getModel(config.get('type'))
+        r.model = self._getModel(config.get('type'), config.get('class'))
         r.servoGroups = self._getServoGroups(config)
         r.servos = self._getServos(config, r.servoGroups)
         r.servoConfigs = self._getServoConfigs(config)
@@ -131,12 +131,14 @@ class RobotImporter(object):
 
         return r
 
-    def _getModel(self, modelName):
+    def _getModel(self, modelName, className):
         if modelName == None:
             return None
 
         if modelName not in RobotImporter._models:
-            RobotImporter._models[modelName] = RobotModel(modelName)
+            robot = RobotModel(modelName)
+            robot.extraData = {'className': className}
+            RobotImporter._models[modelName] = robot 
 
         return self._models[modelName]
 

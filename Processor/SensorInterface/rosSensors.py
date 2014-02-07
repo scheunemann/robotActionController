@@ -43,10 +43,10 @@ class SonarSensor(RosSensor):
             self._logger.critical("Sonar Sensor %s is missing its array index!", sensor.name)
             raise ValueError("Sensor incorrectly configured")
 
-        self._index = index
+        self._index = int(index)
 
     def _dataProcessor(self, sonarMessage):
-        return sonarMessage[self._index]
+        return sonarMessage.ranges[self._index]
 #         data = []
 #         for sonIndex in range(0, 16):
 #             data[sonIndex] = sonarMessage.ranges[sonIndex]

@@ -1,6 +1,7 @@
 import time
 import robot
 import random
+import logger
 
 
 class DummyRobot(robot.Robot):
@@ -37,10 +38,11 @@ class DummyRobot(robot.Robot):
 class DummyInterface(object):
 
     def __init__(self):
+        self._logger = logging.getLogger(self.__class__.__name__)
         pass
 
     def runFunction(self, funcName, kwargs):
-        print "Dummy is pretending to run function: %s" % funcName
+        self._logger.info("Dummy is pretending to run function: %s" % funcName)
         blocking = True
         if 'blocking' in kwargs:
             blocking = bool(kwargs['blocking'])
@@ -54,7 +56,7 @@ class DummyInterface(object):
         return 3
 
     def runComponent(self, name, value, mode=None, blocking=True):
-        print "Dummy is pretending to move %s to %s" % (name, value)
+        self._logger.info("Dummy is pretending to move %s to %s" % (name, value))
         if(blocking):
             time.sleep(random.randrange(1, 10, 1) / 2.0)
             return 3

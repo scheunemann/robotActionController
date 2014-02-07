@@ -36,6 +36,7 @@ class SerializeMixin(object):
                     try:
                         desc[attr.key] = "[%s]" % attr.mapper.class_.__name__
                     except:
+                        print "Error reading attribute %s on class %s!" % (attr.key, cls.__name__)
                         print type(attr.target)
                         print dir(attr.target)
                 else:

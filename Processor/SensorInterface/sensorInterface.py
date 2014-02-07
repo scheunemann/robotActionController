@@ -1,4 +1,3 @@
-import random
 import logging
 from threading import RLock
 from Data.Model import RobotSensor, ExternalSensor
@@ -135,18 +134,20 @@ class Robot(SensorInterface):
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
 
-        servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
-
         if sensor.model.name == 'SONAR':
             self._sensorInt = rosSensors.SonarSensor(sensor)
-        elif sensor.model.name == 'ROS':
+        elif sensor.model.name == 'ROBOT':
             self._sensorInt = rosSensors.MessageSensor(sensor)
         else:
             # TODO: Other sensors
-            self._sensorInt = ServoInterface.getServoInterface(servos[0])
+            servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
+            if servos:
+                self._sensorInt = ServoInterface.getServoInterface(servos[0])
+            else:
+                self._sensorInt = None
 
     def getCurrentValue(self):
-        return self._sensorInt.getValue()
+        return self._sensorInt.getCurrentValue()
 
 
 def External(SensorInterface):
