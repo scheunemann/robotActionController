@@ -88,6 +88,7 @@ class JointPosition(StandardMixin, Base):
 
     jointName = Column(String(50))
     position = Column(Float)
+    positions = Column(String(500))
     speed = Column(Integer)
 
     pose_id = Column(Integer, ForeignKey('Pose.id'))

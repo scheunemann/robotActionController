@@ -1,6 +1,7 @@
 import os
 import sys
 import math
+import re
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
@@ -228,7 +229,19 @@ class RobotImporter(object):
             s.model = self._getServoModel(servo.get('type', None))
             s.minPosition = self._realToScalePos(self._getText("LIMITS[@type='pos']/MIN", servo), s.model.positionOffset, s.model.positionScale)
             s.maxPosition = self._realToScalePos(self._getText("LIMITS[@type='pos']/MAX", servo), s.model.positionOffset, s.model.positionScale)
-            s.defaultPosition = self._realToScalePos(self._getText("DEFAULT/POS", servo), s.model.positionOffset, s.model.positionScale)
+            pos = self._getText("DEFAULT/POS", servo)
+            if pos and '[' in pos and ']' in pos:
+                s.defaultPosition = None
+                try:
+                    posList = eval(pos)
+                except Exception as e:
+                    print sys.stderr >> "Invalid multi-position specified for servo %s: %s" % (s.jointName, pos)
+                    print sys.stderr >> e
+                    continue 
+                s.defaultPositions = str([self._realToScalePos(p, s.model.positionOffset, s.model.positionScale) for p in posList])
+            else:
+                s.defaultPosition = self._realToScalePos(pos, s.model.positionOffset, s.model.positionScale)
+                s.defaultPositions = None
             s.minSpeed = self._realToScaleSpeed(self._getText("LIMITS[@type='speed']/MIN", servo), s.model.speedScale)
             s.maxSpeed = self._realToScaleSpeed(self._getText("LIMITS[@type='speed']/MAX", servo), s.model.speedScale)
             extId = servo.get('id', None)
@@ -379,6 +392,7 @@ class ActionImporter(object):
         """
             r_down
             JOINT_NAME, position, speed
+            JOINT_NAME, [position0, position1, ], speed
             HEAD_ROT,515,100
             HEAD_VERT,436,100
             HEAD_TLT,545,80
@@ -401,12 +415,23 @@ class ActionImporter(object):
         pose = Pose(name=name)
 
         for line in poseLines[1:]:
-            (jointName, pos, spd) = line.strip().split(',')
+            idx1 = line.find(',')
+            idx2 = line.rfind(',')
+            jointName = line[0:idx1].strip()
+            pos = line[idx1 + 1:idx2].strip()
+            spd = line[idx2 + 1:].strip()
+            
             speed = int(spd.strip())
-            position = float(pos.strip())
+            if '[' in pos and ']' in pos:
+                positions = [float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != '']
+                position = None
+            else:
+                positions = None
+                position = float(pos.strip())
 
             jp = JointPosition(jointName=jointName.upper())
             jp.position = position
+            jp.positions = str(positions)
             jp.speed = speed
             pose.jointPositions.append(jp)
 

@@ -90,25 +90,51 @@ class ServoInterface(object):
         raise ValueError('Getting position not supported on servo %s', self._servo)
 
     def _scaleToRealPos(self, value):
-        real = (value + self._posOffset) / self._posScaleValue
-        return round(real, 2)
+        try:
+            real = (value + self._posOffset) / self._posScaleValue
+            return round(real, 2)
+        except:
+            if type(value) == list:
+                return [round((v + self._posOffset) / self._posScaleValue, 2) for v in value]
+            return value
 
     def _realToScalePos(self, value):
-        scaled = (value * self._posScaleValue) - self._posOffset
-        return round(scaled, 2)
+        try:
+            scaled = (value * self._posScaleValue) - self._posOffset
+            return round(scaled, 2)
+        except:
+            if type(value) == list:
+                return [round((v * self._posScaleValue) - self._posOffset, 2) for v in value]
+            return value
 
     def _scaleToRealSpeed(self, value):
-        real = value / self._speedScaleValue
-        return round(real, 2)
+        try:
+            real = value / self._speedScaleValue
+            return round(real, 2)
+        except:
+            if type(value) == list:
+                return [round(v / self._speedScaleValue, 2) for v in value]
+            return value
 
     def _realToScaleSpeed(self, value):
-        scaled = value * self._speedScaleValue
-        return round(scaled, 2)
+        try:
+            scaled = value * self._speedScaleValue
+            return round(scaled, 2)
+        except:
+            if type(value) == list:
+                return [round(v * self._speedScaleValue, 2) for v in value]
+            return value
 
     def _getInRangeVal(self, val, minVal, maxVal):
-        val = max(minVal, val)
-        val = min(maxVal, val)
-        return val
+        try:
+            val = max(minVal, val)
+            val = min(maxVal, val)
+            return val
+        except:
+            if type(val) == list:
+                return [max(maxVal, min(minVal, v)) for v in val]
+            else:
+                return val
 
 
 class AX12(ServoInterface):
@@ -363,9 +389,16 @@ class Robot(ServoInterface):
         if self._componentName == 'base':
             (_, (x, y, theta)) = self._robot.getLocation()
             posRaw = [x, y, theta]
+        elif self._componentName == 'base_linear':
+            pass
+        elif self._componentName == 'base_rot':
+            pass
         else:
             (_, posDict) = self._robot.getComponentState(self._componentName)
-            posRaw = posDict['positions'][0]
+            if posDict['positions']:
+                posRaw = posDict['positions'][0]
+            else:
+                posRaw = 0
         return self._realToScalePos(posRaw)
 
     def setPosition(self, position, speed):

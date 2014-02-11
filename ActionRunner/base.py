@@ -58,10 +58,11 @@ class Runner(object):
             starttime = datetime.now()
             try:
                 self._result = self._runInternal(action, session)
-            except:
+            except Exception as e:
                 self._logger.critical("Error running action: %s" % action)
+                self._logger.critical(e)
                 import traceback
-                self._logger.critical(traceback.format_exc())
+                self._logger.debug(traceback.format_exc())
                 self._result = False
             else:
                 endtime = datetime.now()

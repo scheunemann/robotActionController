@@ -9,8 +9,8 @@ class Sunflower(ROSRobot):
         from rosHelper import ROS
         ROS.configureROS(rosMaster=rosMaster)
         super(Sunflower, self).__init__(name, ActionLib, 'sf_controller')
-        self.setComponentState('head', 'home')
-        self.setComponentState('tray', 'closed')
+#         self.setComponentState('head', 'home')
+#         self.setComponentState('tray', 'closed')
 
     def getComponentState(self, componentName, resolve_name=False):
         topic = '/%(name)s_controller/state' % {'name': componentName}

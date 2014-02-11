@@ -33,7 +33,16 @@ class ROS(object):
     def initROS(self, name='rosHelper'):
         with _threadLock:
             if not self._rospy.core.is_initialized():
+                # ROS messes with the python loggers, this ensures that any previously configured handlers aren't lost after init
+                root_logger = logging.getLogger()
+                oldHandlers = [l for l in root_logger.handlers]
+                oldLevel = root_logger.level
                 self._rospy.init_node('rosHelper', anonymous=True, disable_signals=True)
+                newHandlers = [l for l in root_logger.handlers]
+                root_logger.setLevel(oldLevel)
+                for l in oldHandlers:
+                    if l not in newHandlers:
+                        root_logger.addHandler(l)
 
     def getSingleMessage(self, topic, dataType=None, retryOnFailure=1, timeout=None):
         try:

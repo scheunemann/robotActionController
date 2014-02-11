@@ -232,14 +232,11 @@ class ActionLib(object):
         return 5
 
     def initComponent(self, name):
-        if name == 'base':
-            goal = getattr(self._controlMsgs, self._goalName)(
-                                                   action='init',
-                                                   component=name)
-            client = self._controlClient
-            return client.send_goal_and_wait(goal)
-        else:
-            return 3
+        goal = getattr(self._controlMsgs, self._goalName)(
+                                               action='init',
+                                               component=name)
+        client = self._controlClient
+        return client.send_goal_and_wait(goal)
 
     def runComponent(self, name, value, mode=None, blocking=True):
         (namedPosition, joints) = (value, []) if str == type(value) else ('', value)

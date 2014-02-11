@@ -28,18 +28,38 @@ class PoseRunner(Runner):
                 servo = servos[0]
                 speed = jointPosition.speed or servo.defaultSpeed
                 speed = speed * (action.speedModifier or 1)
-                position = jointPosition.position or servo.defaultPosition
+                position = jointPosition.position
+                if position == None:
+                    if jointPosition.positions != None:
+                        try:
+                            position = eval(jointPosition.positions)
+                        except Exception as e:
+                            self._logger.critical("Invalid multiple position(%s) specified for servo %s.  Joint Positions %s" % (jointPosition.position, servo, jointPosition.id))
+                            self._logger.critical(e)
+                            return False
+                    elif servo.defaultPosition != None:
+                        position = servo.defaultPosition
+                    elif servo.defaultPositions != None:
+                        try:
+                            position = eval(servo.defaultPositions)
+                        except Exception as e:
+                            self._logger.critical("Invalid multiple position(%s) default specified for servo %s." % (jointPosition.position, servo))
+                            self._logger.critical(e)
+                            return False
+                    else:
+                        self._logger.critical("Could not determine servo position for joint %s" % jointPosition)
+                        self._logger.critical(e)
                 try:
                     servoInterface = ServoInterface.getServoInterface(servo)
                 except ValueError as e:
-                    self._logger.critical("Servo %s is in an error state", servo)
+                    self._logger.critical("Servo %s is in an error state" % (servo))
                     self._logger.critical(e)
                     return False
 
                 l.append((position, speed, servoInterface))
                 interfaces[jointPosition] = servoInterface
 
-            [pool.apply_async(servoInterface.setPosition, args=(position, speed)) for (position, speed, servoInterface) in l]
+            results = [pool.apply_async(servoInterface.setPosition, args=(position, speed)) for (position, speed, servoInterface) in l]
 
             pool.close()
             pool.join()
@@ -47,9 +67,9 @@ class PoseRunner(Runner):
             if self._cancel:
                 result = False
             else:
-                # TODO: use the result from setPosition to determin success
-                # TODO: add result to setPosition as needed 
-                result = all([(abs(interface.getPosition() - joint.position) <= 10) for (joint, interface) in interfaces.iteritems()])
+                # TODO: add result to setPosition as needed
+                result = all([r.get() for r in results])
+#                 result = all([(abs(interface.getPosition() - joint.position) <= 10) for (joint, interface) in interfaces.iteritems()])
 
             return result
 

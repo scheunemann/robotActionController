@@ -30,6 +30,7 @@ class Servo(StandardMixin, Base):
     _minPosition = Column('minPosition', Integer)
     _maxPosition = Column('maxPosition', Integer)
     _defaultPosition = Column('defaultPosition', Integer)
+    _defaultPositions = Column('defaultPositions', String(500))
     _defaultSpeed = Column('defaultSpeed', Integer)
     _positionOffset = Column('positionOffset', Float)
     _poseable = Column('poseable', Boolean)
@@ -116,6 +117,26 @@ class Servo(StandardMixin, Base):
                      (cls.model != None, cls.model.maxPosition)],
                     else_=None)
 
+    @hybrid_property
+    def defaultPositions(self):
+        if self._defaultPositions != None:
+            return self._defaultPositions
+        elif self.model != None:
+            return self.model.defaultPositions
+        else:
+            return None
+        
+    @defaultPositions.setter
+    def defaultPositions(self, value):
+        self._defaultPositions = value
+        
+    @defaultPositions.expression
+    def defaultPositions(cls):
+        return case([
+                     (cls._defaultPositions != None, cls._defaultPositions),
+                     (cls.model != None, cls.model.defaultPositions)],
+                    else_=None)
+        
     @hybrid_property
     def defaultPosition(self):
         if self._defaultPosition != None:
@@ -249,6 +270,7 @@ class ServoModel(StandardMixin, Base):
     minPosition = Column(Integer)
     maxPosition = Column(Integer)
     defaultPosition = Column(Integer)
+    defaultPositions = Column(String(500))
     defaultSpeed = Column(Integer)
     positionScale = Column(Float)
     speedScale = Column(Float)
