@@ -67,6 +67,7 @@ class ServoInterface(object):
         self._posOffset = servo.positionOffset
         self._speedScaleValue = servo.model.speedScale
         self._posScaleValue = servo.model.positionScale
+        self._tolerance = 10  # Max diff to be considered the same position
 
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -88,6 +89,9 @@ class ServoInterface(object):
 
     def getPosition(self):
         raise ValueError('Getting position not supported on servo %s', self._servo)
+
+    def _isInPosition(self, position):
+        return abs(self._tolerance - self.getPosition()) >= self._tolerance
 
     def _scaleToRealPos(self, value):
         try:
@@ -162,9 +166,14 @@ class AX12(ServoInterface):
     def setPosition(self, position, speed):
         realSpeed = int(round(self._scaleToRealSpeed(float(speed))))
         realPosition = int(round(self._scaleToRealPos(float(position))))
-#         with Connection.getLock(self._conn):
-        self._conn.SetMovingSpeed(self._externalId, realSpeed)
-        self._conn.SetPosition(self._externalId, realPosition)
+        with Connection.getLock(self._conn):
+            self._conn.SetMovingSpeed(self._externalId, realSpeed)
+            self._conn.SetPosition(self._externalId, realPosition)
+
+        while self.isMoving():
+            time.sleep(0.001)
+
+        return self._isInPosition(position)
 
     def isMoving(self):
         with Connection.getLock(self._conn):
@@ -228,6 +237,7 @@ class MINISSC(ServoInterface):
             self._moving = True
             self._conn.write(send)
             self._moving = False
+        return True
 
 
 class HerkuleX(ServoInterface):
@@ -259,6 +269,8 @@ class HerkuleX(ServoInterface):
             self._moving = True
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
             self._moving = False
+
+        return self._isInPosition(position)
 
     def getPositioning(self):
         return self._positioning
@@ -314,6 +326,8 @@ class SSC32(ServoInterface):
             self._conn.write(send)
             self._moving = False
 
+        return self._isInPosition(position)
+
 
 class Dummy(ServoInterface):
 
@@ -347,6 +361,7 @@ class Dummy(ServoInterface):
         self._writeData()
         self._logger.debug("%s Set position to: %s", self._servo, position)
         self._moving = False
+        return True
 
     def getPosition(self):
         self._readData()
@@ -389,10 +404,9 @@ class Robot(ServoInterface):
         if self._componentName == 'base':
             (_, (x, y, theta)) = self._robot.getLocation()
             posRaw = [x, y, theta]
-        elif self._componentName == 'base_linear':
-            pass
-        elif self._componentName == 'base_rot':
-            pass
+        elif self._componentName == 'base_direct':
+            # TODO: ???
+            return None
         else:
             (_, posDict) = self._robot.getComponentState(self._componentName)
             if posDict['positions']:
