@@ -53,7 +53,7 @@ class SerializeMixin(object):
         return dt.isoformat() + 'Z'
 
     @staticmethod
-    def deserialize(cls, dictObj, session):
+    def deserialize(cls, dictObj, session, depth=3):
         if 'id' in dictObj:
             newObj = session.query(cls).get(dictObj['id'])
             if not newObj:
@@ -61,6 +61,7 @@ class SerializeMixin(object):
         else:
             newObj = cls()
         mapper = inspect(newObj.__class__)
+        props = {}
         for attr in mapper.attrs:
             if attr.key not in dictObj:
                 continue
@@ -90,16 +91,25 @@ class SerializeMixin(object):
                             setattr(newObj, attr.key, session.query(itemType).get(newData['ids'][0]))
                 else:
                     # newData can be [{objectDict}, ...], {objectDict}
+                    props[attr.key] = {}
                     if attr.uselist == True:
                         attrList = getattr(newObj, attr.key)
                         map(attrList.remove, attrList)
 
                         for o in newData:
-                            # attrList.append(Base.deserialize(itemType, o, session))
-                            attrList.append(session.query(itemType).get(o['id']))
+                            if depth > 0:
+                                item, subProps = itemType.deserialize(itemType, o, session, depth -1)
+                                attrList.append(item)
+                                props[attr.key].update(subProps)
+                            else:
+                                attrList.append(session.query(itemType).get(o['id']))
                     else:
-                        # setattr(newObj, attr.key, Base.deserialize(itemType, newData, session))
-                        setattr(newObj, attr.key, session.query(itemType).get(newData['id']))
+                        if depth > 0:
+                            item, subProps = itemType.deserialize(itemType, newData, session, depth - 1)
+                            setattr(newObj, attr.key, item)
+                            props[attr.key] = subProps
+                        else:
+                            setattr(newObj, attr.key, session.query(itemType).get(newData['id']))
             elif isinstance(attr, ColumnProperty):
                 try:
                     if attr.columns[0].type.python_type == datetime.datetime:
@@ -127,14 +137,14 @@ class SerializeMixin(object):
                 if not getattr(newObj, attr.key) == item:
                     setattr(newObj, attr.key, item)
 
-        return newObj
+        return (newObj, props)
 
-    def serialize(self, useProxies=True, urlResolver=None):
+    def serialize(self, useProxies=True, urlResolver=None, resolveProps={}):
         mapper = inspect(self.__class__)
         obj = {}
         for attr in mapper.attrs:
             if isinstance(attr, RelationshipProperty):
-                if useProxies:
+                if useProxies and attr.key not in resolveProps:
                     proxy = {
                              'proxyObject': True,
                              'ids': [],
@@ -163,7 +173,7 @@ class SerializeMixin(object):
                     if attr.uselist == True:
                         items = []
                         for item in getattr(self, attr.key):
-                            items.append(item.serialize(useProxies, urlResolver))
+                            items.append(item.serialize(useProxies, urlResolver, resolveProps=resolveProps[attr.key]))
                         obj[attr.key] = items
                     else:
                         obj[attr.key] = getattr(self, attr.key).serialize()
