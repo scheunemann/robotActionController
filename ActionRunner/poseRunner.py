@@ -67,9 +67,8 @@ class PoseRunner(Runner):
             if self._cancel:
                 result = False
             else:
-                # TODO: add result to setPosition as needed
+                # TODO: Make all joints blocking?
                 result = all([r.get() for r in results])
-#                 result = all([(abs(interface.getPosition() - joint.position) <= 10) for (joint, interface) in interfaces.iteritems()])
 
             return result
 

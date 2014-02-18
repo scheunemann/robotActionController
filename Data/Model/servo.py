@@ -45,11 +45,11 @@ class Servo(StandardMixin, Base):
             return self.model.minSpeed
         else:
             return None
-        
+
     @minSpeed.setter
     def minSpeed(self, value):
         self._minSpeed = value
-        
+
     @minSpeed.expression
     def minSpeed(cls):
         return case([
@@ -65,11 +65,11 @@ class Servo(StandardMixin, Base):
             return self.model.maxSpeed
         else:
             return None
-        
+
     @maxSpeed.setter
     def maxSpeed(self, value):
         self._maxSpeed = value
-        
+
     @maxSpeed.expression
     def maxSpeed(cls):
         return case([
@@ -85,11 +85,11 @@ class Servo(StandardMixin, Base):
             return self.model.minPosition
         else:
             return None
-        
+
     @minPosition.setter
     def minPosition(self, value):
         self._minPosition = value
-        
+
     @minPosition.expression
     def minPosition(cls):
         return case([
@@ -105,11 +105,11 @@ class Servo(StandardMixin, Base):
             return self.model.maxPosition
         else:
             return None
-        
+
     @maxPosition.setter
     def maxPosition(self, value):
         self._maxPosition = value
-        
+
     @maxPosition.expression
     def maxPosition(cls):
         return case([
@@ -125,18 +125,18 @@ class Servo(StandardMixin, Base):
             return self.model.defaultPositions
         else:
             return None
-        
+
     @defaultPositions.setter
     def defaultPositions(self, value):
         self._defaultPositions = value
-        
+
     @defaultPositions.expression
     def defaultPositions(cls):
         return case([
                      (cls._defaultPositions != None, cls._defaultPositions),
                      (cls.model != None, cls.model.defaultPositions)],
                     else_=None)
-        
+
     @hybrid_property
     def defaultPosition(self):
         if self._defaultPosition != None:
@@ -145,11 +145,11 @@ class Servo(StandardMixin, Base):
             return self.model.defaultPosition
         else:
             return None
-        
+
     @defaultPosition.setter
     def defaultPosition(self, value):
         self._defaultPosition = value
-        
+
     @defaultPosition.expression
     def defaultPosition(cls):
         return case([
@@ -165,11 +165,11 @@ class Servo(StandardMixin, Base):
             return self.model.defaultSpeed
         else:
             return None
-        
+
     @defaultSpeed.setter
     def defaultSpeed(self, value):
         self._defaultSpeed = value
-        
+
     @defaultSpeed.expression
     def defaultSpeed(cls):
         return case([
@@ -185,11 +185,11 @@ class Servo(StandardMixin, Base):
             return self.model.positionOffset
         else:
             return None
-        
+
     @positionOffset.setter
     def positionOffset(self, value):
         self._positionOffset = value
-        
+
     @positionOffset.expression
     def positionOffset(cls):
         return case([
@@ -205,11 +205,11 @@ class Servo(StandardMixin, Base):
             return self.model.poseable
         else:
             return None
-        
+
     @poseable.setter
     def poseable(self, value):
         self._poseable = value
-        
+
     @poseable.expression
     def poseable(cls):
         return case([
@@ -225,11 +225,11 @@ class Servo(StandardMixin, Base):
             return self.model.readable
         else:
             return None
-        
+
     @readable.setter
     def readable(self, value):
         self._readable = value
-        
+
     @readable.expression
     def readable(cls):
         return case([

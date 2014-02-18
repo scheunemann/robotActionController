@@ -1,17 +1,15 @@
-import multiprocessing
-from Robot.runners import ActionRunner
+from threading import RLock, Thread
+from ActionRunner import ActionRunner
 from trigger import TriggerProcessor
-from Data.Storage import StorageFactory
+from Data.storage import StorageFactory
 
 
-class InteractionProcessor(object):
+class InteractionProcessor(Thread):
 
     def __init__(self, robot, user):
-        self._robot = robot
-        self._user = user
+        self._robot = robot.id
+        self._user = user.id
         self._run = False
-        self._ds = StorageFactory.getNewSession()
-        self._thread = multiprocessing.Process(target=self.process)
 
     def __del__(self):
         if self._ds:
@@ -19,19 +17,16 @@ class InteractionProcessor(object):
 
     def start(self):
         self._run = True
-        self._thread.start()
-
-    def process(self):
-        triggerProcessor = TriggerProcessor(self._robot)
-        actionRunner = ActionRunner(self._robot)
+        ds = StorageFactory.getNewSession()
+        robot = ds.merge(self._robot, False)
+        user = ds.merge(self._user, False)
+        triggerProcessor = TriggerProcessor(robot)
+        triggers = triggerProcessor.getTriggers(user)
+        actionRunner = ActionRunner(robot)
         while(self._run):
-            for trigger in triggerProcessor.getTriggers(self._user):
+            for trigger in triggers:
                 if not self._run:
                     break
 
                 if triggerProcessor.isActive(trigger):
-                    actionRunner.execute(trigger.action, self._user)
-
-    def stop(self):
-        self._run = False
-        self._thread.join()
+                    actionRunner.execute(trigger.action, user)
