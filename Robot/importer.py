@@ -464,7 +464,7 @@ class ActionImporter(object):
                 
                 speed = int(spd.strip())
                 if '[' in pos and ']' in pos:
-                    positions = [float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != '']
+                    positions = str([float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != ''])
                     position = None
                 else:
                     positions = None
@@ -472,7 +472,7 @@ class ActionImporter(object):
     
                 jp = JointPosition(jointName=jointName.upper())
                 jp.position = position
-                jp.positions = str(positions)
+                jp.positions = positions
                 jp.speed = speed
                 seqStep.jointPositions.append(jp)
                 seq.actions.append(seqStep)
