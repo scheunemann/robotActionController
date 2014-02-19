@@ -13,6 +13,9 @@ class Robot(StandardMixin, Base):
     model_id = Column(Integer, ForeignKey("RobotModel.id"))
     model = relationship("RobotModel")
 
+    defaultAction_id = Column(Integer, ForeignKey("Action.id"))
+    defaultAction = relationship("Action")
+
     sensors = relationship("RobotSensor", back_populates="robot")
     servos = relationship("Servo", back_populates="robot", lazy=False)
     servoGroups = relationship("ServoGroup", back_populates="robot")

@@ -15,10 +15,16 @@ class Runner(object):
             super(Runner.ExecutionHandle, self).__init__()
             self._logger = logging.getLogger(self.__class__.__name__)
             self._action = action
+            self._actionId = action.id
             self._handles = []
             self._handle = None
             self._result = False
             self._output = []
+            self._done = False
+
+        @property
+        def actionId(self):
+            return self._actionId
 
         @property
         def _safeHandles(self):
@@ -26,7 +32,7 @@ class Runner(object):
 
         @property
         def result(self):
-            return self._result
+            return self._result if self._done else None
 
         @property
         def output(self):
@@ -36,8 +42,9 @@ class Runner(object):
             return output
 
         def waitForComplete(self):
+            Thread().start()
             # Wait for the sub-thread to start
-            while not self._safeHandles:
+            while not self._safeHandles and not self._done:
                 time.sleep(0.01)
 
             results = map(lambda h: h.waitForComplete(), self._safeHandles)
@@ -48,10 +55,13 @@ class Runner(object):
         def runInternal(self, action):
             return False
 
+        def start(self, callback=None):
+            self._done = False
+            self._callback = callback
+            super(Runner.ExecutionHandle, self).start()
+
         def run(self):
             session = StorageFactory.getNewSession()
-#             action = session.query(Action).get(self._actionId)
-#             action = self._action
             action = session.merge(self._action, load=False)
             self._output.append((datetime.now(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
 
@@ -60,7 +70,7 @@ class Runner(object):
                 self._result = self._runInternal(action, session)
             except Exception as e:
                 self._logger.critical("Error running action: %s" % action)
-                self._logger.critical(e)
+                self._logger.critical("%s: %s" % (e.__class__.__name__, e))
                 import traceback
                 self._logger.debug(traceback.format_exc())
                 self._result = False
@@ -76,7 +86,11 @@ class Runner(object):
                 else:
                     self._output.append((datetime.now(), '%s: Failed %s' % (self.__class__.__name__, action.name)))
             finally:
+                self._done = True
                 session.close()
+            
+            if self._callback:
+                self._callback(self)
 
         def stop(self):
             handles = [h for h in self._safeHandles if h.isAlive()]
@@ -103,8 +117,8 @@ class Runner(object):
         handle.waitForComplete()
         return handle.result
 
-    def executeAsync(self, action):
+    def executeAsync(self, action, callback=None):
         handle = self._getHandle(action)
-        handle.start()
+        handle.start(callback)
         time.sleep(0.01)
         return handle

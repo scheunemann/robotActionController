@@ -1,28 +1,21 @@
 import os
 import sys
 import math
-import re
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
+    ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
 from Data.Model.sensor import DiscreteSensorValue
 
 
 def loadDirectory(subDir):
 
-    poses = {}
+    actions = {}
     triggers = {}
     robots = []
 
     a = ActionImporter()
     t = TriggerImporter()
-
-    robotConfig = os.path.join(subDir, 'robot.xml')
-
-    if os.path.isfile(robotConfig):
-        r = RobotImporter().getRobot(robotConfig)
-        robots.append(r)
 
     searchDir = os.path.join(subDir, 'pos')
     if os.path.exists(searchDir):
@@ -31,10 +24,43 @@ def loadDirectory(subDir):
             f = open(fileName)
             lines = f.readlines()
             pose = a.getPose(lines)
-            if pose.name not in poses:
-                poses[pose.name] = pose
+            if pose.name not in actions:
+                actions[pose.name] = pose
             else:
                 print "Skipping pose %s, another by the same name already exists" % pose.name
+
+    searchDir = os.path.join(subDir, 'seq')
+    recheck = []
+    if os.path.exists(searchDir):
+        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+        for fileName in files:
+            f = open(fileName)
+            lines = f.readlines()
+            seq = a.getSequence(lines, actions)
+            if seq == None:
+                recheck.append(lines)
+                continue
+            if seq.name not in actions:
+                actions[seq.name] = seq
+            else:
+                print "Skipping sequence %s, another by the same name already exists" % seq.name
+    progress = True
+    while recheck and progress:
+        progress = False
+        for lines in recheck:
+            seq = a.getSequence(lines, actions)
+            if seq == None:
+                continue
+            else:
+                recheck.remove(lines)
+                progress = True
+            if seq.name not in actions:
+                actions[seq.name] = seq
+            else:
+                print "Skipping sequence %s, another by the same name already exists" % seq.name
+    if recheck:
+        print >> sys.stderr, "Unable to import all sequences, missing reference actions"
+        
 
     searchDir = os.path.join(subDir, 'keyMaps')
     if os.path.exists(searchDir):
@@ -42,14 +68,20 @@ def loadDirectory(subDir):
         for fileName in files:
             f = open(fileName)
             lines = f.readlines()
-            for trigger in t.getTriggers(lines, poses.values(), triggers.keys()):
+            for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
                 if trigger.name in triggers:
                     print "Trigger named %s already imported, skipping" % trigger.name
                     continue
                 else:
                     triggers[trigger.name] = trigger
 
-    return (r, poses.values(), triggers.values())
+    robotConfig = os.path.join(subDir, 'robot.xml')
+
+    if os.path.isfile(robotConfig):
+        r = RobotImporter().getRobot(robotConfig, actions)
+        robots.append(r)
+
+    return (r, actions.values(), triggers.values())
 
 
 class RobotImporter(object):
@@ -113,7 +145,7 @@ class RobotImporter(object):
     def __init__(self):
         pass
 
-    def getRobot(self, robotConfig):
+    def getRobot(self, robotConfig, poseDict):
         if os.path.exists(robotConfig) and os.path.isfile(robotConfig):
             config = et.parse(robotConfig).getroot()
         else:
@@ -129,6 +161,12 @@ class RobotImporter(object):
         sensors.extend(self._getServoSensors(config))
         r.sensors = sensors
         r.sensorConfigs = self._getSensorConfigs(config)
+        defaultAction = config.get('defaultAction', None)
+        if defaultAction:
+            if defaultAction in poseDict:
+                r.defaultAction = poseDict[defaultAction]
+            else:
+                print "Warning: Could not locate action named %s.  Robot will have no default" % defaultAction
 
         return r
 
@@ -387,6 +425,65 @@ class ActionImporter(object):
 
     def __init__(self):
         pass
+
+    def getSequence(self, sequenceLines, actions):
+        """
+            r_down
+            JOINT_NAME, position, speed
+            JOINT_NAME, [position0, position1, ], speed
+            ACTION_NAME
+            HEAD_ROT,515,100
+            HEAD_VERT,436,100
+            HEAD_TLT,545,80
+            ARM_L_1,554,140
+            ARM_L_2,733,140
+            ARM_L_3,683,140
+            ARM_L_4,693,140
+            ARM_R_1,634,140
+            ARM_R_2,426,140
+            ARM_R_3,149,140
+            ARM_R_4,168,140
+            EYES_LR,600,330
+            EYES_UD,450,330
+            MOUTH_OPEN,520,330
+            MOUTH_SMILE,740,330
+            EYELIDS,614,330
+        """        
+        name = sequenceLines[0].strip()
+        seq = Sequence(name=name)
+
+        for i in range(1, len(sequenceLines)):
+            line = sequenceLines[i].strip()
+            if ',' in line:
+                seqStep = Pose(name="%s:%s" % (name, i))
+                idx1 = line.find(',')
+                idx2 = line.rfind(',')
+                jointName = line[0:idx1].strip()
+                pos = line[idx1 + 1:idx2].strip()
+                spd = line[idx2 + 1:].strip()
+                
+                speed = int(spd.strip())
+                if '[' in pos and ']' in pos:
+                    positions = [float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != '']
+                    position = None
+                else:
+                    positions = None
+                    position = float(pos.strip())
+    
+                jp = JointPosition(jointName=jointName.upper())
+                jp.position = position
+                jp.positions = str(positions)
+                jp.speed = speed
+                seqStep.jointPositions.append(jp)
+                seq.actions.append(seqStep)
+            else:
+                if line in actions:
+                    seq.actions.append(actions[line])
+                else:
+                    return None
+                    print >> sys.stderr, "Unable to find action named %s for sequence %s, skipping step" % (line, name)
+
+        return seq
 
     def getPose(self, poseLines):
         """

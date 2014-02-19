@@ -28,16 +28,13 @@ class RosSensor(object):
 class MessageSensor(RosSensor):
 
     def __init__(self, sensor):
-        super(SonarSensor, self).__init__(sensor, self._dataProcessor)
-
-    def _dataProcessor(self, jointMessage):
-        return jointMessage
+        super(SonarSensor, self).__init__(sensor)
 
 
 class SonarSensor(RosSensor):
 
     def __init__(self, sensor):
-        super(SonarSensor, self).__init__(sensor, self._dataProcessor)
+        super(SonarSensor, self).__init__(sensor, self._sensorProcessor)
         index = sensor.extraData.get('index', None)
         if index == None:
             self._logger.critical("Sonar Sensor %s is missing its array index!", sensor.name)
@@ -45,8 +42,11 @@ class SonarSensor(RosSensor):
 
         self._index = int(index)
 
-    def _dataProcessor(self, sonarMessage):
-        return sonarMessage.ranges[self._index]
+    def _sensorProcessor(self, sonarMessage):
+        if sonarMessage:
+            return sonarMessage.ranges[self._index]
+        else:
+            return None
 #         data = []
 #         for sonIndex in range(0, 16):
 #             data[sonIndex] = sonarMessage.ranges[sonIndex]

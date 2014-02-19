@@ -231,6 +231,14 @@ class ROS(object):
         if(rosMaster == None and 'rosMaster' in ros_config):
             rosMaster = ros_config['rosMaster']
 
+        for k, v in ROS._getUserVars().items():
+            if k == 'PYTHONPATH' and sys.path.count(v) == 0:
+                sys.path.append(v)
+            elif k not in os.environ:
+                os.environ[k] = v
+            elif k.endswith('PATH') and os.environ[k].find(v) == -1:
+                os.environ[k] = ':'.join((v, os.environ[k]))
+
         for k, v in ROS._parseRosVersionSetupBash(version).items():
             if k == 'PYTHONPATH' and sys.path.count(v) == 0:
                 sys.path.append(v)
@@ -273,8 +281,13 @@ class ROS(object):
 
         if packageName != None:
             import roslib
-            roslib.load_manifest(packageName)
-
+            try:
+                roslib.load_manifest(packageName)
+            except:
+                logger = logging.getLogger(ROS.__class__.__name__)
+                logger.warning("Unable to load manifest %s, module may not be configured correctly." % packageName)
+                import traceback
+                logger.debug(traceback.format_exc())
 
 class RosSubscriber(object):
 

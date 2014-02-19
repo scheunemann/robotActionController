@@ -21,12 +21,13 @@ class SensorProcessor(object):
             config = [c for c in sensor.robot.sensorConfigs if c.model == sensor.model]
             if config and config[0].type == 'active':
                 handler = _SensorHandler(sensor, self.newSensorData, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
-                handler.start()
                 self._handlers.append(handler)
+
+    def start(self):
+        map(lambda h: h.start(), self._handlers)
 
     def stop(self):
         map(lambda h: h.stop(), self._handlers)
-        map(lambda h: h.join(), self._handlers)
 
     def __del__(self):
         self.stop()
@@ -45,7 +46,8 @@ class _SensorHandler(Thread):
 
     def stop(self):
         self._cancel = True
-        self.join()
+        if self.isAlive():
+            self.join()
 
     def run(self):
         last_update = datetime.now()

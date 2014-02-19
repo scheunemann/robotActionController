@@ -19,12 +19,13 @@ class TriggerProcessor(object):
         self._handlers = []
         for trigger in triggers:
             handler = _TriggerHandler(trigger, self.triggerActivated, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
-            handler.start()
             self._handlers.append(handler)
+
+    def start(self):
+        map(lambda h: h.start(), self._handlers)
 
     def stop(self):
         map(lambda h: h.stop(), self._handlers)
-        map(lambda h: h.join(), self._handlers)
 
     def __del__(self):
         self.stop()
@@ -43,7 +44,8 @@ class _TriggerHandler(Thread):
 
     def stop(self):
         self._cancel = True
-        self.join()
+        if self.isAlive():
+            self.join()
 
     def run(self):
         last_update = datetime.now()
@@ -53,7 +55,8 @@ class _TriggerHandler(Thread):
             if value != last_value and datetime.now() - last_update >= self._maxUpdateInterval:
                 last_update = datetime.now()
                 last_value = value
-                self._activatedEvent(TriggerActivatedEventArg(self._triggerId, value))
+                # Fire the handlers in (yet another) thread to prevent long handlers from interrupting the loop
+                Thread(target=self._activatedEvent, args=TriggerActivatedEventArg(self._triggerId, value)).start()
 
             sleepTime = max(self._maxUpdateInterval - (datetime.now() - last_update), self._maxPollRate).total_seconds()
             time.sleep(sleepTime)

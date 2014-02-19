@@ -1,5 +1,4 @@
 from robot import ROSRobot, ActionLib as RosActionLib
-import sys
 
 
 class Sunflower(ROSRobot):
@@ -9,8 +8,6 @@ class Sunflower(ROSRobot):
         from rosHelper import ROS
         ROS.configureROS(rosMaster=rosMaster)
         super(Sunflower, self).__init__(name, ActionLib, 'sf_controller')
-#         self.setComponentState('head', 'home')
-#         self.setComponentState('tray', 'closed')
 
     def getComponentState(self, componentName, resolve_name=False):
         topic = '/%(name)s_controller/state' % {'name': componentName}
@@ -39,7 +36,3 @@ class ActionLib(RosActionLib):
 
     def __init__(self):
         super(ActionLib, self).__init__('sf_controller', 'SunflowerAction', 'SunflowerGoal')
-
-if __name__ == '__main__':
-    s = Sunflower('Test')
-    s.setComponentState('head', 'home')
