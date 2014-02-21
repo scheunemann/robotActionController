@@ -39,25 +39,28 @@ class Action(StandardMixin, Base):
     @staticmethod
     def deserialize(cls, dictObj, session, depth=3):
         if cls == Action:
-            if 'type' in dictObj:
-                actionType = dictObj.pop('type')
-                actionClass = None
-                if actionType.lower() == 'expression':
-                    actionClass = Expression
-                elif actionType.lower() == 'group':
-                    actionClass = Group
-                elif actionType.lower() == 'pose':
-                    actionClass = Pose
-                elif actionType.lower() == 'sequence':
-                    actionClass = Sequence
-                elif actionType.lower() == 'sound':
-                    actionClass = Sound
+            if dictObj:
+                if 'type' in dictObj:
+                    actionType = dictObj.pop('type')
+                    actionClass = None
+                    if actionType.lower() == 'expression':
+                        actionClass = Expression
+                    elif actionType.lower() == 'group':
+                        actionClass = Group
+                    elif actionType.lower() == 'pose':
+                        actionClass = Pose
+                    elif actionType.lower() == 'sequence':
+                        actionClass = Sequence
+                    elif actionType.lower() == 'sound':
+                        actionClass = Sound
+                    else:
+                        raise ValueError('Unknown action type: %s' % actionType)
+                    
+                    return super(cls, cls).deserialize(actionClass, dictObj, session, depth)
                 else:
-                    raise ValueError('Unknown action type: %s' % actionType)
-                
-                return super(cls, cls).deserialize(actionClass, dictObj, session, depth)
+                    raise ValueError('Action type not specified')
             else:
-                raise ValueError('Action type not specified')
+                return None, None
         else:
             return super(cls, cls).deserialize(cls, dictObj, session, depth)
 

@@ -19,6 +19,8 @@ class Sensor(StandardMixin, Base):
 
     value_type_id = Column(Integer, ForeignKey("SensorValueType.id"))
     value_type = relationship("SensorValueType", back_populates="sensor")
+    
+    onState = Column(String(500))
 
     extraData = Column(PickleType)
 

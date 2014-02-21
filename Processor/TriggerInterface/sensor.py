@@ -11,22 +11,24 @@ class SensorTrigger(TriggerInterface):
         super(SensorTrigger, self).__init__(trigger)
         if trigger.sensorName:
             sensor = self._getSensor(trigger.sensorName)
+            self._onState = sensor.onState
             self._sensorInt = SensorInterface.getSensorInterface(sensor)
 
     def getActive(self):
+        # Value is used in eval functions
         value = self._sensorInt.getCurrentValue()
         sensorValue = self._trigger.sensorValue
-        comparison = self._trigger.comparison  # >, >=, <, <=, ==
-        if comparison == '<':
-            return value < sensorValue
-        elif comparison == '<=':
-            return value <= sensorValue
-        elif comparison == '==':
-            return value == sensorValue
-        elif comparison == '>=':
-            return value >= sensorValue
-        elif comparison == '>':
-            return value > sensorValue
+        if sensorValue.startswith('eval::'):
+            if not self._onState:
+                self._logger.critical("Unknown sensor eval: %s" % sensorValue[6:])
+                return None
+            isOn = eval(self._onState)
+            if sensorValue[6:] == 'off':
+                return not isOn
+            elif sensorValue[6:] == 'on':
+                return isOn
+            else:
+                self._logger.critical("Unknown sensor eval: %s" % sensorValue[6:])
+                return None
         else:
-            self._logger.warn("Unknown comparison type '%s' for trigger %s, default to ==" % comparison, self._trigger.name)
-            return value == sensorValue
+            return eval('value' + sensorValue)

@@ -55,9 +55,10 @@ class Runner(object):
         def runInternal(self, action):
             return False
 
-        def start(self, callback=None):
+        def start(self, callback=None, callbackData=None):
             self._done = False
             self._callback = callback
+            self._callbackData = callback
             super(Runner.ExecutionHandle, self).start()
 
         def run(self):
@@ -90,7 +91,10 @@ class Runner(object):
                 session.close()
             
             if self._callback:
-                self._callback(self)
+                try:
+                    self._callback(self, *(self._callbackData or ()))
+                except Exception as e:
+                    self._logger.error("Error calling callback function: %s" % e)
 
         def stop(self):
             handles = [h for h in self._safeHandles if h.isAlive()]
@@ -117,8 +121,8 @@ class Runner(object):
         handle.waitForComplete()
         return handle.result
 
-    def executeAsync(self, action, callback=None):
+    def executeAsync(self, action, callback=None, callbackData=None):
         handle = self._getHandle(action)
-        handle.start(callback)
+        handle.start(callback, callbackData)
         time.sleep(0.01)
         return handle
