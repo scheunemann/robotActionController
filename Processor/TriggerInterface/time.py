@@ -15,10 +15,13 @@ class TimeTrigger(TriggerInterface):
             self._triggerInts = [TriggerInterface.getTriggerInterface(t) for t in trigger.triggers]
 
     def getActive(self):
-        if self._trigger.requireAll:
-            active = all([ti.getActive() for ti in self._triggerInts])
-        else:
-            active = any([ti.getActive() for ti in self._triggerInts])
+        # Be sure to exclude 'self' as triggers can be self-referencing
+        interfaces = [ti for ti in self._triggerInts if ti != self]
+        if interfaces:
+            if self._trigger.requireAll:
+                active = all([ti.getActive() for ti in interfaces])
+            else:
+                active = any([ti.getActive() for ti in interfaces])
 
         if active != self._lastState:
             self._lastChange = datetime.now()
@@ -30,4 +33,4 @@ class TimeTrigger(TriggerInterface):
         if self._trigger.mustStayActive:
             return active and datetime.now() - self._lastActive >= self._time
         else:
-            return datetime.now() - self._lastChange >= self._time
+            return not active and datetime.now() - self._lastChange >= self._time
