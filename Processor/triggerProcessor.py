@@ -55,7 +55,7 @@ class _TriggerHandler(Thread):
             if value != last_value and datetime.now() - last_update >= self._maxUpdateInterval:
                 last_update = datetime.now()
                 last_value = value
-                # Fire the handlers in (yet another) thread to prevent long handlers from interrupting the loop
+                # Fire the handlers in thread to prevent long handlers from interrupting the loop
                 Thread(target=self._activatedEvent, args=TriggerActivatedEventArg(self._triggerId, value)).start()
 
             sleepTime = max(self._maxUpdateInterval - (datetime.now() - last_update), self._maxPollRate).total_seconds()

@@ -1,4 +1,5 @@
 from threading import Thread
+import logging
 from datetime import datetime, timedelta
 from collections import namedtuple
 from SensorInterface.sensorInterface import SensorInterface
@@ -37,7 +38,10 @@ class _SensorHandler(Thread):
 
     def __init__(self, sensor, updateEvent, maxUpdateInterval=None, maxPollRate=None):
         super(_SensorHandler, self).__init__()
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._sensorId = sensor.id
+        self._minValue = sensor.value_type.minValue if sensor.value_type.type == 'Continuous' else None
+        self._maxValue = sensor.value_type.maxValue if sensor.value_type.type == 'Continuous' else None
         self._sensorInt = SensorInterface.getSensorInterface(sensor)
         self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
@@ -54,6 +58,13 @@ class _SensorHandler(Thread):
         last_value = None
         while not self._cancel:
             value = self._sensorInt.getCurrentValue()
+            if self._minValue and value < self._minValue:
+                self._logger.debug("Sensor %s returned %s.  Value less than min value, changing to %s" % (self._sensorId, value, self._minValue))
+                value = self._minValue
+            if self._maxValue and value > self._maxValue:
+                self._logger.debug("Sensor %s returned %s.  Value more than max value, changing to %s" % (self._sensorId, value, self._maxValue))
+                value = self._maxValue
+
             if value != last_value and datetime.now() - last_update >= self._maxUpdateInterval:
                 last_update = datetime.now()
                 last_value = value
