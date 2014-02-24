@@ -1,5 +1,5 @@
 from base import StandardMixin, Base
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, Binary
+from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean
 from sqlalchemy.orm import relationship
 
 __all__ = ['ButtonHotKey', 'ButtonTrigger', 'SensorTrigger', 'TimeTrigger', 'Trigger', ]
@@ -37,8 +37,8 @@ class SensorTrigger(Trigger):
 
 
 timeTriggerTriggers_table = Table('timeTriggerTriggers', Base.metadata,
-    Column('TimeTrigger_id', Integer, ForeignKey('TimeTrigger.id'), primary_key=True),
-    Column('Trigger_id', Integer, ForeignKey('Trigger.id'), primary_key=True)
+    Column('TimeTrigger_id', Integer, ForeignKey('TimeTrigger.id', ondelete='cascade'), primary_key=True),
+    Column('Trigger_id', Integer, ForeignKey('Trigger.id', ondelete='cascade'), primary_key=True)
 )
 
 
@@ -49,9 +49,9 @@ class TimeTrigger(Trigger):
     # Variance (seconds)
     id = Column(Integer, ForeignKey('%s.id' % 'Trigger'), primary_key=True)
     time = Column(Integer)
-    variance = Column(Integer)
-    mustStayActive = Column(Binary)
-    requireAll = Column(Binary)  # AND, OR
+    variance = Column(Integer, default=0)
+    mustStayActive = Column(Boolean, default=False)
+    requireAll = Column(Boolean, default=True)  # AND, OR
     triggers = relationship("Trigger", secondary=timeTriggerTriggers_table, cascade='all')
 
     __mapper_args__ = {

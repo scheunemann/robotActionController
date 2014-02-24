@@ -176,7 +176,11 @@ class SerializeMixin(object):
                             items.append(item.serialize(useProxies, urlResolver, resolveProps=resolveProps[attr.key]))
                         obj[attr.key] = items
                     else:
-                        obj[attr.key] = getattr(self, attr.key).serialize()
+                        prop = getattr(self, attr.key)
+                        if prop != None:
+                            obj[attr.key] = prop.serialize()
+                        else:
+                            obj[attr.key] = {}
             elif isinstance(attr, ColumnProperty):
                 item = getattr(self, attr.key)
                 if attr.columns[0].type.__visit_name__ == 'large_binary':
