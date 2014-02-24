@@ -1,21 +1,32 @@
 import os
 import sys
-import math
 from xml.etree import ElementTree as et
 
+from legacy import loadDirectory as legacyLoadDirectory
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
     ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
 from Data.Model.sensor import DiscreteSensorValue
 
-
-def loadDirectory(subDir):
-
+def loadAllDirectories(rootDir):    
     actions = {}
     triggers = {}
     robots = []
 
+    dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
+    for subDir in dirs:
+        loadDirectory(actions, triggers, robots, subDir)
+    
+    return (robots, actions.values(), triggers.values())
+
+def loadDirectory(actions, triggers, robots, subDir):
+
     a = ActionImporter()
     t = TriggerImporter()
+    
+    robotConfig = os.path.join(subDir, 'robot.xml')
+    configType = et.parse(robotConfig).getroot().get('configType', None)
+    if configType == 'legacy':
+        return legacyLoadDirectory(actions, triggers, robots, subDir)
 
     searchDir = os.path.join(subDir, 'pos')
     if os.path.exists(searchDir):
@@ -75,13 +86,11 @@ def loadDirectory(subDir):
                 else:
                     triggers[trigger.name] = trigger
 
-    robotConfig = os.path.join(subDir, 'robot.xml')
-
     if os.path.isfile(robotConfig):
         r = RobotImporter().getRobot(robotConfig, actions)
         robots.append(r)
 
-    return (r, actions.values(), triggers.values())
+    return (robots, actions.values(), triggers.values())
 
 
 class RobotImporter(object):
@@ -93,55 +102,8 @@ class RobotImporter(object):
     _sensorModels = {}
     _types = {}
     _models = {}
-    _configs = {
-                # SSC32 and MINISSC limits are inconsistent between the config files and the old java interface
-                'SSC32': {
-                            'MAX_POS': 5000,
-                            'MIN_POS': 500,
-                            'MAX_SPEED': 10000,
-                            'MIN_SPEED': 5,
-                            'POSEABLE': False,
-                            'SCALE_SPEED': 100.0 / 5000.0,
-                            'SCALE_POS': 360.0 / 5000.0,
-                            },
-                'MINISSC': {
-                            'MAX_POS': 254,
-                            'MIN_POS': 0,
-                            'MAX_SPEED': None,  # Unsupported
-                            'MIN_SPEED': None,  # Unsupported
-                            'POSEABLE': False,
-                            'SCALE_SPEED': None,
-                            'SCALE_POS': 360.0 / 254.0,
-                            },
-                'HERKULEX': {
-                            'MAX_POS': 1023,
-                            'MIN_POS': 0,
-                            'MAX_SPEED': 2048,
-                            'MIN_SPEED': 10,
-                            'POSEABLE': True,
-                            'SCALE_SPEED': 100.0 / 1023.0,
-                            'SCALE_POS': 360.0 / 1023.0,
-                            },
-                'DUMMY': {
-                            'MAX_POS': 360,
-                            'MIN_POS': 0,
-                            'MAX_SPEED': 300,
-                            'MIN_SPEED': 1,
-                            'POSEABLE': False,
-                            'SCALE_SPEED': 1,
-                            'SCALE_POS': 1,
-                          },
-                'ROBOT': {
-                        'MAX_POS': math.pi,
-                        'MIN_POS': math.pi * -1,
-                        'MAX_SPEED': 100,
-                        'MIN_SPEED': 1,
-                        'POSEABLE': False,
-                        'SCALE_SPEED': 1,
-                        'SCALE_POS': 180 / math.pi,
-                        }
-                }
-
+    _configs = {}
+    
     def __init__(self):
         pass
 
@@ -154,8 +116,8 @@ class RobotImporter(object):
         r = Robot(name=config.get('name'), version=config.get('version'))
         r.model = self._getModel(config.get('type'), config.get('class'))
         r.servoGroups = self._getServoGroups(config)
-        r.servos = self._getServos(config, r.servoGroups)
         r.servoConfigs = self._getServoConfigs(config)
+        r.servos = self._getServos(config, r.servoGroups)
         sensors = []
         sensors.extend(self._getSensors(config))
         sensors.extend(self._getServoSensors(config))
@@ -170,13 +132,18 @@ class RobotImporter(object):
 
         return r
 
-    def _getModel(self, modelName, className):
+    def _getModel(self, modelName, extraData):
         if modelName == None:
             return None
 
         if modelName not in RobotImporter._models:
             robot = RobotModel(modelName)
-            robot.extraData = {'className': className}
+            if extraData:
+                ed = {}
+                for kvp in extraData.split(','):
+                    for k, v in kvp.split(':', 2):
+                        ed[k] = v 
+                robot.extraData = ed
             RobotImporter._models[modelName] = robot 
 
         return self._models[modelName]
@@ -206,8 +173,8 @@ class RobotImporter(object):
                     s.jointName = self._getText("NAME", servo).upper()
                     s.model = self._getSensorModel(servo.get('type', None))
                     s.value_type = self._getValueType('continuous')
-                    s.value_type.minValue = self._realToScalePos(self._getText("LIMITS[@type='pos']/MIN", servo), s.model.positionOffset, s.model.positionScale)
-                    s.value_type.maxValue = self._realToScalePos(self._getText("LIMITS[@type='pos']/MAX", servo), s.model.positionOffset, s.model.positionScale)
+                    s.value_type.minValue = self._getText("LIMITS/POS/MIN", servo, None)
+                    s.value_type.maxValue = self._getText("LIMITS/POS/MAX", servo, None)
                     s.value_type.precision = 3
                     extId = servo.get('id', None)
                     if extId != None:
@@ -264,9 +231,11 @@ class RobotImporter(object):
         for servo in self._get("SERVOLIST/SERVO", node):
             s = Servo()
             s.jointName = self._getText("NAME", servo).upper()
-            s.model = self._getServoModel(servo.get('type', None))
-            s.minPosition = self._realToScalePos(self._getText("LIMITS[@type='pos']/MIN", servo), s.model.positionOffset, s.model.positionScale)
-            s.maxPosition = self._realToScalePos(self._getText("LIMITS[@type='pos']/MAX", servo), s.model.positionOffset, s.model.positionScale)
+            modelName = servo.get('type', None)
+            if modelName.lower() in RobotImporter._types:
+                s.model = RobotImporter._types[modelName.lower()]
+            s.minPosition = self._getText("LIMITS/POS/MIN", servo, None)
+            s.maxPosition = self._getText("LIMITS/POS/MAX", servo, None)
             pos = self._getText("DEFAULT/POS", servo)
             if pos and '[' in pos and ']' in pos:
                 s.defaultPosition = None
@@ -276,25 +245,21 @@ class RobotImporter(object):
                     print sys.stderr >> "Invalid multi-position specified for servo %s: %s" % (s.jointName, pos)
                     print sys.stderr >> e
                     continue 
-                s.defaultPositions = str([self._realToScalePos(p, s.model.positionOffset, s.model.positionScale) for p in posList])
+                s.defaultPositions = posList
             else:
-                s.defaultPosition = self._realToScalePos(pos, s.model.positionOffset, s.model.positionScale)
+                s.defaultPosition = pos
                 s.defaultPositions = None
-            s.minSpeed = self._realToScaleSpeed(self._getText("LIMITS[@type='speed']/MIN", servo), s.model.speedScale)
-            s.maxSpeed = self._realToScaleSpeed(self._getText("LIMITS[@type='speed']/MAX", servo), s.model.speedScale)
+            s.minSpeed = self._getText("LIMITS/SPEED/MIN", servo, None)
+            s.maxSpeed = self._getText("LIMITS/SPEED/MAX", servo, None)
             extId = servo.get('id', None)
             if extId != None:
                 s.extraData = {'externalId': extId}
-            if s.minSpeed > s.maxSpeed:
-                temp = s.minSpeed
-                s.minSpeed = s.maxSpeed
-                s.maxSpeed = temp
 
-            s.defaultSpeed = self._realToScaleSpeed(self._getText("DEFAULT/SPEED", servo), s.model.speedScale)
-            if s.defaultSpeed < s.minSpeed:
-                s.defaultSpeed = s.minSpeed
-            if s.defaultSpeed > s.maxSpeed:
-                s.defaultSpeed = s.maxSpeed
+            s.defaultSpeed = self._getText("DEFAULT/SPEED", servo, None)
+            if s.defaultSpeed < (s.minSpeed or s.model.minSpeed):
+                s.defaultSpeed = (s.minSpeed or s.model.minSpeed)
+            if s.defaultSpeed > (s.maxSpeed or s.model.maxSpeed):
+                s.defaultSpeed = (s.maxSpeed or s.model.maxSpeed)
 
             s.groups = self._getGroupsForServo(s, servoGroups, node)
             servos.append(s)
@@ -303,7 +268,7 @@ class RobotImporter(object):
 
     def _getGroupsForServo(self, servo, groupList, rootnode):
         groups = []
-        for node in self._get("SERVOLIST/SERVOGROUP", rootnode):
+        for node in self._get("SERVOGROUP", rootnode):
             for member in self._get("MEMBER", node):
                 if member.text == servo.jointName:
                     for group in groupList:
@@ -316,46 +281,30 @@ class RobotImporter(object):
 
     def _getServoGroups(self, node):
         groups = []
-        for group in self._get("SERVOLIST/SERVOGROUP", node):
+        for group in self._get("SERVOGROUP", node):
             s = ServoGroup(name=self._getText("NAME", group))
             groups.append(s)
 
         return groups
 
-    def _realToScalePos(self, value, offset, scaleValue):
-        if value == None:
-            return None
-
-        value = float(value)
-        scaled = (value - offset) * scaleValue
-        return round(scaled, 2)
-
-    def _realToScaleSpeed(self, value, scaleValue):
-        if value == None:
-            return None
-
-        value = float(value)
-        scaled = value * scaleValue
-        return round(scaled, 2)
-
-    def _getServoModel(self, modelName):
+    def _getServoModel(self, node):
+        modelName = node.tag
         if modelName == None:
             return
 
         if modelName.lower() not in RobotImporter._types:
-            config = RobotImporter._configs[modelName.upper()] if modelName.upper() in RobotImporter._configs else RobotImporter._configs['DUMMY']
             s = ServoModel(name=modelName)
-            s.minSpeed = self._realToScaleSpeed(config['MIN_SPEED'], config['SCALE_SPEED'])
-            s.maxSpeed = self._realToScaleSpeed(config['MAX_SPEED'], config['SCALE_SPEED'])
-            s.positionOffset = round((config['MAX_POS'] + config['MIN_POS']) / 2, 2)
-            s.minPosition = self._realToScalePos(config['MIN_POS'], s.positionOffset, config['SCALE_POS'])
-            s.maxPosition = self._realToScalePos(config['MAX_POS'], s.positionOffset, config['SCALE_POS'])
-            s.defaultSpeed = 100
-            s.defaultPosition = 0
-            s.readable = True
-            s.poseable = config['POSEABLE']
-            s.positionScale = config['SCALE_POS']
-            s.speedScale = config['SCALE_SPEED']
+            s.minSpeed = self._getText('LIMITS/SPEED/MIN', node, 1)
+            s.maxSpeed = self._getText('LIMITS/SPEED/MAX', node, 100)
+            s.minPosition = self._getText('LIMITS/POS/MIN', node, 0)
+            s.maxPosition = self._getText('LIMITS/POS/MAX', node, 359)
+            s.defaultSpeed = self._getText('DEFAULT/SPEED', node, 100)
+            s.defaultPosition = self._getText('DEFAULT/POS', node, 0)
+            s.poseable = self._getText('DEFAULT/MANUAL_POSITIONING', node, 'False').upper() == 'TRUE'
+            s.readable = self._getText('DEFAULT/IS_UPDATED', node, 'False').upper() == 'TRUE'
+            s.positionScale = self._getText('SCALING/POS', node, 1)
+            s.positionOffset = self._getText('SCALING/POS_OFFSET', node, 0)
+            s.speedScale = self._getText('SCALING/SPEED', node, 1)
             RobotImporter._types[modelName.lower()] = s
 
         return RobotImporter._types[modelName.lower()]
@@ -389,9 +338,8 @@ class RobotImporter(object):
     def _getServoConfig(self, config):
         c = ServoConfig()
         c.port = self._getText("PORT", config, "")
-        c.portSpeed = self._getText("SPEED", config, 115200)
-        c.rotationOffset = 0
-        c.model = self._getServoModel(config.tag)
+        c.portSpeed = self._getText("SPEED", config, None)
+        c.model = self._getServoModel(config)
         return c
 
     def _getText(self, xpath, node, default=None):
