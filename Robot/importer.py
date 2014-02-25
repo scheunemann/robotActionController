@@ -114,7 +114,7 @@ class RobotImporter(object):
             raise Exception('Cannot locate robot config (path: %s)' % (robotConfig))
 
         r = Robot(name=config.get('name'), version=config.get('version'))
-        r.model = self._getModel(config.get('type'), config.get('class'))
+        r.model = self._getModel(config.get('type'), config.get('extraData'))
         r.servoGroups = self._getServoGroups(config)
         r.servoConfigs = self._getServoConfigs(config)
         r.servos = self._getServos(config, r.servoGroups)
@@ -141,8 +141,8 @@ class RobotImporter(object):
             if extraData:
                 ed = {}
                 for kvp in extraData.split(','):
-                    for k, v in kvp.split(':', 2):
-                        ed[k] = v 
+                    [k, v] = kvp.split(':', 2)
+                    ed[k] = v
                 robot.extraData = ed
             RobotImporter._models[modelName] = robot 
 
@@ -159,7 +159,8 @@ class RobotImporter(object):
             return None
 
         if modelName not in RobotImporter._sensorModels:
-            RobotImporter._sensorModels[modelName] = SensorModel(modelName)
+            s = SensorModel(modelName)            
+            RobotImporter._sensorModels[modelName] = s 
 
         return self._sensorModels[modelName]
 
@@ -198,6 +199,7 @@ class RobotImporter(object):
             s = RobotSensor()
             s.name = self._getText("NAME", sensor).upper()
             s.model = self._getSensorModel(sensor.get('type', None))
+            s.onState = self._getText("ONSTATE", node, None)
             s.value_type = self._getValueType(datatype)
             if isinstance(s.value_type, ContinuousValueType):
                 s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
@@ -245,7 +247,7 @@ class RobotImporter(object):
                     print sys.stderr >> "Invalid multi-position specified for servo %s: %s" % (s.jointName, pos)
                     print sys.stderr >> e
                     continue 
-                s.defaultPositions = posList
+                s.defaultPositions = str(posList)
             else:
                 s.defaultPosition = pos
                 s.defaultPositions = None
@@ -323,6 +325,10 @@ class RobotImporter(object):
         c = SensorConfig()
         c.model = self._getSensorModel(config.tag)
         c.type = config.get('type', 'active')
+        c.extraData = {}
+        for eData in self._get('EXTRADATA/*', config):
+            c.extraData[eData.tag] = eData.text
+            
         return c
 
     def _getServoConfigs(self, node):

@@ -3,6 +3,7 @@ from Robot.RosInterface import rosHelper
 
 
 class RosSensor(object):
+    sensorType = 'ROS'
 
     def __init__(self, sensor, dataProcessor=None):
         super(RosSensor, self).__init__()
@@ -26,12 +27,14 @@ class RosSensor(object):
 
 
 class MessageSensor(RosSensor):
+    sensorType = 'RosMessage'    
 
     def __init__(self, sensor):
         super(SonarSensor, self).__init__(sensor)
 
 
 class SonarSensor(RosSensor):
+    sensorType = 'Sonar'
 
     def __init__(self, sensor):
         super(SonarSensor, self).__init__(sensor, self._sensorProcessor)

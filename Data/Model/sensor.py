@@ -153,4 +153,6 @@ class SensorConfig(StandardMixin, Base):
     model_id = Column(Integer, ForeignKey("SensorModel.id"))
     model = relationship("SensorModel")
 
+    extraData = Column(PickleType)
+
     type = Column(String(50))

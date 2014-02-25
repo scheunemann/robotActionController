@@ -4,6 +4,7 @@ import logging
 
 
 class FSR(object):
+    sensorType = 'FSR'
 
     def __init__(self, port, speed):
         self._logger = logging.getLogger(self.__class__.__name__)

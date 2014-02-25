@@ -2,6 +2,8 @@ import serial
 
 
 class minimaestro(object):
+    sensorType = 'MiniMaestro'
+    
     def __init__(self, con_port, ser_port, timeout=1):
         self.con = None
         self.ser = None

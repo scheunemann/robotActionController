@@ -52,7 +52,7 @@ class TimeTrigger(Trigger):
     variance = Column(Integer, default=0)
     mustStayActive = Column(Boolean, default=False)
     requireAll = Column(Boolean, default=True)  # AND, OR
-    triggers = relationship("Trigger", secondary=timeTriggerTriggers_table, cascade='all')
+    triggers = relationship("Trigger", secondary=timeTriggerTriggers_table)
 
     __mapper_args__ = {
             'polymorphic_identity': 'Time',

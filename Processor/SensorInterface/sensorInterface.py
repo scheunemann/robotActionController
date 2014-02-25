@@ -1,10 +1,56 @@
+import re
+import os
+import sys
+import inspect
 import logging
 from threading import RLock
 from Data.Model import RobotSensor, ExternalSensor
-from Robot.ServoInterface import ServoInterface
-from Processor.SensorInterface import rosSensors
 
 __all__ = ['SensorInterface', ]
+
+
+_modulesCache = {}
+
+
+def loadModules(path=None):
+    """loads all modules from the specified path or the location of this file if none"""
+    """returns a dictionary of loaded modules {name: type}"""
+    if path == None:
+        path = __file__
+
+    path = os.path.realpath(path)
+    if not _modulesCache.has_key(path):
+        modules = []
+
+        find = re.compile(".*\.py$", re.IGNORECASE)
+        if os.path.isdir(path):
+            toLoad = map(lambda f: os.path.splitext(f)[0], filter(find.search, os.listdir(path)))
+        else:
+            toLoad = [os.path.splitext(os.path.basename(path))[0]]
+        sys.path.append(os.path.dirname(path))
+
+        for module in toLoad:
+            if module == os.path.splitext(os.path.basename(__file__))[0] or module == '__init__':
+                continue
+            try:
+                modules.append(__import__(module, globals(), locals()))
+            except Exception as e:
+                print >> sys.stderr, "Unable to import module %s, Exception: %s" % (module, e)
+
+        ret = {}
+        for module in modules:
+            for name, type_ in inspect.getmembers(module, inspect.isclass):
+                if hasattr(type_, "sensorType"):
+                    if type_.sensorType:
+                        ret[name] = type_
+                else:
+                    print "Skipping module %s due to missing attributes" % name
+
+        _modulesCache[path] = ret
+
+    return _modulesCache[path]
+
+_interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
 
 
 class SensorInterface(object):
@@ -78,7 +124,6 @@ class Dummy(SensorInterface):
         super(Dummy, self).__init__(sensor)
         self._sensorId = self._sensor.id
 
-        import os
         basePath = os.path.dirname(os.path.abspath(__file__))
         basePath = os.path.join(basePath, 'sensorData')
         if not os.path.exists(basePath):
@@ -134,17 +179,16 @@ class Robot(SensorInterface):
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
 
-        if sensor.model.name == 'SONAR':
-            self._sensorInt = rosSensors.SonarSensor(sensor)
-        elif sensor.model.name == 'ROBOT':
-            self._sensorInt = rosSensors.MessageSensor(sensor)
-        else:
+        if sensor.model.name.lower() not in _interfaceMap:
+            raise ValueError("Unknown sensor type: %s" % sensor.model.name)
             # TODO: Other sensors
-            servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
-            if servos:
-                self._sensorInt = ServoInterface.getServoInterface(servos[0])
-            else:
-                self._sensorInt = None
+#             servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
+#             if servos:
+#                 self._sensorInt = ServoInterface.getServoInterface(servos[0])
+#             else:
+#                 self._sensorInt = None
+        
+        self._sensorInt = _interfaceMap[sensor.model.name.lower()](sensor)
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()
