@@ -1,5 +1,5 @@
 from triggerInterface import TriggerInterface
-
+from Processor.hotKeys import KeyEvents
 
 class ButtonTrigger(TriggerInterface):
 

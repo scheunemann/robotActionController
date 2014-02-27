@@ -50,7 +50,7 @@ def loadModules(path=None):
 
     return _modulesCache[path]
 
-_interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
+_interfaceMap = None
 
 
 class SensorInterface(object):
@@ -178,6 +178,9 @@ class Robot(SensorInterface):
         self._externalId = sensor.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
+
+        if not _interfaceMap:
+            _interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
 
         if sensor.model.name.lower() not in _interfaceMap:
             raise ValueError("Unknown sensor type: %s" % sensor.model.name)

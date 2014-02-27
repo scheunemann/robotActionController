@@ -3,6 +3,9 @@ from threading import Thread, RLock
 import logging
 
 
+__all__ = ['FSR',]
+
+
 class FSR(object):
     sensorType = 'FSR'
 

@@ -2,6 +2,9 @@ import logging
 from Robot.RosInterface import rosHelper
 
 
+__all__ = ['RosSensor', 'MessageSensor', 'SonarSensor']
+
+
 class RosSensor(object):
     sensorType = 'ROS'
 

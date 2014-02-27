@@ -1,6 +1,9 @@
 import serial
 
 
+__all__ = ['minimaestro']
+
+
 class minimaestro(object):
     sensorType = 'MiniMaestro'
     
