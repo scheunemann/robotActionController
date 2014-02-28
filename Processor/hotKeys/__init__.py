@@ -1,7 +1,7 @@
 import platform
-if platform.system() == 'Linux':
-    from linux import KeyEvents
-elif platform.system() == 'Windows':
+if platform.system() == 'Windows':
     from windows import KeyEvents
+elif platform.system() == 'Linux':
+    from linux import KeyEvents
 else:
     raise Exception("Sorry: no implementation for your platform ('%s') available" % platform.system())

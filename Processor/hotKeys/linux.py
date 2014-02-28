@@ -6,9 +6,11 @@ from collections import namedtuple
 from Processor.event import Event
 from threading import Thread
 
+__all__ = ['KeyEvents']
+
 class KeyEvents(object):
     
-    KeyEventArg = namedtuple('KeyEventArg', ['alt', 'control', 'shift', 'keyCode', 'keyValue', 'modifiers'])
+    KeyEventArg = namedtuple('KeyEventArg', ['alt', 'ctrl', 'shift', 'keyCode', 'keyValue', 'modifiers'])
     keyUpEvent = Event('Key up event')
     keyDownEvent = Event('Key down event')
     
@@ -21,12 +23,12 @@ class KeyEvents(object):
         self._thread.start()
         self._altKeys = ['KEY_LEFTALT', 'KEY_RIGHTALT'] 
         self._shiftKeys = ['KEY_LEFTSHIFT', 'KEY_RIGHTSHIFT']
-        self._ctrlKeys = ['KEY_LEFTCTRL', 'KEY_LEFTMETA', 'KEY_RIGHTCTRL', 'KEY_RIGHTMETA']
+        self._ctrlKeys = ['KEY_LEFTCTRL', 'KEY_RIGHTCTRL']
         self._modifiers = []
         self._modifiers.extend(self._altKeys)
         self._modifiers.extend(self._shiftKeys)
         self._modifiers.extend(self._ctrlKeys)
-    
+        
     def _bindKeys(self, inputName, grab):
         try:
             self._input = InputDevice('/dev/input/' + inputName)
@@ -88,13 +90,13 @@ class KeyEvents(object):
                 self._input.ungrab()
         except Exception as e:
             print e
-# 
-# def printEvt(sender, evt):
-#     print evt
-# 
-# if __name__ == '__main__':
-#     device = 'event3'
-#     k = KeyEvents(device, True)
-#     k.keyDownEvent += printEvt
-#     k.keyUpEvent += printEvt
-#     k._thread.join()
+
+def printEvt(sender, evt):
+    print evt
+ 
+if __name__ == '__main__':
+    device = 'event3'
+    k = KeyEvents(device, True)
+    k.keyDownEvent += printEvt
+    k.keyUpEvent += printEvt
+    k._thread.join()

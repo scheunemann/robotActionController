@@ -2,15 +2,74 @@ from triggerInterface import TriggerInterface
 from Processor.hotKeys import KeyEvents
 
 class ButtonTrigger(TriggerInterface):
-
+    # Match with the javscript side of things, should cover most common keys
+    # Unfortunately evdev doesn't take the KB layout into account, hopefully won't be an issue with our usage
+    keyMap = {
+            '102ND':'\\', #This is due to US vs UK kb layout (see above)
+            'APOSTROPHE':'\'',
+            'BACKSLASH':'#', #This is due to US vs UK kb layout (see above)
+            'COMMA':',',
+            'DELETE':'del',
+            'DOT':'.',
+            'EQUAL':'=',
+            'ESC':'escape',
+            'GRAVE':'`',
+            'INSERT':'ins',
+            'KP0':'0',
+            'KP1':'1',
+            'KP2':'2',
+            'KP3':'3',
+            'KP4':'4',
+            'KP5':'5',
+            'KP6':'6',
+            'KP7':'7',
+            'KP8':'8',
+            'KP9':'9',
+            'KPASTERISK':'*',
+            'KPDOT':'.',
+            'KPENTER':'enter',
+            'KPMINUS':'-',
+            'KPPLUS':'+',
+            'KPSLASH':'/',
+            'LEFTBRACE':'[',
+            'MINUS':'-',
+            'RIGHTBRACE':']',
+            'SEMICOLON':';',
+            'SLASH':'/',
+          }
+    
     def __init__(self, trigger):
         super(ButtonTrigger, self).__init__(trigger)
-        keybindings = [t.keyString for t in trigger.hotKeys]
+        if ButtonTrigger.keyEvents == None:
+            ButtonTrigger.keyEvents = KeyEvents()
+        
+        keybindings = [t.keyString.upper() for t in trigger.hotKeys]
         if keybindings:
-            self._bindKeys(keybindings)
+            KeyEvents().keyUpEvent += self.handleKeyPress
+            self._keybindings = keybindings
+            
+    def __del__(self):
+        KeyEvents().keyUpEvent -= self.handleKeyPress
 
     def getActive(self):
-        return False
+        return self._active
 
-    def _bindKeys(self, keybindings):
-        pass
+    def _formatKeyEvent(self, keyEventArg):
+        modifiers = ""
+        if keyEventArg.alt:
+            modifiers += "alt+"
+
+        if keyEventArg.ctrl:
+            modifiers += "ctrl+"
+
+        if keyEventArg.shift:
+            modifiers += "shift+"
+
+        disp = keyEventArg.keyValue
+        if disp in ButtonTrigger.keyMap:
+            disp = ButtonTrigger.keyMap[disp]
+            
+        return (modifiers + disp).upper().strip('+')
+
+    def handleKeyPress(self, sender, keyEventArg):
+        self._active = self._formatKeyEvent(keyEventArg) in self._keybindings

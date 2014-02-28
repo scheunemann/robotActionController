@@ -4,9 +4,11 @@ from collections import namedtuple
 from Processor.event import Event
 from threading import Thread
 
+__all__ = ['KeyEvents']
+
 class KeyEvents(object):
     
-    KeyEventArg = namedtuple('KeyEventArg', ['alt', 'control', 'shift', 'keyCode', 'keyValue', 'modifiers'])
+    KeyEventArg = namedtuple('KeyEventArg', ['alt', 'ctrl', 'shift', 'keyCode', 'keyValue', 'modifiers'])
     keyUpEvent = Event('Key up event')
     keyDownEvent = Event('Key down event')
     

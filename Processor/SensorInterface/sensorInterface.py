@@ -50,8 +50,6 @@ def loadModules(path=None):
 
     return _modulesCache[path]
 
-_interfaceMap = None
-
 
 class SensorInterface(object):
 
@@ -173,16 +171,18 @@ class Dummy(SensorInterface):
 
 class Robot(SensorInterface):
 
+    _interfaceMap = None
+
     def __init__(self, sensor):
         super(Robot, self).__init__(sensor)
         self._externalId = sensor.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
 
-        if not _interfaceMap:
-            _interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
+        if not Robot._interfaceMap:
+            Robot._interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
 
-        if sensor.model.name.lower() not in _interfaceMap:
+        if sensor.model.name.lower() not in Robot._interfaceMap:
             raise ValueError("Unknown sensor type: %s" % sensor.model.name)
             # TODO: Other sensors
 #             servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
@@ -191,7 +191,7 @@ class Robot(SensorInterface):
 #             else:
 #                 self._sensorInt = None
         
-        self._sensorInt = _interfaceMap[sensor.model.name.lower()](sensor)
+        self._sensorInt = Robot._interfaceMap[sensor.model.name.lower()](sensor)
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()
