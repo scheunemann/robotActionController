@@ -19,7 +19,7 @@ def loadModules(path=None):
         path = __file__
 
     path = os.path.realpath(path)
-    if not _modulesCache.has_key(path):
+    if path not in _modulesCache:
         modules = []
 
         find = re.compile(".*\.py$", re.IGNORECASE)
@@ -43,8 +43,7 @@ def loadModules(path=None):
                 if hasattr(type_, "sensorType"):
                     if type_.sensorType:
                         ret[name] = type_
-                else:
-                    print "Skipping module %s due to missing attributes" % name
+                        print "Registering sensor interface module %s" % name
 
         _modulesCache[path] = ret
 
@@ -94,7 +93,6 @@ class SensorInterface(object):
 
         # servo type properties
         if type(sensor) == RobotSensor:
-            # TODO: Stop using the servoConfig for sensor configs
             configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.sensorConfigs)
             if not configs:
                 raise ValueError('Config could not be found for model %s on robot %s' % (sensor.model, sensor.robot))
@@ -106,6 +104,7 @@ class SensorInterface(object):
 
         # sensor properties
         self._sensor = sensor
+        self._config = config
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def getCurrentValue(self):
@@ -184,14 +183,8 @@ class Robot(SensorInterface):
 
         if sensor.model.name.lower() not in Robot._interfaceMap:
             raise ValueError("Unknown sensor type: %s" % sensor.model.name)
-            # TODO: Other sensors
-#             servos = [s for s in sensor.robot.servos if s.jointName == sensor.name]
-#             if servos:
-#                 self._sensorInt = ServoInterface.getServoInterface(servos[0])
-#             else:
-#                 self._sensorInt = None
-        
-        self._sensorInt = Robot._interfaceMap[sensor.model.name.lower()](sensor)
+
+        self._sensorInt = Robot._interfaceMap[sensor.model.name.lower()](sensor, self._config)
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()

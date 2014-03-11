@@ -7,7 +7,8 @@ from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
     ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
 from Data.Model.sensor import DiscreteSensorValue
 
-def loadAllDirectories(rootDir):    
+
+def loadAllDirectories(rootDir):
     actions = {}
     triggers = {}
     robots = []
@@ -15,14 +16,15 @@ def loadAllDirectories(rootDir):
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
     for subDir in dirs:
         loadDirectory(actions, triggers, robots, subDir)
-    
+
     return (robots, actions.values(), triggers.values())
+
 
 def loadDirectory(actions, triggers, robots, subDir):
 
     a = ActionImporter()
     t = TriggerImporter()
-    
+
     robotConfig = os.path.join(subDir, 'robot.xml')
     configType = et.parse(robotConfig).getroot().get('configType', None)
     if configType == 'legacy':
@@ -71,7 +73,6 @@ def loadDirectory(actions, triggers, robots, subDir):
                 print "Skipping sequence %s, another by the same name already exists" % seq.name
     if recheck:
         print >> sys.stderr, "Unable to import all sequences, missing reference actions"
-        
 
     searchDir = os.path.join(subDir, 'keyMaps')
     if os.path.exists(searchDir):
@@ -103,7 +104,7 @@ class RobotImporter(object):
     _types = {}
     _models = {}
     _configs = {}
-    
+
     def __init__(self):
         pass
 
@@ -144,7 +145,7 @@ class RobotImporter(object):
                     [k, v] = kvp.split(':', 2)
                     ed[k] = v
                 robot.extraData = ed
-            RobotImporter._models[modelName] = robot 
+            RobotImporter._models[modelName] = robot
 
         return self._models[modelName]
 
@@ -159,8 +160,8 @@ class RobotImporter(object):
             return None
 
         if modelName not in RobotImporter._sensorModels:
-            s = SensorModel(modelName)            
-            RobotImporter._sensorModels[modelName] = s 
+            s = SensorModel(modelName)
+            RobotImporter._sensorModels[modelName] = s
 
         return self._sensorModels[modelName]
 
@@ -194,13 +195,11 @@ class RobotImporter(object):
     def _getSensors(self, node):
         sensors = []
         for sensor in self._get("SENSORLIST/SENSOR", node):
-            datatype = sensor.get('datatype', 'continuous')
-
             s = RobotSensor()
             s.name = self._getText("NAME", sensor).upper()
             s.model = self._getSensorModel(sensor.get('type', None))
             s.onState = self._getText("ONSTATE", node, None)
-            s.value_type = self._getValueType(datatype)
+            s.value_type = self._getValueType(sensor.get('datatype', 'continuous'))
             if isinstance(s.value_type, ContinuousValueType):
                 s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
                 s.value_type.maxValue = self._getText("LIMITS/MAX", sensor)
@@ -246,7 +245,7 @@ class RobotImporter(object):
                 except Exception as e:
                     print sys.stderr >> "Invalid multi-position specified for servo %s: %s" % (s.jointName, pos)
                     print sys.stderr >> e
-                    continue 
+                    continue
                 s.defaultPositions = str(posList)
             else:
                 s.defaultPosition = pos
@@ -325,10 +324,12 @@ class RobotImporter(object):
         c = SensorConfig()
         c.model = self._getSensorModel(config.tag)
         c.type = config.get('type', 'active')
+        c.datatype = config.get('datatype', 'continuous')
+
         c.extraData = {}
         for eData in self._get('EXTRADATA/*', config):
             c.extraData[eData.tag] = eData.text
-            
+
         return c
 
     def _getServoConfigs(self, node):
@@ -402,7 +403,7 @@ class ActionImporter(object):
             MOUTH_OPEN,520,330
             MOUTH_SMILE,740,330
             EYELIDS,614,330
-        """        
+        """
         name = sequenceLines[0].strip()
         seq = Sequence(name=name)
 
@@ -415,7 +416,7 @@ class ActionImporter(object):
                 jointName = line[0:idx1].strip()
                 pos = line[idx1 + 1:idx2].strip()
                 spd = line[idx2 + 1:].strip()
-                
+
                 speed = int(spd.strip())
                 if '[' in pos and ']' in pos:
                     positions = str([float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != ''])
@@ -423,7 +424,7 @@ class ActionImporter(object):
                 else:
                     positions = None
                     position = float(pos.strip())
-    
+
                 jp = JointPosition(jointName=jointName.upper())
                 jp.position = position
                 jp.positions = positions
@@ -471,7 +472,7 @@ class ActionImporter(object):
             jointName = line[0:idx1].strip()
             pos = line[idx1 + 1:idx2].strip()
             spd = line[idx2 + 1:].strip()
-            
+
             speed = int(spd.strip())
             if '[' in pos and ']' in pos:
                 positions = [float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != '']

@@ -289,6 +289,7 @@ class ROS(object):
                 import traceback
                 logger.debug(traceback.format_exc())
 
+
 class RosSubscriber(object):
 
     def __init__(self, topic, dataType, idleTime=15):
