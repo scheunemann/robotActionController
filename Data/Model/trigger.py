@@ -29,33 +29,46 @@ class SensorTrigger(Trigger):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Trigger'), primary_key=True)
     sensorName = Column(String(50))
-    sensorValue = Column(String(50)) # >0, >=0, <0, <=0, ==0,=='abc'
+    sensorValue = Column(String(50))  # >0, >=0, <0, <=0, ==0,=='abc'
 
     __mapper_args__ = {
             'polymorphic_identity': 'Sensor',
+            'inherit_condition': (id == Trigger.id),
     }
 
 
-timeTriggerTriggers_table = Table('timeTriggerTriggers', Base.metadata,
-    Column('TimeTrigger_id', Integer, ForeignKey('TimeTrigger.id', ondelete='cascade'), primary_key=True),
+compoundTriggerTriggers_table = Table('compoundTriggerTriggers', Base.metadata,
+    Column('CompoundTrigger_id', Integer, ForeignKey('CompoundTrigger.id', ondelete='cascade'), primary_key=True),
     Column('Trigger_id', Integer, ForeignKey('Trigger.id', ondelete='cascade'), primary_key=True)
 )
 
 
-class TimeTrigger(Trigger):
+class CompoundTrigger(Trigger):
     # All trigger
     # Any trigger
+    id = Column(Integer, ForeignKey('%s.id' % 'Trigger'), primary_key=True)
+    requireAll = Column(Boolean, default=True)  # AND, OR
+    triggers = relationship("Trigger", secondary=compoundTriggerTriggers_table)
+
+    __mapper_args__ = {
+            'polymorphic_identity': 'Compound',
+            'inherit_condition': (id == Trigger.id),
+    }
+
+
+class TimeTrigger(Trigger):
     # Time (seconds)
     # Variance (seconds)
     id = Column(Integer, ForeignKey('%s.id' % 'Trigger'), primary_key=True)
     time = Column(Integer)
     variance = Column(Integer, default=0)
     mustStayActive = Column(Boolean, default=False)
-    requireAll = Column(Boolean, default=True)  # AND, OR
-    triggers = relationship("Trigger", secondary=timeTriggerTriggers_table)
+    trigger_id = Column(Integer, ForeignKey('Trigger.id'))
+    trigger = relationship("Trigger", foreign_keys=trigger_id)
 
     __mapper_args__ = {
             'polymorphic_identity': 'Time',
+            'inherit_condition': (id == Trigger.id),
     }
 
 
@@ -66,6 +79,7 @@ class ButtonTrigger(Trigger):
 
     __mapper_args__ = {
             'polymorphic_identity': 'Button',
+            'inherit_condition': (id == Trigger.id),
     }
 
 

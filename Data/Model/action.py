@@ -35,7 +35,7 @@ class Action(StandardMixin, Base):
     def __init__(self, name=None):
         super(Action, self).__init__()
         self.name = name
-        
+
     @staticmethod
     def deserialize(cls, dictObj, session, depth=3):
         if cls == Action:
@@ -55,7 +55,7 @@ class Action(StandardMixin, Base):
                         actionClass = Sound
                     else:
                         raise ValueError('Unknown action type: %s' % actionType)
-                    
+
                     return super(cls, cls).deserialize(actionClass, dictObj, session, depth)
                 else:
                     raise ValueError('Action type not specified')
@@ -67,9 +67,10 @@ class Action(StandardMixin, Base):
 
 class Sound(Action):
 
-    id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
+    id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     __mapper_args__ = {
             'polymorphic_identity': 'Sound',
+            'inherit_condition': (id == Action.id),
     }
 
     uuid = Column(String(36))
@@ -137,11 +138,12 @@ class JointPosition(StandardMixin, Base):
 
 class Pose(Action):
 
-    id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
+    id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     speedModifier = Column(Integer)
 
     __mapper_args__ = {
             'polymorphic_identity': 'Pose',
+            'inherit_condition': (id == Action.id),
     }
 
     jointPositions = relationship("JointPosition", back_populates="pose", lazy=False)
@@ -155,15 +157,16 @@ class Pose(Action):
 
 class Expression(Action):
 
-    id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
+    id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     __mapper_args__ = {
             'polymorphic_identity': 'Expression',
+            'inherit_condition': (id == Action.id),
     }
 
 
 class Sequence(Action):
 
-    id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
+    id = Column(Integer, ForeignKey(Action.id), primary_key=True)
 
     __mapper_args__ = {
             'polymorphic_identity': 'Sequence',
@@ -194,9 +197,10 @@ groupActions_table = Table('groupActions', Base.metadata,
 
 class Group(Action):
 
-    id = Column(Integer, ForeignKey('%s.id' % 'Action'), primary_key=True)
+    id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     __mapper_args__ = {
             'polymorphic_identity': 'Group',
+            'inherit_condition': (id == Action.id),
     }
 
     actions = relationship("Action", secondary=groupActions_table)

@@ -54,6 +54,7 @@ class RobotSensor(Sensor):
 
     __mapper_args__ = {
             'polymorphic_identity': 'RobotSensor',
+            'inherit_condition': (id == Sensor.id),
     }
 
     def __init__(self, name=None):
@@ -66,6 +67,7 @@ class ExternalSensor(Sensor):
 
     __mapper_args__ = {
             'polymorphic_identity': 'ExternalSensor',
+            'inherit_condition': (id == Sensor.id),
     }
 
     def __init__(self, name):
@@ -86,7 +88,7 @@ class SensorValueType(StandardMixin, Base):
 
     __mapper_args__ = {
             'polymorphic_identity': '',
-            'polymorphic_on': type
+            'polymorphic_on': type,
     }
 
 
@@ -98,6 +100,7 @@ class DiscreteValueType(SensorValueType):
 
     __mapper_args__ = {
             'polymorphic_identity': 'Discrete',
+            'inherit_condition': (id == SensorValueType.id),
     }
 
     def normalize(self, value):
@@ -111,6 +114,7 @@ class ContinuousValueType(SensorValueType):
     id = Column(Integer, ForeignKey('SensorValueType.id'), primary_key=True)
     __mapper_args__ = {
             'polymorphic_identity': 'Continuous',
+            'inherit_condition': (id == SensorValueType.id),
     }
 
     minValue = Column(Float, nullable=False)

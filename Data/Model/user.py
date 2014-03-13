@@ -26,10 +26,10 @@ class CustomTrigger(StandardMixin, Base):
     user = relationship("User", back_populates="customTriggers")
 
     overridden_id = Column(Integer, ForeignKey('Trigger.id'))
-    overridden = relationship("Trigger", back_populates="overrides", foreign_keys=overridden_id)
+    overridden = relationship("Trigger", back_populates="overrides", foreign_keys=[overridden_id])
 
     redirect_id = Column(Integer, ForeignKey('Trigger.id'))
-    redirect = relationship("Trigger", foreign_keys=redirect_id)
+    redirect = relationship("Trigger", foreign_keys=[redirect_id])
 
     def __init__(self, name=None):
         super(CustomTrigger, self).__init__()
