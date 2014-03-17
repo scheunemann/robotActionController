@@ -106,8 +106,6 @@ class HumanDirectionSensor(object):
             if theta > 180:
                 theta = 360 - theta
             
-            print "HL: %s, RL: %s, D: %s, T: %s" % (hl, rl, dist, theta) 
-
             if allVals:
                 return (dist, theta)
             elif self._locPart == 'angle':
@@ -134,6 +132,6 @@ if __name__ == '__main__':
     hd = HumanDirectionSensor(sensor, None)
     while True:
         try:
-            hd.getCurrentValue()
+            print hd.getCurrentValue()
         except KeyboardInterrupt:
             break

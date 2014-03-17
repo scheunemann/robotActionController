@@ -210,3 +210,4 @@ def External(SensorInterface):
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()
+    
