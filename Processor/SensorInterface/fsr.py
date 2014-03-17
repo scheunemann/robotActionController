@@ -3,7 +3,7 @@ from threading import Thread, RLock
 import logging
 
 
-__all__ = ['FSR',]
+__all__ = ['FSR', ]
 
 
 class FSR(object):
@@ -97,6 +97,6 @@ class FSR(object):
                 self._data = data
 
 if __name__ == '__main__':
-    s = FSR("COM10", 19200)
+    s = FSR("COM13", 19200)
     while True:
         print [s.getValue(i) for i in range(0, 16)]
