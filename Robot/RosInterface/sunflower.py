@@ -16,14 +16,14 @@ class Sunflower(ROSRobot):
         try:
             ret = {'name': componentName, 'positions': [state.current_pos, ], 'goals': [state.goal_pos, ], 'joints': [state.name, ]}
         except Exception as e:
-            self._logger.critical("Error retrieving joint state: %s" % e) 
+            self._logger.critical("Error retrieving joint state: %s" % e)
             ret = {'name': componentName, 'positions': (), 'goals': (), 'joints': ()}
 
         if resolve_name:
             return self.resolveComponentState(componentName, ret)
         else:
             return ('', ret)
-        
+
     def setComponentState(self, name, value):
         # check if the component has been initialised, and init if it hasn't
         if name == 'base' or name == 'base_direct':

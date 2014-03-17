@@ -70,7 +70,7 @@ class ExternalSensor(Sensor):
             'inherit_condition': (id == Sensor.id),
     }
 
-    def __init__(self, name):
+    def __init__(self, name=None):
         super(ExternalSensor, self).__init__(name)
 
 

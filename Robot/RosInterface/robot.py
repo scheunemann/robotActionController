@@ -212,7 +212,7 @@ class ActionLib(object):
 
     def __init__(self, controllerName, actionName, goalName):
         self._logger = logging.getLogger(self.__class__.__name__)
-        
+
         import rosHelper
         ros = rosHelper.ROS()
         ros.configureROS(packageName='actionlib')
