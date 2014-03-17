@@ -333,7 +333,7 @@ class RosSubscriber(object):
 
 
 class Transform(object):
-    def __init__(self, rosHelper=None, fromTopic=None, toTopic=None):
+    def __init__(self, rosHelper=None, fromFrame=None, toFrame=None):
         self._logger = logging.getLogger(self.__class__.__name__)
         if(rosHelper == None):
             self._ros = ROS()
@@ -345,37 +345,37 @@ class Transform(object):
         self._tf = tf
         self._ros.initROS()
         self._listener = None
-        self._defaultFrom = fromTopic
-        self._defaultTo = toTopic
+        self._defaultFrom = fromFrame
+        self._defaultTo = toFrame
 
-    def getTransform(self, fromTopic=None, toTopic=None):
-        if fromTopic == None:
-            fromTopic = self._defaultFrom
-        if toTopic == None:
-            toTopic = self._defaultTo
+    def getTransform(self, fromFrame=None, toFrame=None):
+        if fromFrame == None:
+            fromFrame = self._defaultFrom
+        if toFrame == None:
+            toFrame = self._defaultTo
 
         """
-        Waits for the /fromTopic to /toTopic transform to be availalble and
+        Waits for the /fromFrame to /toFrame transform to be availalble and
         returns two tuples: (x, y, z) and a quaternion ( rx, ry, rz, rxy)
         Note: z values are 0 for 2D mapping and navigation.
         """
         if len(self._ros.getTopics('base_pose', exactMatch=True)) == 0:
             # this should work for all navigation systems, but at a performance cost
-            if self._listener == None:
-                self._listener = self._tf.TransformListener()
-
-            # Wait for tf to get the frames
             with _threadLock:
+                if self._listener == None:
+                    self._listener = self._tf.TransformListener()
+
+                # Wait for tf to get the frames
                 now = self._rospy.Time(0)
                 try:
-                    self._listener.waitForTransform(toTopic, fromTopic, now, self._rospy.Duration(1.0))
+                    self._listener.waitForTransform(toFrame, fromFrame, now, self._rospy.Duration(1.0))
                 except self._tf.Exception as e:
                     # if str(e) != 'Unable to lookup transform, cache is empty, when looking up transform from frame [' + baseTopic + '] to frame [' + mapTopic + ']':
                     self._logger.critical("Error while waiting for transform: " + str(e))
                     return ((None, None, None), None)
 
             try:
-                (xyPos, heading) = self._listener.lookupTransform(toTopic, fromTopic, now)
+                (xyPos, heading) = self._listener.lookupTransform(toFrame, fromFrame, now)
                 (_, _, orientation) = self._tf.transformations.euler_from_quaternion(heading)
                 return (xyPos, orientation)
             except (self._tf.LookupException, self._tf.ConnectivityException, self._tf.ExtrapolationException) as e:

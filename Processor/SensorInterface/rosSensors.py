@@ -9,7 +9,6 @@ class RosSensor(object):
     sensorType = 'ROS'
 
     def __init__(self, sensor, config, dataProcessor=None):
-        super(RosSensor, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
         self._dataProcessor = dataProcessor
         topic = sensor.extraData.get('externalId', None)
@@ -33,24 +32,27 @@ class RobotLocationSensor(object):
     sensorType = 'RobotLocation'
 
     def __init__(self, sensor, config):
-        super(RobotLocationSensor, self).__init__(sensor)
         self._robot = robotFactory.Factory.getRobotInterface(sensor.robot)
         self._locPart = sensor.extraData.get('externalId', None)
 
     def getCurrentValue(self, allVals=False):
-        _, rawValue = self._robot.getLocation()
+        _, (x, y, theta) = self._robot.getLocation()
 
-        pos = [round(rawValue[0], 3), round(rawValue[1], 3), round(rawValue[2], 3)]
-        if allVals:
-            return pos
-        elif self._locPart and self._locPart.lower() == 'x':
-            return pos[0]
-        elif self._locPart and self._locPart.lower() == 'y':
-            return pos[1]
-        elif self._locPart and self._locPart.lower() == 'theta':
-            return pos[2]
-        else:
-            return None
+        if x != None and y != None and theta != None:
+            try:
+                pos = [round(x, 3), round(y, 3), round(theta, 3)]
+            except:
+                pass
+            if allVals:
+                return pos
+            elif self._locPart and self._locPart.lower() == 'x':
+                return pos[0]
+            elif self._locPart and self._locPart.lower() == 'y':
+                return pos[1]
+            elif self._locPart and self._locPart.lower() == 'theta':
+                return pos[2]
+
+        return None
 
 
 class MessageSensor(RosSensor):
