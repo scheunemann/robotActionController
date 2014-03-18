@@ -31,7 +31,7 @@
 
 
 import sys
-import serial
+import connections
 import time
 from threading import RLock
 
@@ -145,7 +145,7 @@ class ServoController:
         """
         self.portstring = portstring
         self.portLock = RLock()
-        self.port = serial.Serial(port=self.portstring, baudrate=portspeed, timeout=5)  # Picked from a hat.
+        self.port = connections.Connection.getConnection('serial', self.portstring, portspeed)
 
     def Close(self):
         """Close the serial port."""

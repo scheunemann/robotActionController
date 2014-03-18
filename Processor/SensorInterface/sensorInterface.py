@@ -90,7 +90,6 @@ class SensorInterface(object):
             return SensorInterface._interfaces[sensor]
 
     def __init__(self, sensor):
-
         # servo type properties
         if type(sensor) == RobotSensor:
             configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.sensorConfigs)

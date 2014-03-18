@@ -1,17 +1,17 @@
-import serial
+import connections
 from threading import Thread, RLock
 import logging
 
+__all__ = ['FSR_Arduino', ]
 
-__all__ = ['FSR', ]
 
-
-class FSR(object):
-    sensorType = 'FSR'
+class FSR_Arduino(object):
+    sensorType = 'FSR_Arduino'
 
     def __init__(self, port, speed):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._port = serial.Serial(port, speed)
+        self._port = connections.Connection.getConnection('arduino', port, speed)
+#         self._port = serial.Serial(port, speed)
         self._filterLength = 10
         self._dataLock = RLock()
         self._data = []
@@ -96,7 +96,34 @@ class FSR(object):
             with self._dataLock:
                 self._data = data
 
+
+class FSR_MiniMaestro(object):
+    sensorType = 'FSR_MiniMaestro'
+
+    def __init__(self, sensor, config):
+        port = config.port
+        speed = config.speed
+        self._externalId = sensor.extraData.get('externalId', None)
+        self._numSamples = sensor.extraData.get('numSamples', 10)
+        self._conn = connections.Connection.getConnection('minimaestro', port, speed)
+
+    def getCurrentValue(self):
+        samples = [self._conn.getPosition(self._externalId) for _ in range(0, self._numSamples)]
+        return sum(samples) / len(samples)
+
+
 if __name__ == '__main__':
-    s = FSR("COM13", 19200)
+    class S(object):
+        port = "COM14"
+        speed = 115200
+        extraData = {'externalId': 0}
+
+    import time
+    m = FSR_MiniMaestro(S(), S())
     while True:
-        print [s.getValue(i) for i in range(0, 16)]
+        try:
+            print m.getCurrentValue()
+            time.sleep(1 / 50.0)
+        except KeyboardInterrupt:
+            break
+

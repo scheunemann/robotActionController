@@ -24,10 +24,10 @@
 """
 
 import sys
-import serial
 import time
 import logging
 from threading import RLock
+import connections
 
 __all__ = ['HerkuleX', ]
 
@@ -74,7 +74,7 @@ class HerkuleX(object):
 
     def __init__(self, portstring, portspeed):
         self.portLock = RLock()
-        self.mPort = serial.Serial(port=portstring, baudrate=portspeed)
+        self.mPort = connections.Connection.getConnection('serial', portstring, portspeed)
         self.multipleMoveData = []
         self.mIDs = []
         self._logger = logging.getLogger(self.__class__.__name__)
