@@ -58,10 +58,10 @@ class _SensorHandler(Thread):
         last_value = None
         while not self._cancel:
             value = self._sensorInt.getCurrentValue()
-            if self._minValue and value < self._minValue:
+            if self._minValue != None and value < self._minValue:
                 self._logger.debug("Sensor %s returned %s.  Value less than min value, changing to %s" % (self._sensorId, value, self._minValue))
                 value = self._minValue
-            if self._maxValue and value > self._maxValue:
+            if self._maxValue != None and value > self._maxValue:
                 self._logger.debug("Sensor %s returned %s.  Value more than max value, changing to %s" % (self._sensorId, value, self._maxValue))
                 value = self._maxValue
 

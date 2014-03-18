@@ -1,5 +1,5 @@
 from base import StandardMixin, Base
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, Float
 from sqlalchemy.orm import relationship
 
 __all__ = ['User', 'CustomTrigger', 'CustomAction', ]
@@ -11,6 +11,11 @@ class User(StandardMixin, Base):
     speedmodifier = Column(Integer)
     customTriggers = relationship("CustomTrigger")
     customActions = relationship("CustomAction")
+
+    # Temporary? Used for humanDistance psudeo-sensor
+    locX = Column(Float)
+    locY = Column(Float)
+    locTheta = Column(Float)
 
     def __init__(self, name=None, fullname=None):
         super(User, self).__init__()

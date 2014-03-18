@@ -11,6 +11,8 @@ class CareOBot(robot.ROSRobot):
     def __init__(self, name, rosMaster):
         rosHelper.ROS.configureROS(rosMaster=rosMaster)
         super(CareOBot, self).__init__(name, ActionLib, 'script_server')
+        
+        self._tfFromFrame = '/base_footprint'
 
     def getCameraAngle(self):
         state = self.getComponentState('head', True)

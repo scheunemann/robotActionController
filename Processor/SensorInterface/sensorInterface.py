@@ -191,8 +191,22 @@ class Robot(SensorInterface):
 
 def External(SensorInterface):
 
+    _interfaceMap = None
+
     def __init__(self, sensor):
         super(External, self).__init__(sensor)
+        self._externalId = sensor.extraData.get('externalId', None)
+        if self._externalId == None:
+            self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
+
+        if not External._interfaceMap:
+            External._interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
+
+        if sensor.model.name.lower() not in External._interfaceMap:
+            raise ValueError("Unknown sensor type: %s" % sensor.model.name)
+
+        self._sensorInt = External._interfaceMap[sensor.model.name.lower()](sensor, self._config)
 
     def getCurrentValue(self):
-        return None
+        return self._sensorInt.getCurrentValue()
+    

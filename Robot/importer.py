@@ -4,7 +4,7 @@ from xml.etree import ElementTree as et
 
 from legacy import loadDirectory as legacyLoadDirectory
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
+    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
 from Data.Model.sensor import DiscreteSensorValue
 
 
@@ -120,10 +120,14 @@ class RobotImporter(object):
         r.servoConfigs = self._getServoConfigs(config)
         r.servos = self._getServos(config, r.servoGroups)
         sensors = []
-        sensors.extend(self._getSensors(config))
+        sensors.extend(self._getRobotSensors(config))
+        sensors.extend(self._getExternalSensors(config))
         sensors.extend(self._getServoSensors(config))
         r.sensors = sensors
-        r.sensorConfigs = self._getSensorConfigs(config)
+        configs = []
+        configs.extend(self._getRobotSensorConfigs(config))
+        configs.extend(self._getExternalSensorConfigs(config))
+        r.sensorConfigs = configs
         defaultAction = config.get('defaultAction', None)
         if defaultAction:
             if defaultAction in poseDict:
@@ -192,9 +196,45 @@ class RobotImporter(object):
                     sensors.append(s)
         return sensors
 
-    def _getSensors(self, node):
+    def _getRobotSensors(self, node):
         sensors = []
-        for sensor in self._get("SENSORLIST/SENSOR", node):
+        for sensor in self._get("SENSORLIST/ROBOT/SENSOR", node):
+            s = RobotSensor()
+            s.name = self._getText("NAME", sensor).upper()
+            s.model = self._getSensorModel(sensor.get('type', None))
+            s.onState = self._getText("ONSTATE", node, None)
+            s.value_type = self._getValueType(sensor.get('datatype', 'continuous'))
+            if isinstance(s.value_type, ContinuousValueType):
+                s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
+                s.value_type.maxValue = self._getText("LIMITS/MAX", sensor)
+                s.value_type.precision = self._getText("LIMITS/PRECISION", sensor)
+            elif isinstance(s.value_type, DiscreteValueType):
+                # TODO Discrete values
+                for value in self._get("VALUES/VALUE", sensor):
+                    dsv = DiscreteSensorValue()
+                    dsv.value = value.text
+                    s.value_type.values.append(dsv)
+            else:
+                # TODO Error handling
+                pass
+            extId = sensor.get('id', None)
+            if extId != None:
+                s.extraData = {'externalId': extId}
+            else:
+                s.extraData = {}
+            extra = sensor.get('extraData', '')
+            for line in extra.split(','):
+                if line:
+                    (key, value) = line.split(':')
+                    s.extraData[key] = value
+            sensors.append(s)
+
+        return sensors
+
+    def _getExternalSensors(self, node):
+        sensors = []
+        for sensor in self._get("SENSORLIST/EXTERNAL/SENSOR", node):
+            # TODO: Properly handle external sensors
             s = RobotSensor()
             s.name = self._getText("NAME", sensor).upper()
             s.model = self._getSensorModel(sensor.get('type', None))
@@ -235,6 +275,9 @@ class RobotImporter(object):
             modelName = servo.get('type', None)
             if modelName.lower() in RobotImporter._types:
                 s.model = RobotImporter._types[modelName.lower()]
+            else:
+                print "Unknown servo model: %s" % modelName
+                pass
             s.minPosition = self._getText("LIMITS/POS/MIN", servo, None)
             s.maxPosition = self._getText("LIMITS/POS/MAX", servo, None)
             pos = self._getText("DEFAULT/POS", servo)
@@ -310,9 +353,19 @@ class RobotImporter(object):
 
         return RobotImporter._types[modelName.lower()]
 
-    def _getSensorConfigs(self, node):
+    def _getRobotSensorConfigs(self, node):
         configs = []
-        for configGroup in self._get('SENSORCONFIGS', node):
+        for configGroup in self._get('SENSORCONFIGS/ROBOT', node):
+            for configNode in configGroup.getchildren():
+                config = self._getSensorConfig(configNode)
+                if config != None:
+                    configs.append(config)
+
+        return configs
+
+    def _getExternalSensorConfigs(self, node):
+        configs = []
+        for configGroup in self._get('SENSORCONFIGS/EXTERNAL', node):
             for configNode in configGroup.getchildren():
                 config = self._getSensorConfig(configNode)
                 if config != None:

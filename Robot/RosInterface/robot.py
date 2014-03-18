@@ -1,8 +1,8 @@
-import sys
 import io
 import math
 import time
 import logging
+from threading import RLock
 
 _states = {
         0: 'PENDING',
@@ -127,18 +127,24 @@ class ROSRobot(Robot):
     def __init__(self, name, robotInterface, serverTopic):
         super(ROSRobot, self).__init__(name, robotInterface)
         self._rs = None
-        self._tf = None
         self._serverTopic = serverTopic
+        
+        self._tfLock = RLock()
+        self._tf = None
+        self._tfFromFrame = '/base_link'
+        self._tfToFrame = '/map'
 
     @property
     def _transform(self):
-        if self._tf == None:
-            try:
-                import rosHelper
-                self._tf = rosHelper.Transform(rosHelper=self._rs, toTopic='/map', fromTopic='/base_footprint')
-            except Exception as e:
-                self._logger.critical("Error occured while calling transform: %s" % repr(e))
-        return self._tf
+        
+        with self._tfLock:
+            if self._tf == None:
+                try:
+                    import rosHelper
+                    self._tf = rosHelper.Transform(rosHelper=self._rs, toFrame=self._tfToFrame, fromFrame=self._tfFromFrame)
+                except Exception as e:
+                    self._logger.critical("Error occured while calling transform: %s" % repr(e))
+            return self._tf
 
     @property
     def _ros(self):
@@ -212,7 +218,7 @@ class ActionLib(object):
 
     def __init__(self, controllerName, actionName, goalName):
         self._logger = logging.getLogger(self.__class__.__name__)
-        
+
         import rosHelper
         ros = rosHelper.ROS()
         ros.configureROS(packageName='actionlib')
