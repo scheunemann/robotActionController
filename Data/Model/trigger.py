@@ -2,7 +2,7 @@ from base import StandardMixin, Base
 from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean
 from sqlalchemy.orm import relationship
 
-__all__ = ['ButtonHotKey', 'ButtonTrigger', 'SensorTrigger', 'TimeTrigger', 'Trigger', ]
+__all__ = ['ButtonHotkey', 'ButtonTrigger', 'SensorTrigger', 'TimeTrigger', 'Trigger', 'CompoundTrigger']
 
 
 class Trigger(StandardMixin, Base):
@@ -75,7 +75,7 @@ class TimeTrigger(Trigger):
 class ButtonTrigger(Trigger):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Trigger'), primary_key=True)
-    hotKeys = relationship("ButtonHotKey", back_populates="trigger")
+    hotKeys = relationship("ButtonHotkey", back_populates="trigger")
 
     __mapper_args__ = {
             'polymorphic_identity': 'Button',
@@ -83,7 +83,7 @@ class ButtonTrigger(Trigger):
     }
 
 
-class ButtonHotKey(StandardMixin, Base):
+class ButtonHotkey(StandardMixin, Base):
 
     keyString = Column(String(50))
 

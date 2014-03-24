@@ -3,7 +3,7 @@ import sys
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey, Sequence, Sound
+    ServoConfig, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey, Sequence, Sound
 
 
 def _realToScalePos(value, offset, scaleValue):
@@ -370,7 +370,7 @@ class TriggerImporter(object):
                     t = ButtonTrigger(name=name)
                     t.action = action
                     for key in keys:
-                        hk = ButtonHotKey()
+                        hk = ButtonHotkey()
                         hk.keyString = key.lower()
                         t.hotKeys.append(hk)
                     triggers[name] = t

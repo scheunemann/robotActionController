@@ -4,7 +4,7 @@ from xml.etree import ElementTree as et
 
 from legacy import loadDirectory as legacyLoadDirectory
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotKey
+    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
 from Data.Model.sensor import DiscreteSensorValue
 
 
@@ -602,7 +602,7 @@ class TriggerImporter(object):
                 else:
                     t = ButtonTrigger(name=title)
                     t.action = action
-                    hk = ButtonHotKey()
+                    hk = ButtonHotkey()
                     hk.keyString = key
                     t.hotKeys.append(hk)
                     triggers.append(t)
