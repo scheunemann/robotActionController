@@ -29,7 +29,8 @@ class SensorTrigger(Trigger):
 
     id = Column(Integer, ForeignKey('%s.id' % 'Trigger'), primary_key=True)
     sensorName = Column(String(50))
-    sensorValue = Column(String(50))  # >0, >=0, <0, <=0, ==0,=='abc'
+    comparison = Column(String(2))  # >0, >=0, <0, <=0, ==0,=='abc'
+    sensorValue = Column(String(50))
 
     __mapper_args__ = {
             'polymorphic_identity': 'Sensor',
