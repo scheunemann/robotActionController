@@ -22,7 +22,8 @@ class ServoInterface(object):
                 "SSC32": SSC32,
                 "HERKULEX": HerkuleX,
                 "ROBOT": Robot,
-                "DUMMY": Dummy
+                "HS82MG": HS82MG,
+                "DUMMY": Dummy,
                }
 
     @staticmethod
@@ -325,6 +326,42 @@ class SSC32(ServoInterface):
             self._moving = True
             self._conn.write(send)
             self._moving = False
+
+        return self._isInPosition(position)
+
+
+class HS82MG(ServoInterface):
+
+    def __init__(self, servo):
+        super(SSC32, self).__init__(servo)
+        self._externalId = servo.extraData.get('externalId', None)
+        if self._externalId == None:
+            self._logger.critical("MINISSC servo %s is missing its external Id!", servo.name)
+
+        self._conn = Connection.getConnection("minimaestro", self._port, self._portSpeed)
+
+    def isMoving(self):
+        with Connection.getLock(self._conn):
+            return self._conn.getMovingState()
+
+    def getPosition(self):
+        with Connection.getLock(self._conn):
+            posSteps = self._conn.getPosition(self._externalId)
+            return self._realToScalePos(posSteps)
+
+    def setPosition(self, position, speed):
+        validTarget = self._getInRangeVal(position, self._minPos, self._maxPos)
+        if position != validTarget:
+            self._logger.warning("Target position has to be between %s and %s, got %s", self._minPos, self._maxPos, position)
+            # Force target to be within range
+            position = validTarget
+
+        pos = self._scaleToRealPos(position)
+        spd = self._scaleToRealSpeed(speed)
+
+        with Connection.getLock(self._conn):
+            self._conn.setSpeed(spd)
+            self._conn.setTarget(pos)
 
         return self._isInPosition(position)
 
