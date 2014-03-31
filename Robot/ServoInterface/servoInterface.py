@@ -58,7 +58,7 @@ class ServoInterface(object):
 
         # servo properties
         self._moving = False
-        self._servo = servo
+        self._servoId = servo.id
         self._minPos = servo.minPosition
         self._maxPos = servo.maxPosition
         self._defaultPos = servo.defaultPosition
@@ -73,23 +73,23 @@ class ServoInterface(object):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
-    def servo(self):
-        return self._servo
+    def servoId(self):
+        return self._servoId
 
     def isMoving(self):
         return self._moving
 
     def setPositioning(self, enablePositioning):
-        raise ValueError('Manual positioning not supported on servo %s', self._servo)
+        raise ValueError('Manual positioning not supported on servo %s', self._servoId)
 
     def getPositioning(self):
-        raise ValueError('Manual positioning not supported on servo %s', self._servo)
+        raise ValueError('Manual positioning not supported on servo %s', self._servoId)
 
     def setPosition(self, position, speed):
-        raise ValueError('Setting position not supported on servo %s', self._servo)
+        raise ValueError('Setting position not supported on servo %s', self._servoId)
 
     def getPosition(self):
-        raise ValueError('Getting position not supported on servo %s', self._servo)
+        raise ValueError('Getting position not supported on servo %s', self._servoId)
 
     def _isInPosition(self, position):
         return abs(self._tolerance - self.getPosition()) >= self._tolerance
@@ -383,12 +383,12 @@ class Dummy(ServoInterface):
         basePath = os.path.join(basePath, 'servoData')
         if not os.path.exists(basePath):
             os.makedirs(basePath)
-        fileName = 'dummyServoData_%s' % self._servo.id
+        fileName = 'dummyServoData_%s' % self._servoId
         self._fileName = os.path.join(basePath, fileName)
 
     def setPositioning(self, enablePositioning):
         self._posable = enablePositioning
-        self._logger.log(1, "%s Set positioning to: %s", self._servo, enablePositioning)
+        self._logger.log(1, "%s Set positioning to: %s", self._servoId, enablePositioning)
         self._writeData()
 
     def getPositioning(self):
@@ -398,16 +398,16 @@ class Dummy(ServoInterface):
     def setPosition(self, position, speed):
         self._position = position
         self._moving = True
-        self._logger.log(1, "%s Seting position to: %s, speed: %s", self._servo, position, speed)
+        self._logger.log(1, "%s Seting position to: %s, speed: %s", self._servoId, position, speed)
         time.sleep(1.0 / (speed / 100.0))
         self._writeData()
-        self._logger.debug("%s Set position to: %s", self._servo, position)
+        self._logger.debug("%s Set position to: %s", self._servoId, position)
         self._moving = False
         return True
 
     def getPosition(self):
         self._readData()
-        self._logger.log(1, "%s Got position: %s", self._servo, self._position)
+        self._logger.log(1, "%s Got position: %s", self._servoId, self._position)
         return self._position
 
     def _readData(self):
