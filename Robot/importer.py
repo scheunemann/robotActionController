@@ -314,7 +314,7 @@ class RobotImporter(object):
 
     def _getGroupsForServo(self, servo, groupList, rootnode):
         groups = []
-        for node in self._get("SERVOGROUP", rootnode):
+        for node in self._get("SERVOGROUPS/SERVOGROUP", rootnode):
             for member in self._get("MEMBER", node):
                 if member.text == servo.jointName:
                     for group in groupList:
@@ -327,7 +327,7 @@ class RobotImporter(object):
 
     def _getServoGroups(self, node):
         groups = []
-        for group in self._get("SERVOGROUP", node):
+        for group in self._get("SERVOGROUPS/SERVOGROUP", node):
             s = ServoGroup(name=self._getText("NAME", group))
             groups.append(s)
 
