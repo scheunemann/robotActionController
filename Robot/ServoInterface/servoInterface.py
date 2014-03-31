@@ -261,11 +261,11 @@ class HerkuleX(ServoInterface):
             return self._realToScalePos(posSteps)
 
     def setPosition(self, position, speed):
-        realPosition = int(round(self._scaleToRealPos(position)))
+        realPosition = int(round(float(self._scaleToRealPos(position))))
         realSpeed = self._scaleToRealSpeed(speed)  # steps per second
         totalSteps = abs(realPosition - self._conn.getPosition(self._externalId))
         realSpeed = (totalSteps / realSpeed) * 1000
-        realSpeed = int(round(realSpeed))
+        realSpeed = int(round(float(realSpeed)))
         realSpeed = max(realSpeed, 0)
         realSpeed = min(realSpeed, 2856)
 
