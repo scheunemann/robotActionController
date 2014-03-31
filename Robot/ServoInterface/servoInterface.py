@@ -248,8 +248,11 @@ class HerkuleX(ServoInterface):
         self._externalId = servo.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("HerkuleX servo %s is missing its external Id!", servo.name)
+            raise ValueError()
+        self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("HERKULEX", self._port, self._portSpeed)
+        self._conn.initialize()
         self._positioning = False
 
     def getPosition(self):
@@ -333,10 +336,12 @@ class SSC32(ServoInterface):
 class HS82MG(ServoInterface):
 
     def __init__(self, servo):
-        super(SSC32, self).__init__(servo)
+        super(HS82MG, self).__init__(servo)
         self._externalId = servo.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("MINISSC servo %s is missing its external Id!", servo.name)
+            raise ValueException()
+        self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("minimaestro", self._port, self._portSpeed)
 
@@ -360,8 +365,8 @@ class HS82MG(ServoInterface):
         spd = self._scaleToRealSpeed(speed)
 
         with Connection.getLock(self._conn):
-            self._conn.setSpeed(spd)
-            self._conn.setTarget(pos)
+            self._conn.setSpeed(self._externalId, int(spd))
+            self._conn.setTarget(self._externalId, int(pos))
 
         return self._isInPosition(position)
 
