@@ -1,7 +1,7 @@
 import threading
 from Robot.ServoInterface.servoInterface import ServoInterface
 from base import Runner
-from Data.Model import Pose
+from Data.Model import PoseAction
 from multiprocessing.pool import ThreadPool as Pool
 
 
@@ -82,7 +82,7 @@ class PoseRunner(Runner):
             self._cancel = True
             self.waitForComplete()
 
-    supportedClass = Pose
+    supportedClass = PoseAction
 
     def _getHandle(self, action):
         return PoseRunner.PoseHandle(action, self._robot)

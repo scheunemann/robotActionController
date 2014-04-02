@@ -7,7 +7,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.orderinglist import ordering_list
 
 
-__all__ = ['Action', 'Expression', 'Group', 'JointPosition', 'OrderedAction', 'Pose', 'Sequence', 'Sound', ]
+__all__ = ['Action', 'ExpressionAction', 'GroupAction', 'JointPosition', 'SequenceOrder', 'PoseAction', 'SequenceAction', 'SoundAction', ]
 
 
 nextActions_table = Table('nextActions', Base.metadata,
@@ -44,15 +44,15 @@ class Action(StandardMixin, Base):
                     actionType = dictObj.pop('type')
                     actionClass = None
                     if actionType.lower() == 'expression':
-                        actionClass = Expression
+                        actionClass = ExpressionAction
                     elif actionType.lower() == 'group':
-                        actionClass = Group
+                        actionClass = GroupAction
                     elif actionType.lower() == 'pose':
-                        actionClass = Pose
+                        actionClass = PoseAction
                     elif actionType.lower() == 'sequence':
-                        actionClass = Sequence
+                        actionClass = SequenceAction
                     elif actionType.lower() == 'sound':
-                        actionClass = Sound
+                        actionClass = SoundAction
                     else:
                         raise ValueError('Unknown action type: %s' % actionType)
 
@@ -65,11 +65,11 @@ class Action(StandardMixin, Base):
             return super(cls, cls).deserialize(cls, dictObj, session, depth)
 
 
-class Sound(Action):
+class SoundAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     __mapper_args__ = {
-            'polymorphic_identity': 'Sound',
+            'polymorphic_identity': 'SoundAction',
             'inherit_condition': (id == Action.id),
     }
 
@@ -109,7 +109,7 @@ class Sound(Action):
             self.uuid = None
 
     def __init__(self, name=None):
-        super(Sound, self).__init__()
+        super(SoundAction, self).__init__()
         self.name = name
 
 
@@ -120,8 +120,8 @@ class JointPosition(StandardMixin, Base):
     positions = Column(String(500))
     speed = Column(Integer)
 
-    pose_id = Column(Integer, ForeignKey('Pose.id'))
-    pose = relationship("Pose", back_populates="jointPositions")
+    pose_id = Column(Integer, ForeignKey('PoseAction.id'))
+    pose = relationship("PoseAction", back_populates="jointPositions")
 
     def __init__(self, jointName=None, position=None, speed=None):
         super(JointPosition, self).__init__()
@@ -136,70 +136,70 @@ class JointPosition(StandardMixin, Base):
                                   self.position)
 
 
-class Pose(Action):
+class PoseAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     speedModifier = Column(Integer)
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Pose',
+            'polymorphic_identity': 'PoseAction',
             'inherit_condition': (id == Action.id),
     }
 
     jointPositions = relationship("JointPosition", back_populates="pose", lazy=False)
 
     def __init__(self, name=None, jointPositions=[], minLength=None, speedModifier=None):
-        super(Pose, self).__init__(name)
+        super(PoseAction, self).__init__(name)
         self.jointPositions = jointPositions
         self.minLength = minLength
         self.speedModifier = speedModifier
 
 
-class Expression(Action):
+class ExpressionAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     __mapper_args__ = {
-            'polymorphic_identity': 'Expression',
+            'polymorphic_identity': 'ExpressionAction',
             'inherit_condition': (id == Action.id),
     }
 
 
-class Sequence(Action):
+class SequenceAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Sequence',
+            'polymorphic_identity': 'SequenceAction',
     }
 
-    ordered_actions = relationship("OrderedAction", order_by="OrderedAction.order", collection_class=ordering_list("order"), lazy=False)
+    ordered_actions = relationship("SequenceOrder", order_by="SequenceOrder.order", collection_class=ordering_list("order"), lazy=False)
     actions = association_proxy('ordered_actions', 'action')
 
 
-class OrderedAction(StandardMixin, Base):
+class SequenceOrder(StandardMixin, Base):
 
     order = Column(Integer)
 
     action_id = Column(Integer, ForeignKey('Action.id'))
     action = relationship("Action", foreign_keys=action_id)
 
-    sequence_id = Column(Integer, ForeignKey('Sequence.id'))
-    sequence = relationship("Sequence", back_populates="ordered_actions", foreign_keys=sequence_id)
+    sequence_id = Column(Integer, ForeignKey('SequenceAction.id'))
+    sequence = relationship("SequenceAction", back_populates="ordered_actions", foreign_keys=sequence_id)
 
     def __init__(self, action):
         self.action = action
 
 groupActions_table = Table('groupActions', Base.metadata,
-    Column('Group_id', Integer, ForeignKey('Group.id')),
+    Column('Group_id', Integer, ForeignKey('GroupAction.id')),
     Column('Action_id', Integer, ForeignKey('Action.id'))
 )
 
 
-class Group(Action):
+class GroupAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
     __mapper_args__ = {
-            'polymorphic_identity': 'Group',
+            'polymorphic_identity': 'GroupAction',
             'inherit_condition': (id == Action.id),
     }
 

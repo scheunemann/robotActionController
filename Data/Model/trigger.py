@@ -33,7 +33,7 @@ class SensorTrigger(Trigger):
     sensorValue = Column(String(50))
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Sensor',
+            'polymorphic_identity': 'SensorTrigger',
             'inherit_condition': (id == Trigger.id),
     }
 
@@ -52,7 +52,7 @@ class CompoundTrigger(Trigger):
     triggers = relationship("Trigger", secondary=compoundTriggerTriggers_table)
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Compound',
+            'polymorphic_identity': 'CompoundTrigger',
             'inherit_condition': (id == Trigger.id),
     }
 
@@ -68,7 +68,7 @@ class TimeTrigger(Trigger):
     trigger = relationship("Trigger", foreign_keys=trigger_id)
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Time',
+            'polymorphic_identity': 'TimeTrigger',
             'inherit_condition': (id == Trigger.id),
     }
 
@@ -79,7 +79,7 @@ class ButtonTrigger(Trigger):
     hotKeys = relationship("ButtonHotkey", back_populates="trigger")
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Button',
+            'polymorphic_identity': 'ButtonTrigger',
             'inherit_condition': (id == Trigger.id),
     }
 

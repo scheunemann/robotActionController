@@ -1,4 +1,4 @@
-from Data.Model import Sequence, Robot
+from Data.Model import SequenceAction, Robot
 from base import Runner
 from actionRunner import ActionRunner
 
@@ -30,7 +30,7 @@ class SequenceRunner(Runner):
             self._cancel = True
             self.waitForComplete()
 
-    supportedClass = Sequence
+    supportedClass = SequenceAction
 
     def __init__(self, robot):
         super(SequenceRunner, self).__init__(robot)

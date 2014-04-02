@@ -1,4 +1,4 @@
-from Data.Model import Group, Robot
+from Data.Model import GroupAction, Robot
 from actionRunner import ActionRunner
 from base import Runner
 
@@ -16,7 +16,7 @@ class GroupRunner(Runner):
             self._handles = [ActionRunner(robot).executeAsync(a) for a in action.actions]
             return self.waitForComplete()
 
-    supportedClass = Group
+    supportedClass = GroupAction
 
     def __init__(self, robot):
         super(GroupRunner, self).__init__(robot)

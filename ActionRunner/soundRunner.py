@@ -1,6 +1,6 @@
 import time
 import threading
-from Data.Model import Sound
+from Data.Model import SoundAction
 from base import Runner
 import pyaudio
 import cStringIO
@@ -42,7 +42,7 @@ class SoundRunner(Runner):
             self._cancel = True
             self.waitForComplete()
 
-    supportedClass = Sound
+    supportedClass = SoundAction
 
     def __init__(self, robot):
         super(SoundRunner, self).__init__(robot)

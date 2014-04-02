@@ -23,6 +23,21 @@ class IDBase(Data.config.modelBase):
 #     created = Column(DateTime, nullable=False, default=func.now())
 #     modified = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
+    @staticmethod
+    def deserialize(cls, dictObj, session, depth=3):
+        if 'id' in dictObj:
+            newObj = session.query(cls).get(dictObj['id'])
+            if not newObj:
+                raise ValueError("Invalid id specified: %s %s", (cls.__name__, dictObj['id']))
+        else:
+            newObj = cls()
+
+        return (newObj, {})
+
+    def serialize(self, useProxies=True, urlResolver=None, resolveProps={}):
+        obj = {'id': self.id}
+        return obj
+
 
 class SerializeMixin(object):
 
@@ -98,7 +113,7 @@ class SerializeMixin(object):
 
                         for o in newData:
                             if depth > 0:
-                                item, subProps = itemType.deserialize(itemType, o, session, depth -1)
+                                item, subProps = itemType.deserialize(itemType, o, session, depth - 1)
                                 attrList.append(item)
                                 props[attr.key].update(subProps)
                             else:
@@ -147,25 +162,21 @@ class SerializeMixin(object):
                 if useProxies and attr.key not in resolveProps:
                     proxy = {
                              'proxyObject': True,
-                             'ids': [],
                              'type': attr.mapper.class_.__name__,
                              'isList': attr.uselist,
-                             'uri': ''
+                             'uri': attr.key
                     }
-                    if urlResolver != None:
-                        if type(urlResolver) == str:
-                            proxy['uri'] = urlResolver
-                            urlResolver = None
-                        else:
-                            proxy['uri'] = urlResolver(attr.mapper.class_)
 
-                    if attr.uselist == True:
-                        for item in getattr(self, attr.key):
-                            proxy['ids'].append(item.id)
-                    else:
-                        att = getattr(self, attr.key)
-                        if att != None:
-                            proxy['ids'].append(att.id)
+#                     if urlResolver != None:
+#                         if type(urlResolver) == str:
+#                             proxy['uri'] = urlResolver
+#                             urlResolver = None
+#                         else:
+#                             proxy['uri'] = urlResolver(attr.mapper.class_)
+#
+#                     proxy['ids'] = object_session(self).query(getattr(attr.class_attribute.class_, 'id')).all()
+#                     if proxy['ids']:
+#                         proxy['ids'] = [tup[0] for tup in proxy['ids']]
 
                     obj[attr.key] = proxy
                 else:

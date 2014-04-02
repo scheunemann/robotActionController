@@ -4,7 +4,7 @@ from xml.etree import ElementTree as et
 
 from legacy import loadDirectory as legacyLoadDirectory
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, Pose, Sequence, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
+    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, PoseAction, SequenceAction, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
 from Data.Model.sensor import DiscreteSensorValue
 
 
@@ -460,12 +460,12 @@ class ActionImporter(object):
             EYELIDS,614,330
         """
         name = sequenceLines[0].strip()
-        seq = Sequence(name=name)
+        seq = SequenceAction(name=name)
 
         for i in range(1, len(sequenceLines)):
             line = sequenceLines[i].strip()
             if ',' in line:
-                seqStep = Pose(name="%s:%s" % (name, i))
+                seqStep = PoseAction(name="%s:%s" % (name, i))
                 idx1 = line.find(',')
                 idx2 = line.rfind(',')
                 jointName = line[0:idx1].strip()
@@ -519,7 +519,7 @@ class ActionImporter(object):
         """
 
         name = poseLines[0].strip()
-        pose = Pose(name=name)
+        pose = PoseAction(name=name)
 
         for line in poseLines[1:]:
             idx1 = line.find(',')

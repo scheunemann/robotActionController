@@ -3,7 +3,7 @@ import sys
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, Pose, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey, Sequence, Sound
+    ServoConfig, PoseAction, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey, SequenceAction, SoundAction
 
 
 def _realToScalePos(value, offset, scaleValue):
@@ -267,7 +267,7 @@ class ActionImporter(object):
 
         lines = [l.strip() for l in lines]
         name = lines.pop(0)
-        sequence = Sequence(name=name)
+        sequence = SequenceAction(name=name)
 
         expectedActions = int(lines.pop(0))
         if expectedActions == 1 and not lines[-1].endswith('.wav'):
@@ -292,7 +292,7 @@ class ActionImporter(object):
                     print >> sys.stderr, "Could not locate sound file %s, skipping to next item in sequence" % soundFile
                     continue
 
-                action = Sound(name=os.path.splitext(soundFile)[0])
+                action = SoundAction(name=os.path.splitext(soundFile)[0])
                 with open(fullPath, 'rb') as f:
                     action.data = f.read()
 
@@ -306,7 +306,7 @@ class ActionImporter(object):
             lines = legacyData
 
         name = lines[0].strip()
-        pose = Pose(name=name)
+        pose = PoseAction(name=name)
 
         expectedJoints = int(lines[1])
         for i in range(2, expectedJoints + 2):
@@ -363,7 +363,7 @@ class TriggerImporter(object):
                 try:
                     action = filter(lambda x: x.name == name, actions)[0]
                 except:
-                    print "Pose %s not found, skipping" % name
+                    print "PoseAction %s not found, skipping" % name
                     continue
                 keys = [k.strip() for k in vals[1:]]
                 if keys:

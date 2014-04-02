@@ -100,7 +100,7 @@ class DiscreteValueType(SensorValueType):
     values = relationship("DiscreteSensorValue", back_populates="value_type")
 
     __mapper_args__ = {
-            'polymorphic_identity': 'Discrete',
+            'polymorphic_identity': 'DiscreteValueType',
             'inherit_condition': (id == SensorValueType.id),
     }
 
@@ -114,7 +114,7 @@ class DiscreteValueType(SensorValueType):
 class ContinuousValueType(SensorValueType):
     id = Column(Integer, ForeignKey('SensorValueType.id'), primary_key=True)
     __mapper_args__ = {
-            'polymorphic_identity': 'Continuous',
+            'polymorphic_identity': 'ContinuousValueType',
             'inherit_condition': (id == SensorValueType.id),
     }
 
