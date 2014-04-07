@@ -102,8 +102,13 @@ class FSR_MiniMaestro(object):
 
     def __init__(self, sensor, config):
         port = config.port
-        speed = config.speed
+        speed = config.portSpeed
         self._externalId = sensor.extraData.get('externalId', None)
+        if self._externalId == None:
+            self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
+            raise ValueError()
+        self._externalId = int(self._externalId)
+
         self._numSamples = sensor.extraData.get('numSamples', 10)
         self._conn = connections.Connection.getConnection('minimaestro', port, speed)
 

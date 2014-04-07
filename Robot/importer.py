@@ -380,6 +380,8 @@ class RobotImporter(object):
         c.model = self._getSensorModel(config.tag)
         c.type = config.get('type', 'active')
         c.datatype = config.get('datatype', 'continuous')
+        c.port = config.get('port', None)
+        c.portSpeed = config.get('speed', None)
 
         c.extraData = {}
         for eData in self._get('EXTRADATA/*', config):

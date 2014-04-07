@@ -19,14 +19,14 @@ class HumanLocationSensor(object):
             self._userId, = user
         else:
             print "User '%s' not found" % self._userName
-            self._userId = None  
+            self._userId = None
 
     def getCurrentValue(self, allVals=False):
         if self._userId == None:
             return None
 
         rawValue = self._ds.query(User.locX, User.locY, User.locTheta).filter(User.id == self._userId).first()
-        
+
         if rawValue:
             (locX, locY, locTheta) = rawValue
             pos = [round(locX, 3), round(locY, 3), round(locTheta, 3)]
@@ -95,7 +95,7 @@ class HumanDirectionSensor(object):
     def getCurrentValue(self, allVals=False):
         hl = self._hl.getCurrentValue(True)
         rl = self._rl.getCurrentValue(True)
-        
+
         if hl and rl:
             x = hl[0] - rl[0]
             y = hl[1] - rl[1]
@@ -105,7 +105,7 @@ class HumanDirectionSensor(object):
             theta = theta % 360
             if theta > 180:
                 theta = 360 - theta
-            
+
             if allVals:
                 return (dist, theta)
             elif self._locPart == 'angle':
@@ -125,7 +125,7 @@ if __name__ == '__main__':
        'pass': 'iha3',
        'db': 'iha3',
        }
-    
+
     StorageFactory.config['engine'].update(dbConfig)
     ds = StorageFactory.getNewSession()
     sensor = ds.query(Sensor).get(23)

@@ -176,6 +176,7 @@ class Robot(SensorInterface):
         self._externalId = sensor.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
+            raise ValueError()
 
         if not Robot._interfaceMap:
             Robot._interfaceMap = dict([(c.sensorType.lower(), c) for c in loadModules(os.path.dirname(os.path.realpath(__file__))).itervalues()])
@@ -209,4 +210,4 @@ def External(SensorInterface):
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()
-    
+
