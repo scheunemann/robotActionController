@@ -300,6 +300,10 @@ class RobotImporter(object):
             extId = servo.get('id', None)
             if extId != None:
                 s.extraData = {'externalId': extId}
+            else:
+                s.extraData = {}
+            for eData in self._get('EXTRADATA/*', servo):
+                s.extraData[eData.tag] = eData.text
 
             s.defaultSpeed = self._getText("DEFAULT/SPEED", servo, None)
             if s.defaultSpeed < (s.minSpeed or s.model.minSpeed):

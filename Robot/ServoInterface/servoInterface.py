@@ -24,6 +24,7 @@ class ServoInterface(object):
                 "ROBOT": Robot,
                 "HS82MG": HS82MG,
                 "DUMMY": Dummy,
+                "VIRTUAL": Virtual,
                }
 
     @staticmethod
@@ -219,7 +220,7 @@ class MINISSC(ServoInterface):
         self._externalId = servo.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("MINISSC servo %s is missing its external Id!", servo.name)
-            raise ValueException()
+            raise ValueError()
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("SERIAL", self._port, self._portSpeed)
@@ -299,7 +300,7 @@ class SSC32(ServoInterface):
         self._externalId = servo.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("MINISSC servo %s is missing its external Id!", servo.name)
-            raise ValueException()
+            raise ValueError()
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("SERIAL", self._port, self._portSpeed)
@@ -346,7 +347,7 @@ class HS82MG(ServoInterface):
         self._externalId = servo.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("MINISSC servo %s is missing its external Id!", servo.name)
-            raise ValueException()
+            raise ValueError()
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("minimaestro", self._port, self._portSpeed)
@@ -434,6 +435,43 @@ class Dummy(ServoInterface):
             pass
 
 
+class Virtual(ServoInterface):
+
+    def __init__(self, servo):
+        super(Robot, self).__init__(servo)
+        masterServoName = servo.extraData.get('master', None)
+        slaveServoName = servo.extraData.get('slave', None)
+        masterServo = filter(lambda s: s.name == masterServoName, servo.robot.servos)
+        slaveServo = filter(lambda s: s.name == slaveServoName, servo.robot.servos)
+        self._ratio = servo.extraData.get('ratio', 1)
+        self._absolute = servo.extraData.get('absolute', True)
+        if masterServo == None:
+            self._logger.critical("Virtual Servo %s is missing its master joint name!", servo.name)
+            raise ValueError()
+        if slaveServo == None:
+            self._logger.critical("Virtual Servo %s is missing its slave joint name!", servo.name)
+            raise ValueError()
+
+        self._master = ServoInterface.getServoInterface(masterServo[0])
+        self._slave = ServoInterface.getServoInterface(slaveServo[0])
+
+    def getPosition(self):
+        return self._master.getPosition()
+
+    def setPosition(self, position, speed):
+        if self._absolute:
+            slavePosition = position * self._ratio
+        else:
+            curMaster = self._master.getPosition()
+            curSlave = self._slave.getPosition()
+            diff = position - curMaster
+            slavePosition = curSlave + (diff * self._ratio)
+
+        masterSuccess = self._master.setPosition(position, speed)
+        slaveSuccess = self._slave.setPosition(slavePosition, speed)
+        return masterSuccess & slaveSuccess
+
+
 class Robot(ServoInterface):
 
     def __init__(self, servo):
@@ -441,6 +479,7 @@ class Robot(ServoInterface):
         self._componentName = servo.extraData.get('externalId', None)
         if self._componentName == None:
             self._logger.critical("Servo %s is missing its component name (externalId)!", servo.name)
+            raise ValueError()
 
         #         self._checkMinMaxValues()
         from Robot.RosInterface.robotFactory import Factory
