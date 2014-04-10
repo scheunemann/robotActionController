@@ -97,38 +97,38 @@ class ServoInterface(object):
 
     def _scaleToRealPos(self, value):
         try:
-            real = (value / self._posScaleValue) + self._posOffset
+            real = (float(value) / self._posScaleValue) + self._posOffset
             return round(real, 2)
         except:
             if type(value) == list:
-                return [round((v / self._posScaleValue) + self._posOffset, 2) for v in value]
+                return [round((float(v) / self._posScaleValue) + self._posOffset, 2) for v in value]
             return value
 
     def _realToScalePos(self, value):
         try:
-            scaled = (value - self._posOffset) * self._posScaleValue
+            scaled = (float(value) - self._posOffset) * self._posScaleValue
             return round(scaled, 2)
         except:
             if type(value) == list:
-                return [round((v - self._posOffset) * self._posScaleValue, 2) for v in value]
+                return [round((float(v) - self._posOffset) * self._posScaleValue, 2) for v in value]
             return value
 
     def _scaleToRealSpeed(self, value):
         try:
-            real = value / self._speedScaleValue
+            real = float(value) / self._speedScaleValue
             return round(real, 2)
         except:
             if type(value) == list:
-                return [round(v / self._speedScaleValue, 2) for v in value]
+                return [round(float(v) / self._speedScaleValue, 2) for v in value]
             return value
 
     def _realToScaleSpeed(self, value):
         try:
-            scaled = value * self._speedScaleValue
+            scaled = float(value) * self._speedScaleValue
             return round(scaled, 2)
         except:
             if type(value) == list:
-                return [round(v * self._speedScaleValue, 2) for v in value]
+                return [round(float(v) * self._speedScaleValue, 2) for v in value]
             return value
 
     def _getInRangeVal(self, val, minVal, maxVal):
