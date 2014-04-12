@@ -20,9 +20,13 @@ class Trigger(StandardMixin, Base):
             'polymorphic_on': type
     }
 
-    def __init__(self, name=None):
-        super(Trigger, self).__init__()
+    def __init__(self, name=None, type=None, action_id=None, action=None, overrides=None, **kwargs):
+        super(Trigger, self).__init__(**kwargs)
         self.name = name
+        self.type = type
+        self.action_id = action_id
+        self.action = action
+        self.overrides = overrides
 
 
 class SensorTrigger(Trigger):
@@ -36,6 +40,12 @@ class SensorTrigger(Trigger):
             'polymorphic_identity': 'SensorTrigger',
             'inherit_condition': (id == Trigger.id),
     }
+
+    def __init__(self, sensorName=None, comparison=None, sensorValue=None, **kwargs):
+        super(SensorTrigger, self).__init__(**kwargs)
+        self.sensorName = sensorName
+        self.comparison = comparison
+        self.sensorValue = sensorValue
 
 
 compoundTriggerTriggers_table = Table('compoundTriggerTriggers', Base.metadata,
@@ -56,6 +66,11 @@ class CompoundTrigger(Trigger):
             'inherit_condition': (id == Trigger.id),
     }
 
+    def __init__(self, requireAll, triggers, **kwargs):
+        super(CompoundTrigger, self).__init__(**kwargs)
+        self.requireAll = requireAll
+        self.triggers = triggers
+
 
 class TimeTrigger(Trigger):
     # Time (seconds)
@@ -72,6 +87,14 @@ class TimeTrigger(Trigger):
             'inherit_condition': (id == Trigger.id),
     }
 
+    def __init__(self, time=None, variance=None, mustStayActive=None, trigger_id=None, trigger=None, **kwargs):
+        super(TimeTrigger, self).__init__(**kwargs)
+        self.time = time
+        self.variance = variance
+        self.mustStayActive = mustStayActive
+        self.trigger_id = trigger_id
+        self.trigger = trigger
+
 
 class ButtonTrigger(Trigger):
 
@@ -83,6 +106,10 @@ class ButtonTrigger(Trigger):
             'inherit_condition': (id == Trigger.id),
     }
 
+    def __init__(self, hotKeys=None, **kwargs):
+        super(ButtonTrigger, self).__init__(**kwargs)
+        self.hotKeys = hotKeys
+
 
 class ButtonHotkey(StandardMixin, Base):
 
@@ -90,3 +117,9 @@ class ButtonHotkey(StandardMixin, Base):
 
     trigger_id = Column(Integer, ForeignKey('ButtonTrigger.id'))
     trigger = relationship("ButtonTrigger", back_populates="hotKeys")
+
+    def __init__(self, keyString=None, trigger_id=None, trigger=None, **kwargs):
+        super(ButtonHotkey, self).__init__(**kwargs)
+        self.keyString = keyString
+        self.trigger_id = trigger_id
+        self.trigger = trigger

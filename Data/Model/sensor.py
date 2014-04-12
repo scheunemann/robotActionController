@@ -42,8 +42,19 @@ class Sensor(StandardMixin, Base):
         else:
             return value != None
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, type=None, model_id=None, model=None, group_id=None, group=None, value_type_id=None, value_type=None, onStateComparison=None, onStateValue=None, extraData=None, **kwargs):
+        super(Sensor, self).__init__(**kwargs)
         self.name = name
+        self.type = type
+        self.model_id = model_id
+        self.model = model
+        self.group_id = group_id
+        self.group = group
+        self.value_type_id = value_type_id
+        self.value_type = value_type
+        self.onStateComparison = onStateComparison
+        self.onStateValue = onStateValue
+        self.extraData = extraData
 
 
 class RobotSensor(Sensor):
@@ -58,8 +69,10 @@ class RobotSensor(Sensor):
             'inherit_condition': (id == Sensor.id),
     }
 
-    def __init__(self, name=None):
-        super(RobotSensor, self).__init__(name)
+    def __init__(self, robot=None, robot_id=None, **kwargs):
+        super(RobotSensor, self).__init__(**kwargs)
+        self.robot_id = robot_id
+        self.robot = robot
 
 
 class ExternalSensor(Sensor):
@@ -71,8 +84,8 @@ class ExternalSensor(Sensor):
             'inherit_condition': (id == Sensor.id),
     }
 
-    def __init__(self, name=None):
-        super(ExternalSensor, self).__init__(name)
+    def __init__(self, **kwargs):
+        super(ExternalSensor, self).__init__(**kwargs)
 
 
 class DiscreteSensorValue(StandardMixin, Base):
@@ -80,6 +93,12 @@ class DiscreteSensorValue(StandardMixin, Base):
     value = Column(String(500))
     value_type_id = Column(Integer, ForeignKey("DiscreteValueType.id"))
     value_type = relationship("DiscreteValueType", back_populates="values")
+
+    def __init__(self, value=None, value_type_id=None, value_type=None, **kwargs):
+        super(DiscreteSensorValue, self).__init__(**kwargs)
+        self.value = value
+        self.value_type = value_type
+        self.value_type_id = value_type_id
 
 
 class SensorValueType(StandardMixin, Base):
@@ -91,6 +110,11 @@ class SensorValueType(StandardMixin, Base):
             'polymorphic_identity': '',
             'polymorphic_on': type,
     }
+
+    def __init__(self, type=None, sensor=None, **kwargs):
+        super(SensorValueType, self).__init__(**kwargs)
+        self.type = type
+        self.sensor = sensor
 
 
 class DiscreteValueType(SensorValueType):
@@ -109,6 +133,10 @@ class DiscreteValueType(SensorValueType):
 
     def isValid(self, value):
         return value in self.values or not self.values
+
+    def __init__(self, values=None, **kwargs):
+        super(DiscreteValueType, self).__init__(**kwargs)
+        self.values = values
 
 
 class ContinuousValueType(SensorValueType):
@@ -131,23 +159,29 @@ class ContinuousValueType(SensorValueType):
     def isValid(self, value):
         return value <= self.maxValue and value >= self.minValue
 
+    def __init__(self, minValue=None, maxValue=None, precision=None, **kwargs):
+        super(ContinuousValueType, self).__init__(**kwargs)
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.precision = precision
+
 
 class SensorGroup(StandardMixin, Base):
     name = Column(String(50))
     sensors = relationship("Sensor", back_populates="group")
 
-    def __init__(self, name=None):
-        super(SensorGroup, self).__init__()
+    def __init__(self, name=None, sensors=None, **kwargs):
+        super(SensorGroup, self).__init__(**kwargs)
         self.name = name
+        self.sensors = sensors
 
 
 class SensorModel(StandardMixin, Base):
     name = Column(String(50))
 
-    def __init__(self, name=None, version=None):
-        super(SensorModel, self).__init__()
+    def __init__(self, name=None, **kwargs):
+        super(SensorModel, self).__init__(**kwargs)
         self.name = name
-        self.version = version
 
 
 class SensorConfig(StandardMixin, Base):
@@ -163,3 +197,14 @@ class SensorConfig(StandardMixin, Base):
     extraData = Column(PickleType)
 
     type = Column(String(50))
+
+    def __init__(self, robot_id=None, robot=None, model_id=None, model=None, port=None, portSpeed=None, extraData=None, type=None, **kwargs):
+        super(SensorConfig, self).__init__(**kwargs)
+        self.robot_id = robot_id
+        self.robot = robot
+        self.model_id = model_id
+        self.model = model
+        self.port = port
+        self.portSpeed = portSpeed
+        self.extraData = extraData
+        self.type = type

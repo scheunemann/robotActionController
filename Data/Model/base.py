@@ -38,6 +38,10 @@ class IDBase(Data.config.modelBase):
         obj = {'id': self.id}
         return obj
 
+    def __init__(self, id=None, **kwargs):
+        super(IDBase, self).__init__(**kwargs)
+        self.id = id
+
 
 class SerializeMixin(object):
 

@@ -32,9 +32,14 @@ class Action(StandardMixin, Base):
             'polymorphic_on': type
         }
 
-    def __init__(self, name=None):
-        super(Action, self).__init__()
+    def __init__(self, name=None, type=None, minLength=None, next_actions=None, triggers=None, overrides=None, **kwargs):
+        super(Action, self, **kwargs).__init__()
         self.name = name
+        self.type = type
+        self.minLength = minLength
+        self.next_actions = next_actions
+        self.triggers = triggers
+        self.overrides = overrides
 
     @staticmethod
     def deserialize(cls, dictObj, session, depth=3):
@@ -108,9 +113,9 @@ class SoundAction(Action):
             os.remove(self._fileName)
             self.uuid = None
 
-    def __init__(self, name=None):
-        super(SoundAction, self).__init__()
-        self.name = name
+    def __init__(self, uuid=None, **kwargs):
+        super(SoundAction, self).__init__(**kwargs)
+        self.uuid = uuid
 
 
 class JointPosition(StandardMixin, Base):
@@ -123,10 +128,13 @@ class JointPosition(StandardMixin, Base):
     pose_id = Column(Integer, ForeignKey('PoseAction.id'))
     pose = relationship("PoseAction", back_populates="jointPositions")
 
-    def __init__(self, jointName=None, position=None, speed=None):
-        super(JointPosition, self).__init__()
+    def __init__(self, jointName=None, position=None, positions=None, speed=None, pose=None, pose_id=None, **kwargs):
+        super(JointPosition, self).__init__(**kwargs)
         self.jointName = jointName
+        self.positions = positions
         self.position = position
+        self.pose = pose
+        self.pose_id = pose_id
         self.speed = speed
 
     def __repr__(self):
@@ -148,10 +156,9 @@ class PoseAction(Action):
 
     jointPositions = relationship("JointPosition", back_populates="pose", lazy=False)
 
-    def __init__(self, name=None, jointPositions=[], minLength=None, speedModifier=None):
-        super(PoseAction, self).__init__(name)
+    def __init__(self, jointPositions=[], speedModifier=None, **kwargs):
+        super(PoseAction, self).__init__(**kwargs)
         self.jointPositions = jointPositions
-        self.minLength = minLength
         self.speedModifier = speedModifier
 
 
@@ -162,6 +169,9 @@ class ExpressionAction(Action):
             'polymorphic_identity': 'ExpressionAction',
             'inherit_condition': (id == Action.id),
     }
+
+    def __init__(self, **kwargs):
+        super(ExpressionAction, self).__init__(**kwargs)
 
 
 class SequenceAction(Action):
@@ -175,6 +185,11 @@ class SequenceAction(Action):
     ordered_actions = relationship("SequenceOrder", order_by="SequenceOrder.order", collection_class=ordering_list("order"), lazy=False)
     actions = association_proxy('ordered_actions', 'action')
 
+    def __init__(self, ordered_actions=None, actions=None, **kwargs):
+        super(SequenceAction, self).__init__(**kwargs)
+        self.ordered_actions = ordered_actions
+        self.actions = actions
+
 
 class SequenceOrder(StandardMixin, Base):
 
@@ -186,8 +201,12 @@ class SequenceOrder(StandardMixin, Base):
     sequence_id = Column(Integer, ForeignKey('SequenceAction.id'))
     sequence = relationship("SequenceAction", back_populates="ordered_actions", foreign_keys=sequence_id)
 
-    def __init__(self, action):
+    def __init__(self, action=None, action_id=None, sequence=None, sequence_id=None, **kwargs):
+        super(SequenceOrder, self).__init__(**kwargs)
         self.action = action
+        self.action_id = action_id
+        self.sequence = sequence
+        self.sequence_id = sequence_id
 
 groupActions_table = Table('groupActions', Base.metadata,
     Column('Group_id', Integer, ForeignKey('GroupAction.id')),
@@ -204,3 +223,8 @@ class GroupAction(Action):
     }
 
     actions = relationship("Action", secondary=groupActions_table)
+
+    def __init__(self, actions=None, **kwargs):
+        super(GroupAction, self).__init__(**kwargs)
+        self.actions = actions
+

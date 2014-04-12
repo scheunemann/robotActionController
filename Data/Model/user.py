@@ -17,11 +17,16 @@ class User(StandardMixin, Base):
     locY = Column(Float)
     locTheta = Column(Float)
 
-    def __init__(self, name=None, fullname=None):
-        super(User, self).__init__()
+    def __init__(self, name=None, fullname=None, speedmodifier=100, customTriggers=None, customActions=None, locX=None, locY=None, locTheta=None, **kwargs):
+        super(User, self).__init__(**kwargs)
         self.name = name
         self.fullname = fullname
-        self.speedmodifier = 100
+        self.speedmodifier = speedmodifier
+        self.customTriggers = customTriggers
+        self.customActions = customActions
+        self.locX = locX
+        self.locY = locY
+        self.locTheta = locTheta
 
 
 class CustomTrigger(StandardMixin, Base):
@@ -36,9 +41,15 @@ class CustomTrigger(StandardMixin, Base):
     redirect_id = Column(Integer, ForeignKey('Trigger.id'))
     redirect = relationship("Trigger", foreign_keys=[redirect_id])
 
-    def __init__(self, name=None):
-        super(CustomTrigger, self).__init__()
+    def __init__(self, name=None, user_id=None, user=None, overridden_id=None, overridden=None, redirect_id=None, redirect=None, **kwargs):
+        super(CustomTrigger, self).__init__(**kwargs)
         self.name = name
+        self.user_id = user_id
+        self.user = user
+        self.overridden_id = overridden_id
+        self.overridden = overridden
+        self.redirect_id = redirect_id
+        self.redirect = redirect
 
 
 class CustomAction(StandardMixin, Base):
@@ -53,6 +64,12 @@ class CustomAction(StandardMixin, Base):
     redirect_id = Column(Integer, ForeignKey('Action.id'))
     redirect = relationship("Action", foreign_keys=redirect_id)
 
-    def __init__(self, name=None):
-        super(CustomAction, self).__init__()
+    def __init__(self, name=None, user_id=None, user=None, overridden_id=None, overridden=None, redirect_id=None, redirect=None, **kwargs):
+        super(CustomAction, self).__init__(**kwargs)
         self.name = name
+        self.user_id = user_id
+        self.user = user
+        self.overridden_id = overridden_id
+        self.overridden = overridden
+        self.redirect_id = redirect_id
+        self.redirect = redirect

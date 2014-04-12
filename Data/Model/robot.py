@@ -22,18 +22,26 @@ class Robot(StandardMixin, Base):
     sensorConfigs = relationship("SensorConfig", back_populates="robot")
     servoConfigs = relationship("ServoConfig", back_populates="robot", lazy=False)
 
-    def __init__(self, name=None, version=None, model=None):
-        super(Robot, self).__init__()
+    def __init__(self, name=None, version=None, model=None, model_id=None, defaultAction=None, defaultAction_id=None, sensors=None, servos=None, servoGroups=None, sensorConfigs=None, servoConfigs=None, **kwargs):
+        super(Robot, self).__init__(**kwargs)
         self.name = name
         self.version = version
         self.model = model
+        self.model_id = model_id
+        self.defaultAction = defaultAction
+        self.defaultAction_id = defaultAction_id
+        self.sensors = sensors
+        self.servos = servos
+        self.servoGroups = servoGroups
+        self.sensorConfigs = sensorConfigs
+        self.servoConfigs = servoConfigs
 
 
 class RobotModel(StandardMixin, Base):
     extraData = Column(PickleType)
     name = Column(String(50))
 
-    def __init__(self, name=None, extraData=None):
-        super(RobotModel, self).__init__()
+    def __init__(self, name=None, extraData=None, **kwargs):
+        super(RobotModel, self).__init__(**kwargs)
         self.name = name
         self.extraData = extraData
