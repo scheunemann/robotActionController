@@ -20,10 +20,9 @@ class Trigger(StandardMixin, Base):
             'polymorphic_on': type
     }
 
-    def __init__(self, name=None, type=None, action_id=None, action=None, overrides=None, **kwargs):
+    def __init__(self, name=None, action_id=None, action=None, overrides=[], **kwargs):
         super(Trigger, self).__init__(**kwargs)
         self.name = name
-        self.type = type
         self.action_id = action_id
         self.action = action
         self.overrides = overrides
@@ -106,7 +105,7 @@ class ButtonTrigger(Trigger):
             'inherit_condition': (id == Trigger.id),
     }
 
-    def __init__(self, hotKeys=None, **kwargs):
+    def __init__(self, hotKeys=[], **kwargs):
         super(ButtonTrigger, self).__init__(**kwargs)
         self.hotKeys = hotKeys
 

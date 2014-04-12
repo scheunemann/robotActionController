@@ -35,7 +35,7 @@ class Servo(StandardMixin, Base):
     readable = Column('readable', Boolean)
     extraData = Column(PickleType)
 
-    def __init__(self, jointName=None, model_id=None, model=None, robot_id=None, robot=None, groups=None, minSpeed=None, maxSpeed=None, minPosition=None, maxPosition=None, defaultPosition=None, defaultPositions=None, defaultSpeed=None, positionOffset=None, poseable=None, readable=None, extraData=None, **kwargs):
+    def __init__(self, jointName=None, model_id=None, model=None, robot_id=None, robot=None, groups=[], minSpeed=None, maxSpeed=None, minPosition=None, maxPosition=None, defaultPosition=None, defaultPositions=None, defaultSpeed=None, positionOffset=None, poseable=None, readable=None, extraData=None, **kwargs):
         super(Servo, self).__init__(**kwargs)
         self.jointName = jointName
         self.model_id = model_id
@@ -72,7 +72,7 @@ class ServoGroup(StandardMixin, Base):
 
     servos = relationship("Servo", secondary=servoGroups_table, back_populates="groups")
 
-    def __init__(self, name=None, robot_id=None, robot=None, servos=None, **kwargs):
+    def __init__(self, name=None, robot_id=None, robot=None, servos=[], **kwargs):
         super(ServoGroup, self).__init__(**kwargs)
         self.name = name
         self.robot_id = robot_id

@@ -18,7 +18,7 @@ class Sensor(StandardMixin, Base):
     group = relationship("SensorGroup", back_populates="sensors")
 
     value_type_id = Column(Integer, ForeignKey("SensorValueType.id"))
-    value_type = relationship("SensorValueType", back_populates="sensor")
+    value_type = relationship("SensorValueType")
 
     onStateComparison = Column(String(2))
     onStateValue = Column(String(500))
@@ -42,10 +42,9 @@ class Sensor(StandardMixin, Base):
         else:
             return value != None
 
-    def __init__(self, name=None, type=None, model_id=None, model=None, group_id=None, group=None, value_type_id=None, value_type=None, onStateComparison=None, onStateValue=None, extraData=None, **kwargs):
+    def __init__(self, name=None, model_id=None, model=None, group_id=None, group=None, value_type_id=None, value_type=None, onStateComparison=None, onStateValue=None, extraData=None, **kwargs):
         super(Sensor, self).__init__(**kwargs)
         self.name = name
-        self.type = type
         self.model_id = model_id
         self.model = model
         self.group_id = group_id
@@ -104,17 +103,14 @@ class DiscreteSensorValue(StandardMixin, Base):
 class SensorValueType(StandardMixin, Base):
 
     type = Column(String(50))
-    sensor = relationship("Sensor", back_populates="value_type")
 
     __mapper_args__ = {
             'polymorphic_identity': '',
             'polymorphic_on': type,
     }
 
-    def __init__(self, type=None, sensor=None, **kwargs):
+    def __init__(self, **kwargs):
         super(SensorValueType, self).__init__(**kwargs)
-        self.type = type
-        self.sensor = sensor
 
 
 class DiscreteValueType(SensorValueType):
@@ -198,7 +194,7 @@ class SensorConfig(StandardMixin, Base):
 
     type = Column(String(50))
 
-    def __init__(self, robot_id=None, robot=None, model_id=None, model=None, port=None, portSpeed=None, extraData=None, type=None, **kwargs):
+    def __init__(self, robot_id=None, robot=None, model_id=None, model=None, port=None, portSpeed=None, extraData=None, **kwargs):
         super(SensorConfig, self).__init__(**kwargs)
         self.robot_id = robot_id
         self.robot = robot
@@ -207,4 +203,3 @@ class SensorConfig(StandardMixin, Base):
         self.port = port
         self.portSpeed = portSpeed
         self.extraData = extraData
-        self.type = type

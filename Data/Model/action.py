@@ -32,10 +32,9 @@ class Action(StandardMixin, Base):
             'polymorphic_on': type
         }
 
-    def __init__(self, name=None, type=None, minLength=None, next_actions=None, triggers=None, overrides=None, **kwargs):
+    def __init__(self, name=None, minLength=None, next_actions=[], triggers=[], overrides=[], **kwargs):
         super(Action, self, **kwargs).__init__()
         self.name = name
-        self.type = type
         self.minLength = minLength
         self.next_actions = next_actions
         self.triggers = triggers
@@ -185,7 +184,7 @@ class SequenceAction(Action):
     ordered_actions = relationship("SequenceOrder", order_by="SequenceOrder.order", collection_class=ordering_list("order"), lazy=False)
     actions = association_proxy('ordered_actions', 'action')
 
-    def __init__(self, ordered_actions=None, actions=None, **kwargs):
+    def __init__(self, ordered_actions=[], actions=[], **kwargs):
         super(SequenceAction, self).__init__(**kwargs)
         self.ordered_actions = ordered_actions
         self.actions = actions

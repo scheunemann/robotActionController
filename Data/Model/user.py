@@ -17,7 +17,7 @@ class User(StandardMixin, Base):
     locY = Column(Float)
     locTheta = Column(Float)
 
-    def __init__(self, name=None, fullname=None, speedmodifier=100, customTriggers=None, customActions=None, locX=None, locY=None, locTheta=None, **kwargs):
+    def __init__(self, name=None, fullname=None, speedmodifier=100, customTriggers=[], customActions=[], locX=None, locY=None, locTheta=None, **kwargs):
         super(User, self).__init__(**kwargs)
         self.name = name
         self.fullname = fullname
