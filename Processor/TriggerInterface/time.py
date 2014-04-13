@@ -5,8 +5,8 @@ import random
 
 class TimeTrigger(TriggerInterface):
 
-    def __init(self, trigger):
-        super(TimeTrigger, self).__init__(trigger)
+    def __init(self, trigger, **kwargs):
+        super(TimeTrigger, self).__init__(trigger, **kwargs)
         self._lastState = None
         self._lastActive = None
         self._lastChange = None

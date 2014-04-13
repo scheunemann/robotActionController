@@ -7,12 +7,19 @@ class SensorTrigger(TriggerInterface):
     # trigger value >
     # trigger value <
     # trigger value =
-    def __init__(self, trigger):
-        super(SensorTrigger, self).__init__(trigger)
+    def __init__(self, trigger, robot, **kwargs):
+        super(SensorTrigger, self).__init__(trigger, **kwargs)
         if trigger.sensorName:
-            sensor = self._getSensor(trigger.sensorName)
-            self._onState = sensor.onState
-            self._sensorInt = SensorInterface.getSensorInterface(sensor)
+            sensor = self._getSensor(trigger.sensorName, robot)
+            if sensor:
+                self._onState = sensor.onState
+                self._sensorInt = SensorInterface.getSensorInterface(sensor)
+            else:
+                raise ValueError('Unknown sensor %s on robot %s' % (trigger.sensorName, robot.name))
+
+    def _getSensor(self, sensorName, robot):
+        sensors = [s for s in robot.sensors if s.name == sensorName]
+        return sensors[0] if sensors else None
 
     def getActive(self):
         # Value is used in eval functions

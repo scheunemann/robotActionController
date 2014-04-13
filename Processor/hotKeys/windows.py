@@ -12,7 +12,7 @@ class KeyEvents(object):
     keyUpEvent = Event('Key up event')
     keyDownEvent = Event('Key down event')
 
-    def __init__(self, inputName, exclusive=False):
+    def __init__(self, inputName=None, exclusive=False):
         self._thread = Thread(target=self._bindKeys, args=(inputName, exclusive))
         self._thread.setDaemon(True)
         self._thread.start()

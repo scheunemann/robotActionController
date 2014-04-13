@@ -27,7 +27,7 @@ class TriggerInterface(object):
         return TriggerInterface._interfaceClasses
 
     @staticmethod
-    def getTriggerInterface(trigger):
+    def getTriggerInterface(trigger, robot):
         with TriggerInterface._globalLock:
             if trigger not in TriggerInterface._interfaces:
                 try:
@@ -36,13 +36,13 @@ class TriggerInterface(object):
                     logging.getLogger(__name__).critical("No known interface for trigger type: %s", trigger.type)
                     raise ValueError("No known interface for trigger type: %s" % trigger.type)
                 else:
-                    triggerInt = triggerInt(trigger)
+                    triggerInt = triggerInt(trigger=trigger, robot=robot)
 
                 TriggerInterface._interfaces[trigger] = triggerInt
 
             return TriggerInterface._interfaces[trigger]
 
-    def __init__(self, trigger):
+    def __init__(self, trigger, **kwargs):
         self._trigger = trigger
         self._logger = logging.getLogger(self.__class__.__name__)
 
