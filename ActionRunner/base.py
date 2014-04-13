@@ -21,6 +21,8 @@ class Runner(object):
             self._result = False
             self._output = []
             self._done = False
+            self._callback = None
+            self._callbackData = None
 
         @property
         def actionId(self):
@@ -58,15 +60,15 @@ class Runner(object):
         def start(self, callback=None, callbackData=None):
             self._done = False
             self._callback = callback
-            self._callbackData = callback
+            self._callbackData = callbackData
             super(Runner.ExecutionHandle, self).start()
 
         def run(self):
             session = StorageFactory.getNewSession()
             action = session.merge(self._action, load=False)
-            self._output.append((datetime.now(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
+            self._output.append((datetime.utcnow(), '%s: Starting %s' % (self.__class__.__name__, action.name)))
 
-            starttime = datetime.now()
+            starttime = datetime.utcnow()
             try:
                 self._result = self._runInternal(action, session)
             except Exception as e:
@@ -76,25 +78,31 @@ class Runner(object):
                 self._logger.debug(traceback.format_exc())
                 self._result = False
             else:
-                endtime = datetime.now()
+                endtime = datetime.utcnow()
                 if action.minLength and timedelta(seconds=action.minLength) > (starttime - endtime):
                     sleeptime = (starttime - endtime).total_seconds()
                     self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
                     time.sleep(sleeptime)
 
                 if self._result:
-                    self._output.append((datetime.now(), '%s: Completed %s' % (self.__class__.__name__, action.name)))
+                    self._output.append((datetime.utcnow(), '%s: Completed %s' % (self.__class__.__name__, action.name)))
                 else:
-                    self._output.append((datetime.now(), '%s: Failed %s' % (self.__class__.__name__, action.name)))
+                    self._output.append((datetime.utcnow(), '%s: Failed %s' % (self.__class__.__name__, action.name)))
             finally:
                 self._done = True
                 session.close()
-            
+
             if self._callback:
                 try:
-                    self._callback(self, *(self._callbackData or ()))
+                    args = self._callbackData or ()
+                    if not isinstance(args, (list, tuple)):
+                        args = (args, )
+                    self._callback(self, *args)
                 except Exception as e:
+                    import traceback
+                    stacktrace = traceback.format_exc()
                     self._logger.error("Error calling callback function: %s" % e)
+                    self._logger.log(1, stacktrace)
 
         def stop(self):
             handles = [h for h in self._safeHandles if h.isAlive()]
@@ -117,12 +125,10 @@ class Runner(object):
 
     def execute(self, action):
         handle = self._getHandle(action)
-        handle.start()
-        handle.waitForComplete()
+        handle.run()
         return handle.result
 
     def executeAsync(self, action, callback=None, callbackData=None):
         handle = self._getHandle(action)
         handle.start(callback, callbackData)
-        time.sleep(0.01)
         return handle

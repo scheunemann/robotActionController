@@ -58,15 +58,15 @@ class _TriggerHandler(Thread):
             self.join()
 
     def run(self, *args, **kwargs):
-        last_update = datetime.now()
+        last_update = datetime.utcnow()
         last_value = False
         while not self._cancel:
             value = self._triggerInt.getActive()
-            if value != last_value and datetime.now() - last_update >= self._maxUpdateInterval:
-                last_update = datetime.now()
+            if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
+                last_update = datetime.utcnow()
                 last_value = value
                 # Fire the handlers in thread to prevent long handlers from interrupting the loop
                 Thread(target=self._activatedEvent, args=(TriggerActivatedEventArg(self._triggerId, value), )).start()
 
-            sleepTime = max(self._maxUpdateInterval - (datetime.now() - last_update), self._maxPollRate).total_seconds()
+            sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
             time.sleep(sleepTime)

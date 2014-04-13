@@ -54,7 +54,7 @@ class _SensorHandler(Thread):
             self.join()
 
     def run(self):
-        last_update = datetime.now()
+        last_update = datetime.utcnow()
         last_value = None
         while not self._cancel:
             value = self._sensorInt.getCurrentValue()
@@ -65,10 +65,10 @@ class _SensorHandler(Thread):
                 self._logger.debug("Sensor %s returned %s.  Value more than max value, changing to %s" % (self._sensorId, value, self._maxValue))
                 value = self._maxValue
 
-            if value != last_value and datetime.now() - last_update >= self._maxUpdateInterval:
-                last_update = datetime.now()
+            if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
+                last_update = datetime.utcnow()
                 last_value = value
                 self._updateEvent(SensorDataEventArg(self._sensorId, value))
 
-            sleepTime = max(self._maxUpdateInterval - (datetime.now() - last_update), self._maxPollRate).total_seconds()
+            sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
             time.sleep(sleepTime)

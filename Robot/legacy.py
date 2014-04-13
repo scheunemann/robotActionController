@@ -366,21 +366,14 @@ class TriggerImporter(object):
                     print "PoseAction %s not found, skipping" % name
                     continue
                 keys = [k.strip() for k in vals[1:]]
-                if keys:
-                    t = ButtonTrigger(name=name)
-                    t.action = action
-                    for key in keys:
-                        hk = ButtonHotkey()
-                        hk.keyString = key.lower()
-                        t.hotKeys.append(hk)
-                    triggers[name] = t
-                else:
-                    # TODO
-                    t = SensorTrigger(name=name)
-                    t.sensorName = name
-                    t.sensorValue = 'eval::on'
-                    t.action = action
-                    triggers[name] = t
+                t = ButtonTrigger(name=name)
+                t.action = action
+                for key in keys:
+                    hk = ButtonHotkey()
+                    hk.keyString = key.lower()
+                    t.hotKeys.append(hk)
+                triggers[name] = t
+
             else:
                 print >> sys.stderr, "Unknown key sequence?? %s" % line
                 continue
@@ -395,7 +388,7 @@ def loadDirectory(actions, triggers, robots, subDir):
     k = KasparImporter(subDir)
     r = k.getRobot()
     robots.append(r)
-    
+
     searchDir = os.path.join(subDir, 'pos')
     if os.path.exists(searchDir):
         files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
@@ -407,7 +400,7 @@ def loadDirectory(actions, triggers, robots, subDir):
                 actions[pose.name] = pose
             else:
                 print "Skipping pose %s, another by the same name already exists" % pose.name
-    
+
     searchDir = os.path.join(subDir, 'seq')
     if os.path.exists(searchDir):
         files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
@@ -419,7 +412,7 @@ def loadDirectory(actions, triggers, robots, subDir):
                 actions[sequence.name] = sequence
             else:
                 print "Skipping sequence %s, another by the same name already exists" % pose.name
-    
+
     searchDir = os.path.join(subDir, 'keyMaps')
     if os.path.exists(searchDir):
         files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
