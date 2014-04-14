@@ -154,6 +154,45 @@ class HerkuleX(object):
         self.sendData(packetBuf)
 
     """
+    * Get servo voltage
+    *
+    * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
+    * @return current position 0 ~ 1023 (-1: failure)
+    """
+    def getVoltage(self, servoID):
+        optData = [0] * 2
+        optData[0] = 0x36  # Address
+        optData[1] = 0x01  # Length
+
+        packetBuf = self.buildPacket(servoID, HerkuleX.HRAMREAD, optData)
+        readBuf = self.sendDataForResult(packetBuf)
+
+        if not self.isRightPacket(readBuf):
+            return -1
+
+        adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
+        return adc * 0.074  # return ADC converted back to voltage
+
+    """
+    * Get servo torque
+    *
+    * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
+    * @return current torque 0 ~ 1023 (-1: failure)
+    """
+    def getTorque(self, servoID):
+        optData = [0] * 2
+        optData[0] = 0x40  # Address
+        optData[1] = 0x01  # Length
+
+        packetBuf = self.buildPacket(servoID, HerkuleX.HRAMREAD, optData)
+        readBuf = self.sendDataForResult(packetBuf)
+
+        if not self.isRightPacket(readBuf):
+            return -1
+
+        return ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)  # return torque
+
+    """
     * Torque ON
     *
     * @param servoID 0 ~ 254 (0x00 ~ 0xFE), 0xFE : BROADCAST_ID
@@ -684,11 +723,18 @@ class HerkuleX(object):
 
 
 if __name__ == '__main__':
-    h = HerkuleX('COM11', 115200)
-    ids = h.performIDScan()
-    for sid in ids:
-        h.torqueOFF(sid)
-    while(True):
-        for sid in ids:
-            print '%s: %s' % (sid, h.getPosition(sid))
-        time.sleep(1)
+    h = HerkuleX('COM15', 115200)
+#     sid = 16
+#     h.torqueON(sid)
+#     lastTorque = h.getTorque(sid)
+#     while True:
+#         if abs(h.getTorque(sid) - lastTorque) > 30:
+#             h.moveOne(sid, h.getPosition(sid), 0)
+#             lastTorque = h.getTorque(sid)
+#         print "Position: %s, Torque: %s, Voltage: %s" % (h.getPosition(sid), h.getTorque(sid), h.getVoltage(sid))
+#     ids = h.performIDScan()
+#     for sid in ids:
+#     while(True):
+#         for sid in ids:
+#             print '%s: %s' % (sid, h.getPosition(sid))
+#         time.sleep(1)
