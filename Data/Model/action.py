@@ -33,7 +33,7 @@ class Action(StandardMixin, Base):
         }
 
     def __init__(self, name=None, minLength=None, next_actions=[], triggers=[], overrides=[], **kwargs):
-        super(Action, self, **kwargs).__init__()
+        super(Action, self).__init__(**kwargs)
         self.name = name
         self.minLength = minLength
         self.next_actions = next_actions

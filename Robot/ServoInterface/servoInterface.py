@@ -60,13 +60,13 @@ class ServoInterface(object):
         # servo properties
         self._moving = False
         self._servoId = servo.id
-        self._minPos = servo.minPosition
-        self._maxPos = servo.maxPosition
-        self._defaultPos = servo.defaultPosition
-        self._minSpeed = servo.minSpeed
-        self._maxSpeed = servo.maxSpeed
-        self._defaultSpeed = servo.defaultSpeed
-        self._posOffset = servo.positionOffset
+        self._minPos = servo.minPosition if servo.minPosition != None else servo.model.minPosition
+        self._maxPos = servo.maxPosition if servo.maxPosition != None else servo.model.maxPosition
+        self._defaultPos = servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition
+        self._minSpeed = servo.minSpeed if servo.minSpeed != None else servo.model.minSpeed
+        self._maxSpeed = servo.maxSpeed if servo.maxSpeed != None else servo.model.maxSpeed
+        self._defaultSpeed = servo.defaultSpeed if servo.defaultSpeed != None else servo.model.defaultSpeed
+        self._posOffset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
         self._speedScaleValue = servo.model.speedScale
         self._posScaleValue = servo.model.positionScale
         self._tolerance = 10  # Max diff to be considered the same position
@@ -81,16 +81,16 @@ class ServoInterface(object):
         return self._moving
 
     def setPositioning(self, enablePositioning):
-        raise ValueError('Manual positioning not supported on servo %s', self._servoId)
+        pass
 
     def getPositioning(self):
         return False
 
     def setPosition(self, position, speed):
-        raise ValueError('Setting position not supported on servo %s', self._servoId)
+        raise ValueError('Setting position not supported on servo %s' % self._servoId)
 
     def getPosition(self):
-        raise ValueError('Getting position not supported on servo %s', self._servoId)
+        raise ValueError('Getting position not supported on servo %s' % self._servoId)
 
     def _isInPosition(self, position):
         return abs(self._tolerance - self.getPosition()) >= self._tolerance
@@ -438,18 +438,18 @@ class Dummy(ServoInterface):
 class Virtual(ServoInterface):
 
     def __init__(self, servo):
-        super(Robot, self).__init__(servo)
-        masterServoName = servo.extraData.get('master', None)
-        slaveServoName = servo.extraData.get('slave', None)
-        masterServo = filter(lambda s: s.name == masterServoName, servo.robot.servos)
-        slaveServo = filter(lambda s: s.name == slaveServoName, servo.robot.servos)
+        super(Virtual, self).__init__(servo)
+        masterServoName = servo.extraData.get('MASTER', None)
+        slaveServoName = servo.extraData.get('SLAVE', None)
+        masterServo = filter(lambda s: s.jointName == masterServoName, servo.robot.servos)
+        slaveServo = filter(lambda s: s.jointName == slaveServoName, servo.robot.servos)
         self._ratio = servo.extraData.get('ratio', 1)
         self._absolute = servo.extraData.get('absolute', True)
-        if masterServo == None:
-            self._logger.critical("Virtual Servo %s is missing its master joint name!", servo.name)
+        if not masterServo:
+            self._logger.critical("Could not locate physical servo %s for virtual servo %s!" % (masterServoName, servo.jointName))
             raise ValueError()
-        if slaveServo == None:
-            self._logger.critical("Virtual Servo %s is missing its slave joint name!", servo.name)
+        if not slaveServo:
+            self._logger.critical("Could not locate physical servo %s for virtual servo %s!" % (slaveServoName, servo.jointName))
             raise ValueError()
 
         self._master = ServoInterface.getServoInterface(masterServo[0])

@@ -724,17 +724,15 @@ class HerkuleX(object):
 
 if __name__ == '__main__':
     h = HerkuleX('COM15', 115200)
-#     sid = 16
-#     h.torqueON(sid)
-#     lastTorque = h.getTorque(sid)
-#     while True:
-#         if abs(h.getTorque(sid) - lastTorque) > 30:
-#             h.moveOne(sid, h.getPosition(sid), 0)
-#             lastTorque = h.getTorque(sid)
-#         print "Position: %s, Torque: %s, Voltage: %s" % (h.getPosition(sid), h.getTorque(sid), h.getVoltage(sid))
-#     ids = h.performIDScan()
-#     for sid in ids:
-#     while(True):
-#         for sid in ids:
-#             print '%s: %s' % (sid, h.getPosition(sid))
-#         time.sleep(1)
+    ids = h.performIDScan()
+    for sid in ids:
+        h.reboot(sid)
+        h.clearError(sid)
+        h.torqueOFF(sid)
+    while(True):
+        msg = ''
+        for sid in ids:
+#             msg += "%s - Position: %s, Torque: %s, Voltage: %s\n" % (sid, h.getPosition(sid), h.getTorque(sid), h.getVoltage(sid))
+            msg += "%s - Position: %s\n" % (sid, h.getPosition(sid))
+        print msg
+#         time.sleep(0.01)
