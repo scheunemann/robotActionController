@@ -146,7 +146,7 @@ class JointPosition(StandardMixin, Base):
 class PoseAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
-    speedModifier = Column(Integer)
+    speedModifier = Column(Integer, default=100, nullable=False)
 
     __mapper_args__ = {
             'polymorphic_identity': 'PoseAction',

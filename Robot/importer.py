@@ -306,10 +306,11 @@ class RobotImporter(object):
                 s.extraData[eData.tag] = eData.text
 
             s.defaultSpeed = self._getText("DEFAULT/SPEED", servo, None)
-            if s.defaultSpeed < (s.minSpeed or s.model.minSpeed):
-                s.defaultSpeed = (s.minSpeed or s.model.minSpeed)
-            if s.defaultSpeed > (s.maxSpeed or s.model.maxSpeed):
-                s.defaultSpeed = (s.maxSpeed or s.model.maxSpeed)
+            if s.defaultSpeed != None:
+                if s.defaultSpeed < (s.minSpeed or s.model.minSpeed):
+                    s.defaultSpeed = (s.minSpeed or s.model.minSpeed)
+                if s.defaultSpeed > (s.maxSpeed or s.model.maxSpeed):
+                    s.defaultSpeed = (s.maxSpeed or s.model.maxSpeed)
 
             s.groups = self._getGroupsForServo(s, servoGroups, node)
             servos.append(s)
@@ -384,8 +385,8 @@ class RobotImporter(object):
         c.model = self._getSensorModel(config.tag)
         c.type = config.get('type', 'active')
         c.datatype = config.get('datatype', 'continuous')
-        c.port = config.get('port', None)
-        c.portSpeed = config.get('speed', None)
+        c.port = self._getText("PORT", config, None)
+        c.portSpeed = self._getText("SPEED", config, None)
 
         c.extraData = {}
         for eData in self._get('EXTRADATA/*', config):

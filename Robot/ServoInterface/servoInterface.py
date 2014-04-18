@@ -257,7 +257,7 @@ class HerkuleX(ServoInterface):
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("HERKULEX", self._port, self._portSpeed)
-        self._conn.initialize()
+        self._conn.initialize(self._externalId)
         self._positioning = False
 
     def getPosition(self):

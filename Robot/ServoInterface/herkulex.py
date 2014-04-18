@@ -88,14 +88,16 @@ class HerkuleX(object):
     * 2. setAckPolicy(1)
     * 3. torqueON(BROADCAST_ID)
     """
-    def initialize(self):
+    def initialize(self, servoId=None):
+        sId = servoId or HerkuleX.BROADCAST_ID
+
         try:
             time.sleep(0.100)
-            self.clearError(HerkuleX.BROADCAST_ID)  # clear error for all servos
+            self.clearError(sId)  # clear error for all servos
             time.sleep(0.010)
             self.setAckPolicy(1)  # set ACK policy
             time.sleep(0.010)
-            self.torqueON(HerkuleX.BROADCAST_ID)  # torqueON for all servos
+            self.torqueON(sId)  # torqueON for all servos
             time.sleep(0.010)
         except:
             self._logger.error(sys.exc_info()[0])
@@ -124,7 +126,7 @@ class HerkuleX(object):
     """
     * Set Ack Policy
     *
-    * @param valueACK 0=No Replay, 1=Only reply to READ CMD, 2=Always reply
+    * @param valueACK 0=No Reply, 1=Only reply to READ CMD, 2=Always reply
     """
     def setAckPolicy(self, valueACK):
         if valueACK < 0 or valueACK > 2:
