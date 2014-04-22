@@ -20,21 +20,22 @@ class Connection(object):
     @staticmethod
     def getConnection(connectionType, port, speed):
         with Connection._globalLock:
+            key = "%s:%s" % (connectionType, port)
             # TODO: Check for closed connections
-            if port not in Connection._connections:
+            if key not in Connection._connections:
                 if connectionType == "AX12":
-                    try:
-                        from Robot.ServoInterface.dynamixel import ServoController as AX12Controller
-                        Connection._connections[port] = AX12Controller(port, speed)
-                    except serial.serialutil.SerialException:
-                        return None
+                    from Robot.ServoInterface.dynamixel import ServoController as AX12Controller
+                    Connection._connections[key] = AX12Controller(port, speed)
                 elif connectionType == "HERKULEX":
                     from Robot.ServoInterface.herkulex import HerkuleX
-                    Connection._connections[port] = HerkuleX(port, speed)
+                    Connection._connections[key] = HerkuleX(port, speed)
                 elif connectionType == "minimaestro":
                     from Robot.ServoInterface.minimaestro import minimaestro
-                    Connection._connections[port] = minimaestro(port, speed)
+                    Connection._connections[key] = minimaestro(port, speed)
                 else:
-                    Connection._connections[port] = serial.Serial(port=port, baudrate=speed, timeout=5)
+                    try:
+                        Connection._connections[key] = serial.Serial(port=port, baudrate=speed, timeout=5)
+                    except serial.serialutil.SerialException as e:
+                        raise e
 
-            return Connection._connections[port]
+            return Connection._connections[key]

@@ -29,7 +29,7 @@ class BatteryLevelSensor(object):
         speed = config.portSpeed
 
         self._conn = Connection.getConnection("HERKULEX", port, speed)
-        self._conn.initialise(self._externalId)
+        self._conn.initialize(self._externalId)
 
     def getCurrentValue(self):
         rawValue = self._conn.getVoltage(self._externalId)

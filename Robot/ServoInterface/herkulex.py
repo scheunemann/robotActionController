@@ -75,6 +75,7 @@ class HerkuleX(object):
     def __init__(self, portstring, portspeed):
         self.portLock = RLock()
         self.mPort = connections.Connection.getConnection('serial', portstring, portspeed)
+        self.setAckPolicy(1)  # set ACK policy
         self.multipleMoveData = []
         self.mIDs = []
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -85,19 +86,16 @@ class HerkuleX(object):
     * Initialize servos.
     *
     * 1. clearError()
-    * 2. setAckPolicy(1)
-    * 3. torqueON(BROADCAST_ID)
+    * 2. torqueON(BROADCAST_ID)
     """
     def initialize(self, servoId=None):
         sId = servoId or HerkuleX.BROADCAST_ID
 
         try:
             time.sleep(0.100)
-            self.clearError(sId)  # clear error for all servos
+            self.clearError(sId)  # clear error for servo
             time.sleep(0.010)
-            self.setAckPolicy(1)  # set ACK policy
-            time.sleep(0.010)
-            self.torqueON(sId)  # torqueON for all servos
+            self.torqueON(sId)  # torqueON for servo
             time.sleep(0.010)
         except:
             self._logger.error(sys.exc_info()[0])
