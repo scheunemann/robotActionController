@@ -12,7 +12,7 @@ class SensorTrigger(TriggerInterface):
         if trigger.sensorName:
             sensor = self._getSensor(trigger.sensorName, robot)
             if sensor:
-                self._onState = sensor.onStateComparison + sensor.onStateValue
+                self._onState = (trigger.comparison or sensor.onStateComparison) + (trigger.sensorValue or sensor.onStateValue)
                 self._sensorInt = SensorInterface.getSensorInterface(sensor)
             else:
                 raise ValueError('Unknown sensor %s on robot %s' % (trigger.sensorName, robot.name))
