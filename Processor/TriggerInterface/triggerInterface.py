@@ -27,7 +27,7 @@ class TriggerInterface(object):
         return TriggerInterface._interfaceClasses
 
     @staticmethod
-    def getTriggerInterface(trigger, robot):
+    def getTriggerInterface(trigger, robot=None):
         with TriggerInterface._globalLock:
             if trigger not in TriggerInterface._interfaces:
                 try:

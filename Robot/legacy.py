@@ -132,7 +132,7 @@ class KasparImporter(object):
             if defaults and defaults[0].get("type") == 'scaled':
                 offset = _legacyUnscaleValue(minPos, maxPos, offset)
 
-            s.positionOffset = _realToScalePos(offset, 0, s.model.positionScale)
+            s.positionOffset = offset
             s.minPosition = _realToScalePos(minPos, s.positionOffset, s.model.positionScale)
             s.maxPosition = _realToScalePos(maxPos, s.positionOffset, s.model.positionScale)
             s.minSpeed = _realToScaleSpeed(self._getText("LIMITS[@type='speed']/MIN", servo), s.model.speedScale)

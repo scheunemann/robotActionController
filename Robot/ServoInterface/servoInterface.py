@@ -443,7 +443,7 @@ class Virtual(ServoInterface):
         slaveServoName = servo.extraData.get('SLAVE', None)
         masterServo = filter(lambda s: s.jointName == masterServoName, servo.robot.servos)
         slaveServo = filter(lambda s: s.jointName == slaveServoName, servo.robot.servos)
-        self._ratio = servo.extraData.get('ratio', 1)
+        self._ratio = int(servo.extraData.get('RATIO', 1))
         self._absolute = servo.extraData.get('absolute', True)
         if not masterServo:
             self._logger.critical("Could not locate physical servo %s for virtual servo %s!" % (masterServoName, servo.jointName))
