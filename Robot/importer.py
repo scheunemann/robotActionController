@@ -273,6 +273,7 @@ class RobotImporter(object):
         servos = []
         for servo in self._get("SERVOLIST/SERVO", node):
             s = Servo()
+            s.positionOffset = self._getText("CENTER", servo, None)
             s.jointName = self._getText("NAME", servo).upper()
             modelName = servo.get('type', None)
             if modelName.lower() in RobotImporter._types:
