@@ -12,7 +12,10 @@ class SensorTrigger(TriggerInterface):
         if trigger.sensorName:
             sensor = self._getSensor(trigger.sensorName, robot)
             if sensor:
-                self._onState = (trigger.comparison or sensor.onStateComparison) + (trigger.sensorValue or sensor.onStateValue)
+                if not sensor.onStateComparison or sensor.onStateValue:
+                    self._onState = None
+                else:
+                    self._onState = sensor.onStateComparison + sensor.onStateValue
                 self._sensorInt = SensorInterface.getSensorInterface(sensor)
             else:
                 raise ValueError('Unknown sensor %s on robot %s' % (trigger.sensorName, robot.name))
@@ -25,11 +28,12 @@ class SensorTrigger(TriggerInterface):
         # Value is used in eval functions
         value = self._sensorInt.getCurrentValue()
         sensorValue = self._trigger.sensorValue
+        sensorCompare = self._trigger.comparison
         if sensorValue.startswith('eval::'):
             if not self._onState:
                 self._logger.critical("Unknown sensor eval: %s" % sensorValue[6:])
                 return None
-            isOn = eval(self._onState)
+            isOn = eval('value %s' % self._onState)
             if sensorValue[6:] == 'off':
                 return not isOn
             elif sensorValue[6:] == 'on':
@@ -38,4 +42,4 @@ class SensorTrigger(TriggerInterface):
                 self._logger.critical("Unknown sensor eval: %s" % sensorValue[6:])
                 return None
         else:
-            return eval('value' + sensorValue)
+            return eval('value %s%s' % (sensorCompare, sensorValue))
