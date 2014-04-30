@@ -24,8 +24,11 @@ class TimeTrigger(TriggerInterface):
         # triggers can be self-referencing
         if self._triggerInt == self:
             active = False
-        else:
+        elif self._triggerInt:
             active = self._triggerInt.getActive()
+        else:
+            #TODO: Error handling
+            return False
 
         if active != self._lastState:
             self._lastChange = datetime.now()

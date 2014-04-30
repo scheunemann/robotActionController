@@ -105,7 +105,7 @@ class SensorValueType(StandardMixin, Base):
     type = Column(String(50))
 
     __mapper_args__ = {
-            'polymorphic_identity': '',
+            'polymorphic_identity': 'SensorValueType',
             'polymorphic_on': type,
     }
 
