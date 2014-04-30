@@ -447,10 +447,10 @@ class Virtual(ServoInterface):
         self._absolute = servo.extraData.get('absolute', True)
         if not masterServo:
             self._logger.critical("Could not locate physical servo %s for virtual servo %s!" % (masterServoName, servo.jointName))
-            raise ValueError()
+            raise ValueError("Could not locate physical servo %s for virtual servo %s!" % (masterServoName, servo.jointName))
         if not slaveServo:
             self._logger.critical("Could not locate physical servo %s for virtual servo %s!" % (slaveServoName, servo.jointName))
-            raise ValueError()
+            raise ValueError("Could not locate physical servo %s for virtual servo %s!" % (slaveServoName, servo.jointName))
 
         self._master = ServoInterface.getServoInterface(masterServo[0])
         self._slave = ServoInterface.getServoInterface(slaveServo[0])
