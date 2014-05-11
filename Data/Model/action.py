@@ -223,7 +223,7 @@ class GroupAction(Action):
 
     actions = relationship("Action", secondary=groupActions_table)
 
-    def __init__(self, actions=None, **kwargs):
+    def __init__(self, actions=[], **kwargs):
         super(GroupAction, self).__init__(**kwargs)
         self.actions = actions
 
