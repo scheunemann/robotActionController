@@ -119,15 +119,16 @@ class RobotImporter(object):
         r.servoGroups = self._getServoGroups(config)
         r.servoConfigs = self._getServoConfigs(config)
         r.servos = self._getServos(config, r.servoGroups)
-        sensors = []
-        sensors.extend(self._getRobotSensors(config))
-        sensors.extend(self._getExternalSensors(config))
-        sensors.extend(self._getServoSensors(config))
-        r.sensors = sensors
+        r.sensorGroups = self._getSensorGroups(config)
         configs = []
         configs.extend(self._getRobotSensorConfigs(config))
         configs.extend(self._getExternalSensorConfigs(config))
         r.sensorConfigs = configs
+        sensors = []
+        sensors.extend(self._getRobotSensors(config, r.sensorGroups))
+        sensors.extend(self._getExternalSensors(config, r.sensorGroups))
+        # sensors.extend(self._getServoSensors(config, r.sensorGroups))
+        r.sensors = sensors
         defaultAction = config.get('defaultAction', None)
         if defaultAction:
             if defaultAction in poseDict:
@@ -169,14 +170,14 @@ class RobotImporter(object):
 
         return self._sensorModels[modelName]
 
-    def _getServoSensors(self, root):
+    def _getServoSensors(self, node, sensorGroups):
         sensors = []
         # Add a robotSensor for each readable servo
-        for servoConfig in [c for c in self._get("SERVOCONFIGS", root) if len(c.find("**/IS_UPDATED"))]:
-            for servoType in [c for c in servoConfig if c.find('DEFAULT/IS_UPDATED').text == 'true']:
-                for servo in self._get("SERVOLIST/SERVO[@type='%s']" % servoType.tag, root):
+        for servoConfig in [c for c in self._get("SERVOCONFIGS", node) if c.find("**/IS_UPDATED") is not None]:
+            for servoType in [c for c in servoConfig if c.find('DEFAULT/IS_UPDATED') is not None and c.find('DEFAULT/IS_UPDATED').text.lower() == 'true']:
+                for servo in self._get("SERVOLIST/SERVO[@type='%s']" % servoType.tag, node):
                     s = RobotSensor()
-                    s.jointName = self._getText("NAME", servo).upper()
+                    s.name = self._getText("NAME", servo).upper()
                     s.model = self._getSensorModel(servo.get('type', None))
                     s.value_type = self._getValueType('continuous')
                     s.value_type.minValue = self._getText("LIMITS/POS/MIN", servo, None)
@@ -192,11 +193,11 @@ class RobotImporter(object):
                         if line:
                             (key, value) = line.split(':')
                             s.extraData[key] = value
-
+                    s.groups = self._getGroupsForSensor(s, sensorGroups, node)
                     sensors.append(s)
         return sensors
 
-    def _getRobotSensors(self, node):
+    def _getRobotSensors(self, node, sensorGroups):
         sensors = []
         for sensor in self._get("SENSORLIST/ROBOT/SENSOR", node):
             s = RobotSensor()
@@ -228,15 +229,16 @@ class RobotImporter(object):
                 if line:
                     (key, value) = line.split(':')
                     s.extraData[key] = value
+            s.groups = self._getGroupsForSensor(s, sensorGroups, node)
             sensors.append(s)
 
         return sensors
 
-    def _getExternalSensors(self, node):
+    def _getExternalSensors(self, node, sensorGroups):
         sensors = []
         for sensor in self._get("SENSORLIST/EXTERNAL/SENSOR", node):
             # TODO: Properly handle external sensors
-            s = RobotSensor()
+            s = ExternalSensor()
             s.name = self._getText("NAME", sensor).upper()
             s.model = self._getSensorModel(sensor.get('type', None))
             s.onState = self._getText("ONSTATE", node, None)
@@ -264,6 +266,7 @@ class RobotImporter(object):
                 if line:
                     (key, value) = line.split(':')
                     s.extraData[key] = value
+            s.groups = self._getGroupsForSensor(s, sensorGroups, node)
             sensors.append(s)
 
         return sensors
@@ -333,6 +336,27 @@ class RobotImporter(object):
     def _getServoGroups(self, node):
         groups = []
         for group in self._get("SERVOGROUPS/SERVOGROUP", node):
+            s = ServoGroup(name=self._getText("NAME", group))
+            groups.append(s)
+
+        return groups
+
+    def _getGroupsForSensor(self, sensor, groupList, rootnode):
+        groups = []
+        for node in self._get("SENSORGROUPS/SENSORGROUP", rootnode):
+            for member in self._get("MEMBER", node):
+                if member.text == sensor.name:
+                    for group in groupList:
+                        if group.name == self._getText("NAME", node):
+                            groups.append(group)
+                            break
+                    break
+
+        return groups
+
+    def _getSensorGroups(self, node):
+        groups = []
+        for group in self._get("SENSORGROUPS/SENSORGROUP", node):
             s = ServoGroup(name=self._getText("NAME", group))
             groups.append(s)
 
