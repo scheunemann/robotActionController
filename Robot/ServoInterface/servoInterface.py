@@ -403,10 +403,12 @@ class Dummy(ServoInterface):
         return self._posable
 
     def setPosition(self, position, speed):
+        diff = abs(self._position - position)
+        secs = 1.0 / 1024 * diff
         self._position = position
         self._moving = True
         self._logger.log(1, "%s Seting position to: %s, speed: %s", self._servoId, position, speed)
-        time.sleep(1.0 / (speed / 100.0))
+        time.sleep(secs / (speed / 100.0))
         self._writeData()
         self._logger.debug("%s Set position to: %s", self._servoId, position)
         self._moving = False
