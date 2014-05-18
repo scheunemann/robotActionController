@@ -19,10 +19,11 @@ class Robot(StandardMixin, Base):
     sensors = relationship("RobotSensor", back_populates="robot")
     servos = relationship("Servo", back_populates="robot", lazy=False)
     servoGroups = relationship("ServoGroup", back_populates="robot")
+    sensorGroups = relationship("SensorGroup", back_populates="robot")
     sensorConfigs = relationship("SensorConfig", back_populates="robot")
     servoConfigs = relationship("ServoConfig", back_populates="robot", lazy=False)
 
-    def __init__(self, name=None, version=None, model=None, model_id=None, defaultAction=None, defaultAction_id=None, sensors=[], servos=[], servoGroups=[], sensorConfigs=[], servoConfigs=[], **kwargs):
+    def __init__(self, name=None, version=None, model=None, model_id=None, defaultAction=None, defaultAction_id=None, sensors=[], servos=[], servoGroups=[], sensorGroups=[], sensorConfigs=[], servoConfigs=[], **kwargs):
         super(Robot, self).__init__(**kwargs)
         self.name = name
         self.version = version
@@ -33,6 +34,7 @@ class Robot(StandardMixin, Base):
         self.sensors = sensors
         self.servos = servos
         self.servoGroups = servoGroups
+        self.sensorGroups = sensorGroups
         self.sensorConfigs = sensorConfigs
         self.servoConfigs = servoConfigs
 

@@ -1,9 +1,15 @@
 from base import StandardMixin, Base
-from sqlalchemy import Column, String, Integer, ForeignKey, Float, PickleType
+from sqlalchemy import Column, String, Integer, ForeignKey, Float, PickleType, Table
 from sqlalchemy.orm import relationship
 
 
 __all__ = ['ContinuousValueType', 'DiscreteSensorValue', 'DiscreteValueType', 'ExternalSensor', 'RobotSensor', 'Sensor', 'SensorGroup', 'SensorConfig', 'SensorModel', 'SensorValueType']
+
+
+sensorGroups_table = Table('sensorGroups', Base.metadata,
+    Column('Sensor_id', Integer, ForeignKey('Sensor.id')),
+    Column('SensorGroup_id', Integer, ForeignKey('SensorGroup.id'))
+)
 
 
 class Sensor(StandardMixin, Base):
@@ -14,8 +20,7 @@ class Sensor(StandardMixin, Base):
     model_id = Column(Integer, ForeignKey("SensorModel.id"))
     model = relationship("SensorModel")
 
-    group_id = Column(Integer, ForeignKey("SensorGroup.id"))
-    group = relationship("SensorGroup", back_populates="sensors")
+    groups = relationship("SensorGroup", secondary=sensorGroups_table, back_populates="sensors")
 
     value_type_id = Column(Integer, ForeignKey("SensorValueType.id"))
     value_type = relationship("SensorValueType")
@@ -54,6 +59,22 @@ class Sensor(StandardMixin, Base):
         self.onStateComparison = onStateComparison
         self.onStateValue = onStateValue
         self.extraData = extraData
+
+
+class SensorGroup(StandardMixin, Base):
+    name = Column(String(50))
+
+    robot_id = Column(Integer, ForeignKey("Robot.id"))
+    robot = relationship("Robot", back_populates="sensorGroups")
+
+    sensors = relationship("Sensor", secondary=sensorGroups_table, back_populates="groups")
+
+    def __init__(self, name=None, robot_id=None, robot=None, sensors=[], **kwargs):
+        super(SensorGroup, self).__init__(**kwargs)
+        self.name = name
+        self.robot_id = robot_id
+        self.robot = robot
+        self.sensors = sensors
 
 
 class RobotSensor(Sensor):
@@ -160,16 +181,6 @@ class ContinuousValueType(SensorValueType):
         self.minValue = minValue
         self.maxValue = maxValue
         self.precision = precision
-
-
-class SensorGroup(StandardMixin, Base):
-    name = Column(String(50))
-    sensors = relationship("Sensor", back_populates="group")
-
-    def __init__(self, name=None, sensors=None, **kwargs):
-        super(SensorGroup, self).__init__(**kwargs)
-        self.name = name
-        self.sensors = sensors
 
 
 class SensorModel(StandardMixin, Base):
