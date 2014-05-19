@@ -2,21 +2,6 @@ from connections import Connection
 
 
 class BatteryLevelSensor(object):
-    sensorType = 'HERKULEX_BATTERY'
-
-    CHARGELEVELS = [
-                    (12.70, 100),
-                    (12.50, 90),
-                    (12.42, 80),
-                    (12.32, 70),
-                    (12.20, 60),
-                    (12.06, 50),
-                    (11.90, 40),
-                    (11.75, 30),
-                    (11.58, 20),
-                    (11.31, 10),
-                    (10.50, 0),
-                ]
 
     def __init__(self, sensor, config):
         self._externalId = sensor.extraData.get('externalId', None)
@@ -35,13 +20,12 @@ class BatteryLevelSensor(object):
         rawValue = self._conn.getVoltage(self._externalId)
 
         if rawValue:
-            return BatteryLevelSensor.calculatePercentage(rawValue)
+            return self.calculatePercentage(rawValue)
 
         return None
 
-    @staticmethod
-    def calculatePercentage(voltage):
-        vals = BatteryLevelSensor.CHARGELEVELS[:]
+    def calculatePercentage(self, voltage):
+        vals = self.chargeLevels[:]
         vals.sort(key=lambda vp: abs(vp[0] - voltage))
         vals = vals[0:2]
         vals.sort(key=lambda vp: vp[0])
@@ -49,6 +33,50 @@ class BatteryLevelSensor(object):
         maxVolt, maxPct = vals[1]
         pct = minPct + (maxPct - minPct) * ((voltage - minVolt) / (maxVolt - minVolt))
         return min(100, max(0, round(pct, 2)))
+
+class LeadAcidBatteryLevelSensor(BatteryLevelSensor):
+    sensorType = 'HERKULEX_Pb_BATTERY'
+
+    CHARGELEVELS = [
+                    (12.70, 100),
+                    (12.50, 90),
+                    (12.42, 80),
+                    (12.32, 70),
+                    (12.20, 60),
+                    (12.06, 50),
+                    (11.90, 40),
+                    (11.75, 30),
+                    (11.58, 20),
+                    (11.31, 10),
+                    (10.50, 0),
+                ]
+
+    def __init__(self, sensor, config):
+        super(LeadAcidBatteryLevelSensor, self).__init__(sensor, config)
+        self.chargeLevels = LeadAcidBatteryLevelSensor.CHARGELEVELS
+
+
+class LithiumPhosphateBatteryLevelSensor(BatteryLevelSensor):
+    sensorType = 'HERKULEX_LiFe_BATTERY'
+
+    CHARGELEVELS = [
+                    (13.50, 100),
+                    (12.55, 90),
+                    (12.52, 80),
+                    (12.48, 70),
+                    (12.45, 60),
+                    (12.40, 50),
+                    (12.30, 40),
+                    (12.25, 30),
+                    (12.10, 20),
+                    (11.60, 10),
+                    (10.00, 0),
+                ]
+
+    def __init__(self, sensor, config):
+        super(LithiumPhosphateBatteryLevelSensor, self).__init__(sensor, config)
+        self.chargeLevels = LithiumPhosphateBatteryLevelSensor.CHARGELEVELS
+
 
 if __name__ == '__main__':
     for i in range(0, 37):
