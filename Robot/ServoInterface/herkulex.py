@@ -564,6 +564,26 @@ class HerkuleX(object):
 	else:
             return readBuf[7]
 
+    def error_text(self, servoID):
+        statusCode = self.stat(servoID)
+        codes = []
+        if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
+            pass
+        if statusCode & HerkuleX.H_ERROR_INPUT_VOLTAGE == HerkuleX.H_ERROR_INPUT_VOLTAGE:
+            codes.append('Exceeded Input Voltage')
+        if statusCode & HerkuleX.H_ERROR_POS_LIMIT == HerkuleX.H_ERROR_POS_LIMIT:
+            codes.append('Exceeded Position Limit')
+        if statusCode & HerkuleX.H_ERROR_TEMPERATURE_LIMIT == HerkuleX.H_ERROR_TEMPERATURE_LIMIT:
+            codes.append('Exceeded Temperature Limit')
+        if statusCode & HerkuleX.H_ERROR_INVALID_PKT == HerkuleX.H_ERROR_INVALID_PKT:
+            codes.append('Invalid Packet Recieved')
+        if statusCode & HerkuleX.H_ERROR_OVERLOAD == HerkuleX.H_ERROR_OVERLOAD:
+            codes.append('Overload')
+        if statusCode & HerkuleX.H_ERROR_DRIVER_FAULT == HerkuleX.H_ERROR_DRIVER_FAULT:
+            codes.append('Driver Fault')
+        if statusCode & HerkuleX.H_ERROR_EEPREG_DISTORT == HerkuleX.H_ERROR_EEPREG_DISTORT:
+            codes.append('EEP Registry Distorted')
+
     """
     * Model
     *
@@ -648,10 +668,15 @@ class HerkuleX(object):
     *
     """
     def writeRegistryEEP(self, servoID, address, writeByte):
-        optData = [0] * 3
+        length = 1 + (writeByte > 256)
+        optData = [0] * (2 + length)
         optData[0] = address  # Address
-        optData[1] = 0x01  # Length
-        optData[2] = writeByte
+        optData[1] = length  # Length
+        if length == 1:
+            optData[2] = writeByte
+        else:
+            optData[2] = writeByte & 0X00FF
+            optData[3] = (writeByte & 0XFF00) >> 8
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HEEPWRITE, optData)
         self.sendData(packetBuf)
