@@ -71,6 +71,10 @@ class HerkuleX(object):
     H_ERROR_OVERLOAD = 0x10
     H_ERROR_DRIVER_FAULT = 0x20
     H_ERROR_EEPREG_DISTORT = 0x40
+    H_PKTERR_CHECKSUM = 0x04
+    H_PKTERR_UNKNOWN_CMD = 0x08
+    H_PKTERR_EXCEED_REG_RANGE = 0x10
+    H_PKTERR_GARBAGE = 0x20
 
     def __init__(self, portstring, portspeed):
         self.portLock = RLock()
@@ -545,7 +549,7 @@ class HerkuleX(object):
     *     H_ERROR_DRIVER_FAULT          = 0x20
     *     H_ERROR_EEPREG_DISTORT        = 0x40
     """
-    def stat(self, servoID):
+    def stat(self, servoID, detail=False):
         if servoID == 0xFE:
             return 0x00
 
@@ -555,7 +559,10 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
-        return readBuf[7]  # return status
+	if detail:
+            return (readBuf[7], readBuf[8])  # return status
+	else:
+            return readBuf[7]
 
     """
     * Model
