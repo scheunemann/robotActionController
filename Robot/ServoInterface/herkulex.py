@@ -551,12 +551,16 @@ class HerkuleX(object):
     """
     def stat(self, servoID, detail=False):
         if servoID == 0xFE:
+            if detail:
+                return (0x00, 0x00)
             return 0x00
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HSTAT, None)
         readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
+            if detail:
+                return (-1, 0x00)
             return -1
 
 	if detail:
@@ -565,7 +569,7 @@ class HerkuleX(object):
             return readBuf[7]
 
     def error_text(self, servoID):
-        statusCode = self.stat(servoID)
+        statusCode, detailCode = self.stat(servoID, True)
         codes = []
         if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
             pass
@@ -576,13 +580,24 @@ class HerkuleX(object):
         if statusCode & HerkuleX.H_ERROR_TEMPERATURE_LIMIT == HerkuleX.H_ERROR_TEMPERATURE_LIMIT:
             codes.append('Exceeded Temperature Limit')
         if statusCode & HerkuleX.H_ERROR_INVALID_PKT == HerkuleX.H_ERROR_INVALID_PKT:
-            codes.append('Invalid Packet Recieved')
+            details = []
+            if detailCode & HerkuleX.H_PKTERR_CHECKSUM == HerkuleX.H_PKTERR_CHECKSUM:
+                details.append('Checksum Error')
+            if detailCode & HerkuleX.H_PKTERR_UNKNOWN_CMD == HerkuleX.H_PKTERR_UNKNOWN_CMD:
+                details.append('Unknown Command')
+            if detailCode & HerkuleX.H_PKTERR_EXCEED_REG_RANGE == HerkuleX.H_PKTERR_EXCEED_REG_RANGE:
+                details.append('Exceed REG range')
+            if detailCode & HerkuleX.H_PKTERR_GARBAGE == HerkuleX.H_PKTERR_GARBAGE:
+                details.append('Garbage detected')
+            codes.append('Invalid Packet Recieved: %s' % details)
         if statusCode & HerkuleX.H_ERROR_OVERLOAD == HerkuleX.H_ERROR_OVERLOAD:
             codes.append('Overload')
         if statusCode & HerkuleX.H_ERROR_DRIVER_FAULT == HerkuleX.H_ERROR_DRIVER_FAULT:
             codes.append('Driver Fault')
         if statusCode & HerkuleX.H_ERROR_EEPREG_DISTORT == HerkuleX.H_ERROR_EEPREG_DISTORT:
             codes.append('EEP Registry Distorted')
+
+        return codes
 
     """
     * Model
