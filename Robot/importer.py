@@ -8,88 +8,89 @@ from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
 from Data.Model.sensor import DiscreteSensorValue
 
 
-def loadAllDirectories(rootDir):
-    actions = {}
-    triggers = {}
-    robots = []
+def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
+    loadedActions = {}
+    loadedTriggers = {}
+    loadedRobots = []
 
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
     for subDir in dirs:
-        loadDirectory(actions, triggers, robots, subDir)
+        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, loadActions, loadTriggers, loadRobots)
 
-    return (robots, actions.values(), triggers.values())
+    return (loadedRobots, loadedActions.values(), loadedTriggers.values())
 
 
-def loadDirectory(actions, triggers, robots, subDir):
-
-    a = ActionImporter()
-    t = TriggerImporter()
+def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTriggers=True, loadRobots=True):
 
     robotConfig = os.path.join(subDir, 'robot.xml')
     configType = et.parse(robotConfig).getroot().get('configType', None)
     if configType == 'legacy':
-        return legacyLoadDirectory(actions, triggers, robots, subDir)
+        return legacyLoadDirectory(actions, triggers, robots, subDir, actions, triggers, robots)
 
-    searchDir = os.path.join(subDir, 'pos')
-    if os.path.exists(searchDir):
-        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-        for fileName in files:
-            f = open(fileName)
-            lines = f.readlines()
-            pose = a.getPose(lines)
-            if pose.name not in actions:
-                actions[pose.name] = pose
-            else:
-                print "Skipping pose %s, another by the same name already exists" % pose.name
+    if loadActions:
+        a = ActionImporter()
+        searchDir = os.path.join(subDir, 'pos')
+        if os.path.exists(searchDir):
+            files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+            for fileName in files:
+                f = open(fileName)
+                lines = f.readlines()
+                pose = a.getPose(lines)
+                if pose.name not in actions:
+                    actions[pose.name] = pose
+                else:
+                    print "Skipping pose %s, another by the same name already exists" % pose.name
 
-    searchDir = os.path.join(subDir, 'seq')
-    recheck = []
-    if os.path.exists(searchDir):
-        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-        for fileName in files:
-            f = open(fileName)
-            lines = f.readlines()
-            seq = a.getSequence(lines, actions)
-            if seq == None:
-                recheck.append(lines)
-                continue
-            if seq.name not in actions:
-                actions[seq.name] = seq
-            else:
-                print "Skipping sequence %s, another by the same name already exists" % seq.name
-    progress = True
-    while recheck and progress:
-        progress = False
-        for lines in recheck:
-            seq = a.getSequence(lines, actions)
-            if seq == None:
-                continue
-            else:
-                recheck.remove(lines)
-                progress = True
-            if seq.name not in actions:
-                actions[seq.name] = seq
-            else:
-                print "Skipping sequence %s, another by the same name already exists" % seq.name
-    if recheck:
-        print >> sys.stderr, "Unable to import all sequences, missing reference actions"
-
-    searchDir = os.path.join(subDir, 'keyMaps')
-    if os.path.exists(searchDir):
-        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-        for fileName in files:
-            f = open(fileName)
-            lines = f.readlines()
-            for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
-                if trigger.name in triggers:
-                    print "Trigger named %s already imported, skipping" % trigger.name
+        searchDir = os.path.join(subDir, 'seq')
+        recheck = []
+        if os.path.exists(searchDir):
+            files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+            for fileName in files:
+                f = open(fileName)
+                lines = f.readlines()
+                seq = a.getSequence(lines, actions)
+                if seq == None:
+                    recheck.append(lines)
+                    continue
+                if seq.name not in actions:
+                    actions[seq.name] = seq
+                else:
+                    print "Skipping sequence %s, another by the same name already exists" % seq.name
+        progress = True
+        while recheck and progress:
+            progress = False
+            for lines in recheck:
+                seq = a.getSequence(lines, actions)
+                if seq == None:
                     continue
                 else:
-                    triggers[trigger.name] = trigger
+                    recheck.remove(lines)
+                    progress = True
+                if seq.name not in actions:
+                    actions[seq.name] = seq
+                else:
+                    print "Skipping sequence %s, another by the same name already exists" % seq.name
+        if recheck:
+            print >> sys.stderr, "Unable to import all sequences, missing reference actions"
 
-    if os.path.isfile(robotConfig):
-        r = RobotImporter().getRobot(robotConfig, actions)
-        robots.append(r)
+    if loadTriggers:
+        t = TriggerImporter()
+        searchDir = os.path.join(subDir, 'keyMaps')
+        if os.path.exists(searchDir):
+            files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+            for fileName in files:
+                f = open(fileName)
+                lines = f.readlines()
+                for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
+                    if trigger.name in triggers:
+                        print "Trigger named %s already imported, skipping" % trigger.name
+                        continue
+                    else:
+                        triggers[trigger.name] = trigger
+    if loadRobots:
+        if os.path.isfile(robotConfig):
+            r = RobotImporter().getRobot(robotConfig, actions)
+            robots.append(r)
 
     return (robots, actions.values(), triggers.values())
 
