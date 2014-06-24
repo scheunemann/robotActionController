@@ -161,7 +161,7 @@ class HerkuleX(object):
     * Get servo voltage
     *
     * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
-    * @return current position 0 ~ 1023 (-1: failure)
+    * @return current voltage 0 ~ 18.9 (-1: failure)
     """
     def getVoltage(self, servoID):
         optData = [0] * 2
@@ -176,6 +176,26 @@ class HerkuleX(object):
 
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return adc * 0.074  # return ADC converted back to voltage
+
+    """
+    * Get servo voltage
+    *
+    * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
+    * @return current temperature -80 ~ 5000 (-1: failure)
+    """
+    def getTemperature(self, servoID):
+        optData = [0] * 2
+        optData[0] = 0x37  # Address
+        optData[1] = 0x01  # Length
+
+        packetBuf = self.buildPacket(servoID, HerkuleX.HRAMREAD, optData)
+        readBuf = self.sendDataForResult(packetBuf)
+
+        if not self.isRightPacket(readBuf):
+            return -1
+
+        adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
+        return adc  # return ADC converted back to temperature (need to find a formula or copy the chart...)
 
     """
     * Get servo torque
