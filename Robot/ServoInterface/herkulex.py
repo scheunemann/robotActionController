@@ -135,7 +135,7 @@ class HerkuleX(object):
             return
 
         optData = [0] * 3
-        optData[0] = 0x34  # Address
+        optData[0] = 0x01  # Address
         optData[1] = 0x01  # Length
         optData[2] = valueACK  # Value. 0=No Replay, 1=Only reply to READ CMD, 2=Always reply
 
@@ -681,10 +681,15 @@ class HerkuleX(object):
     *
     """
     def writeRegistryRAM(self, servoID, address, writeByte):
-        optData = [0] * 3
+        length = 1 + (writeByte > 255)
+        optData = [0] * (2 + length)
         optData[0] = address  # Address
-        optData[1] = 0x01  # Length
-        optData[2] = writeByte
+        optData[1] = length  # Length
+        if length == 1:
+            optData[2] = writeByte
+        else:
+            optData[2] = writeByte & 0X00FF
+            optData[3] = (writeByte & 0XFF00) >> 8
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HRAMWRITE, optData)
         self.sendData(packetBuf)
@@ -703,7 +708,7 @@ class HerkuleX(object):
     *
     """
     def writeRegistryEEP(self, servoID, address, writeByte):
-        length = 1 + (writeByte > 256)
+        length = 1 + (writeByte > 255)
         optData = [0] * (2 + length)
         optData[0] = address  # Address
         optData[1] = length  # Length
