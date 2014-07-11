@@ -381,58 +381,61 @@ class TriggerImporter(object):
         return triggers.values()
 
 
-def loadDirectory(actions, triggers, robots, subDir):
-    a = ActionImporter()
+def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTriggers=True, loadRobots=True):
     t = TriggerImporter()
 
-    k = KasparImporter(subDir)
-    r = k.getRobot()
-    robots.append(r)
+    if loadRobots:
+        k = KasparImporter(subDir)
+        r = k.getRobot()
+        robots.append(r)
 
-    searchDir = os.path.join(subDir, 'pos')
-    if os.path.exists(searchDir):
-        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-        for fileName in filter(lambda f:f.endswith(".pose"), files):
-            f = open(fileName)
-            lines = f.readlines()
-            pose = a.getPose(lines, r)
-            if pose != None and pose.name not in actions:
-                actions[pose.name] = pose
-            else:
-                print "Skipping pose %s, another by the same name already exists" % pose.name
-
-    searchDir = os.path.join(subDir, 'seq')
-    if os.path.exists(searchDir):
-        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-        for fileName in filter(lambda f:f.endswith(".seq"), files):
-            f = open(fileName)
-            lines = f.readlines()
-            sequence = a.getSequence(lines, actions.values(), os.path.join(subDir, 'sounds'))
-            if sequence != None and sequence.name not in actions:
-                actions[sequence.name] = sequence
-            else:
-                print "Skipping sequence %s, another by the same name already exists" % pose.name
-
-    searchDir = os.path.join(subDir, 'keyMaps')
-    if os.path.exists(searchDir):
-        files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-        for fileName in filter(lambda f:f.endswith(".skm"), files):
-            f = open(fileName)
-            lines = f.readlines()
-            for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
-                if trigger.name in triggers:
-                    print "Trigger named %s already imported, skipping" % trigger.name
+    if loadActions:
+        a = ActionImporter()
+        searchDir = os.path.join(subDir, 'pos')
+        if os.path.exists(searchDir):
+            files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+            for fileName in filter(lambda f:f.endswith(".pose"), files):
+                f = open(fileName)
+                lines = f.readlines()
+                pose = a.getPose(lines, r)
+                if pose != None and pose.name not in actions:
+                    actions[pose.name] = pose
                 else:
-                    triggers[trigger.name] = trigger
+                    print "Skipping pose %s, another by the same name already exists" % pose.name
 
-def loadAllConfigs(rootDir):
+        searchDir = os.path.join(subDir, 'seq')
+        if os.path.exists(searchDir):
+            files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+            for fileName in filter(lambda f:f.endswith(".seq"), files):
+                f = open(fileName)
+                lines = f.readlines()
+                sequence = a.getSequence(lines, actions.values(), os.path.join(subDir, 'sounds'))
+                if sequence != None and sequence.name not in actions:
+                    actions[sequence.name] = sequence
+                else:
+                    print "Skipping sequence %s, another by the same name already exists" % pose.name
+
+    if loadTriggers:
+        searchDir = os.path.join(subDir, 'keyMaps')
+        if os.path.exists(searchDir):
+            files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
+            for fileName in filter(lambda f:f.endswith(".skm"), files):
+                f = open(fileName)
+                lines = f.readlines()
+                for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
+                    if trigger.name in triggers:
+                        print "Trigger named %s already imported, skipping" % trigger.name
+                    else:
+                        triggers[trigger.name] = trigger
+
+def loadAllConfigs(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
 
-    actions = {}
-    triggers = {}
-    robots = []
+    loadedActions = {}
+    loadedTriggers = {}
+    loadedRobots = []
 
     for subDir in dirs:
-        loadDirectory(subDir, actions, triggers)
+        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subdir, loadActions, loadTriggers, loadRobots)
 
-    return (robots, actions.values(), triggers.values())
+    return (loadedRobots, loadedActions.values(), loadedTriggers.values())

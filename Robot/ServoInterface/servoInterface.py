@@ -60,15 +60,15 @@ class ServoInterface(object):
         # servo properties
         self._moving = False
         self._servoId = servo.id
-        self._minPos = servo.minPosition if servo.minPosition != None else servo.model.minPosition
-        self._maxPos = servo.maxPosition if servo.maxPosition != None else servo.model.maxPosition
-        self._defaultPos = servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition
-        self._minSpeed = servo.minSpeed if servo.minSpeed != None else servo.model.minSpeed
-        self._maxSpeed = servo.maxSpeed if servo.maxSpeed != None else servo.model.maxSpeed
-        self._defaultSpeed = servo.defaultSpeed if servo.defaultSpeed != None else servo.model.defaultSpeed
-        self._posOffset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
-        self._speedScaleValue = servo.model.speedScale
-        self._posScaleValue = servo.model.positionScale
+        self._minPos = float(servo.minPosition if servo.minPosition != None else servo.model.minPosition)
+        self._maxPos = float(servo.maxPosition if servo.maxPosition != None else servo.model.maxPosition)
+        self._defaultPos = float(servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition)
+        self._minSpeed = float(servo.minSpeed if servo.minSpeed != None else servo.model.minSpeed)
+        self._maxSpeed = float(servo.maxSpeed if servo.maxSpeed != None else servo.model.maxSpeed)
+        self._defaultSpeed = float(servo.defaultSpeed if servo.defaultSpeed != None else servo.model.defaultSpeed)
+        self._posOffset = float(servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset)
+        self._speedScaleValue = float(servo.model.speedScale)
+        self._posScaleValue = float(servo.model.positionScale)
         self._tolerance = 10  # Max diff to be considered the same position
 
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -403,10 +403,12 @@ class Dummy(ServoInterface):
         return self._posable
 
     def setPosition(self, position, speed):
+        diff = abs(self._position - position)
+        secs = 1.0 / 1024 * diff
         self._position = position
         self._moving = True
         self._logger.log(1, "%s Seting position to: %s, speed: %s", self._servoId, position, speed)
-        time.sleep(1.0 / (speed / 100.0))
+        time.sleep(secs / (speed / 100.0))
         self._writeData()
         self._logger.debug("%s Set position to: %s", self._servoId, position)
         self._moving = False

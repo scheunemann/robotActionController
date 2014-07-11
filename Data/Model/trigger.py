@@ -65,7 +65,7 @@ class CompoundTrigger(Trigger):
             'inherit_condition': (id == Trigger.id),
     }
 
-    def __init__(self, requireAll, triggers, **kwargs):
+    def __init__(self, requireAll=False, triggers=[], **kwargs):
         super(CompoundTrigger, self).__init__(**kwargs)
         self.requireAll = requireAll
         self.triggers = triggers

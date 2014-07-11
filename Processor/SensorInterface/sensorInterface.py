@@ -3,6 +3,7 @@ import os
 import sys
 import inspect
 import logging
+import random
 from threading import RLock
 from Data.Model import RobotSensor, ExternalSensor
 
@@ -130,22 +131,22 @@ class Dummy(SensorInterface):
         if self._sensor.id not in Dummy.sensor_values:
             Dummy.sensor_values[self._sensorId] = Value(ctypes.c_float)
 
-#         value = self._readData()
-#         if value != None:
-#             self.setCurrentValue(value)
+        value = self._readData()
+        if value != None:
+            self.setCurrentValue(value)
 
-#     def __del__(self):
-#         self.writeData(Dummy.sensor_values[self._sensorId].value)
+    def __del__(self):
+        self.writeData(Dummy.sensor_values[self._sensorId].value)
 
     def setCurrentValue(self, value):
-#         self._writeData(value)
-        Dummy.sensor_values[self._sensor.id].value = float(value)
+        self._writeData(value)
+        self._logger.debug("%s Set value to: %s", self._sensorId, value)
 
     def getCurrentValue(self):
-#         val = self._readData()
-#         if val == None:
-#             return random.random()
-        val = Dummy.sensor_values[self._sensorId].value
+        val = self._readData()
+        if val == None:
+            return random.random()
+        self._logger.log(1, "%s Got value: %s", self._sensorId, val)
         return val
 
     def _readData(self):

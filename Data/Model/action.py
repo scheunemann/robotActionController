@@ -81,10 +81,33 @@ class SoundAction(Action):
 
     @property
     def data(self):
-        if not self.uuid:
-            return None
+        return SoundAction.readData(self.uuid)
 
-        fileName = self._fileName
+    @data.setter
+    def data(self, value):
+        self.uuid = SoundAction.saveData(value, self.uuid)
+
+    @property
+    def _fileName(self):
+        self.uuid, path = SoundAction.__fileName(self.uuid)
+        return path
+
+    @staticmethod
+    def saveData(value, uuid=None):
+        if value:
+            uuid, fileName = SoundAction.__fileName(uuid)
+            with open(fileName, 'wb') as f:
+                f.write(value)
+        elif uuid != None:
+            os.remove(fileName)
+            uuid = None
+        return uuid
+
+    @staticmethod
+    def readData(uuid=None):
+        if not uuid:
+            return None
+        fileName = SoundAction.__fileName(uuid)
         if os.path.isfile(fileName):
             with open(fileName, 'rb') as f:
                 b = f.read()
@@ -92,25 +115,16 @@ class SoundAction(Action):
         else:
             return None
 
-    @property
-    def _fileName(self):
-        self._basePath = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soundFiles'))
-        if not os.path.isdir(self._basePath):
-            os.makedirs(self._basePath)
+    @staticmethod
+    def __fileName(uuid_=None):
+        basePath = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soundFiles'))
+        if not os.path.isdir(basePath):
+            os.makedirs(basePath)
 
-        if self.uuid == None:
-            self.uuid = str(uuid.uuid1())
+        if uuid_ == None:
+            uuid_ = str(uuid.uuid1())
 
-        return os.path.join(self._basePath, self.uuid)
-
-    @data.setter
-    def data(self, value):
-        if value:
-            with open(self._fileName, 'wb') as f:
-                f.write(value)
-        elif self.uuid != None:
-            os.remove(self._fileName)
-            self.uuid = None
+        return (uuid_, os.path.join(basePath, uuid_))
 
     def __init__(self, uuid=None, **kwargs):
         super(SoundAction, self).__init__(**kwargs)

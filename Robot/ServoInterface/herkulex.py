@@ -71,6 +71,10 @@ class HerkuleX(object):
     H_ERROR_OVERLOAD = 0x10
     H_ERROR_DRIVER_FAULT = 0x20
     H_ERROR_EEPREG_DISTORT = 0x40
+    H_PKTERR_CHECKSUM = 0x04
+    H_PKTERR_UNKNOWN_CMD = 0x08
+    H_PKTERR_EXCEED_REG_RANGE = 0x10
+    H_PKTERR_GARBAGE = 0x20
 
     def __init__(self, portstring, portspeed):
         self.portLock = RLock()
@@ -131,7 +135,7 @@ class HerkuleX(object):
             return
 
         optData = [0] * 3
-        optData[0] = 0x34  # Address
+        optData[0] = 0x01  # Address
         optData[1] = 0x01  # Length
         optData[2] = valueACK  # Value. 0=No Replay, 1=Only reply to READ CMD, 2=Always reply
 
@@ -157,7 +161,7 @@ class HerkuleX(object):
     * Get servo voltage
     *
     * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
-    * @return current position 0 ~ 1023 (-1: failure)
+    * @return current voltage 0 ~ 18.9 (-1: failure)
     """
     def getVoltage(self, servoID):
         optData = [0] * 2
@@ -172,6 +176,26 @@ class HerkuleX(object):
 
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return adc * 0.074  # return ADC converted back to voltage
+
+    """
+    * Get servo voltage
+    *
+    * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
+    * @return current temperature -80 ~ 5000 (-1: failure)
+    """
+    def getTemperature(self, servoID):
+        optData = [0] * 2
+        optData[0] = 0x37  # Address
+        optData[1] = 0x01  # Length
+
+        packetBuf = self.buildPacket(servoID, HerkuleX.HRAMREAD, optData)
+        readBuf = self.sendDataForResult(packetBuf)
+
+        if not self.isRightPacket(readBuf):
+            return -1
+
+        adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
+        return adc  # return ADC converted back to temperature (need to find a formula or copy the chart...)
 
     """
     * Get servo torque
@@ -545,17 +569,55 @@ class HerkuleX(object):
     *     H_ERROR_DRIVER_FAULT          = 0x20
     *     H_ERROR_EEPREG_DISTORT        = 0x40
     """
-    def stat(self, servoID):
+    def stat(self, servoID, detail=False):
         if servoID == 0xFE:
+            if detail:
+                return (0x00, 0x00)
             return 0x00
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HSTAT, None)
         readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
+            if detail:
+                return (-1, 0x00)
             return -1
 
-        return readBuf[7]  # return status
+	if detail:
+            return (readBuf[7], readBuf[8])  # return status
+	else:
+            return readBuf[7]
+
+    def error_text(self, servoID):
+        statusCode, detailCode = self.stat(servoID, True)
+        codes = []
+        if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
+            pass
+        if statusCode & HerkuleX.H_ERROR_INPUT_VOLTAGE == HerkuleX.H_ERROR_INPUT_VOLTAGE:
+            codes.append('Exceeded Input Voltage')
+        if statusCode & HerkuleX.H_ERROR_POS_LIMIT == HerkuleX.H_ERROR_POS_LIMIT:
+            codes.append('Exceeded Position Limit')
+        if statusCode & HerkuleX.H_ERROR_TEMPERATURE_LIMIT == HerkuleX.H_ERROR_TEMPERATURE_LIMIT:
+            codes.append('Exceeded Temperature Limit')
+        if statusCode & HerkuleX.H_ERROR_INVALID_PKT == HerkuleX.H_ERROR_INVALID_PKT:
+            details = []
+            if detailCode & HerkuleX.H_PKTERR_CHECKSUM == HerkuleX.H_PKTERR_CHECKSUM:
+                details.append('Checksum Error')
+            if detailCode & HerkuleX.H_PKTERR_UNKNOWN_CMD == HerkuleX.H_PKTERR_UNKNOWN_CMD:
+                details.append('Unknown Command')
+            if detailCode & HerkuleX.H_PKTERR_EXCEED_REG_RANGE == HerkuleX.H_PKTERR_EXCEED_REG_RANGE:
+                details.append('Exceed REG range')
+            if detailCode & HerkuleX.H_PKTERR_GARBAGE == HerkuleX.H_PKTERR_GARBAGE:
+                details.append('Garbage detected')
+            codes.append('Invalid Packet Recieved: %s' % details)
+        if statusCode & HerkuleX.H_ERROR_OVERLOAD == HerkuleX.H_ERROR_OVERLOAD:
+            codes.append('Overload')
+        if statusCode & HerkuleX.H_ERROR_DRIVER_FAULT == HerkuleX.H_ERROR_DRIVER_FAULT:
+            codes.append('Driver Fault')
+        if statusCode & HerkuleX.H_ERROR_EEPREG_DISTORT == HerkuleX.H_ERROR_EEPREG_DISTORT:
+            codes.append('EEP Registry Distorted')
+
+        return codes
 
     """
     * Model
@@ -619,10 +681,15 @@ class HerkuleX(object):
     *
     """
     def writeRegistryRAM(self, servoID, address, writeByte):
-        optData = [0] * 3
+        length = 1 + (writeByte > 255)
+        optData = [0] * (2 + length)
         optData[0] = address  # Address
-        optData[1] = 0x01  # Length
-        optData[2] = writeByte
+        optData[1] = length  # Length
+        if length == 1:
+            optData[2] = writeByte
+        else:
+            optData[2] = writeByte & 0X00FF
+            optData[3] = (writeByte & 0XFF00) >> 8
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HRAMWRITE, optData)
         self.sendData(packetBuf)
@@ -641,10 +708,15 @@ class HerkuleX(object):
     *
     """
     def writeRegistryEEP(self, servoID, address, writeByte):
-        optData = [0] * 3
+        length = 1 + (writeByte > 255)
+        optData = [0] * (2 + length)
         optData[0] = address  # Address
-        optData[1] = 0x01  # Length
-        optData[2] = writeByte
+        optData[1] = length  # Length
+        if length == 1:
+            optData[2] = writeByte
+        else:
+            optData[2] = writeByte & 0X00FF
+            optData[3] = (writeByte & 0XFF00) >> 8
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HEEPWRITE, optData)
         self.sendData(packetBuf)
