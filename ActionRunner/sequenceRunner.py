@@ -1,4 +1,4 @@
-from Data.Model import SequenceAction, Robot
+from Data.Model import SequenceAction
 from base import Runner
 from actionRunner import ActionRunner
 
@@ -18,7 +18,7 @@ class SequenceRunner(Runner):
             result = True
             for action in action.actions:
                 actionResult = ar.execute(action)
-                if self._cancel:
+                if self._cancel or not actionResult:
                     result = False
                     break
                 else:

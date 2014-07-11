@@ -1,4 +1,3 @@
-import time
 import threading
 from Data.Model import SoundAction
 from base import Runner

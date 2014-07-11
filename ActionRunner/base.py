@@ -44,7 +44,6 @@ class Runner(object):
             return output
 
         def waitForComplete(self):
-            Thread().start()
             # Wait for the sub-thread to start
             while not self._safeHandles and not self._done:
                 time.sleep(0.01)

@@ -30,10 +30,11 @@ class SensorTrigger(TriggerInterface):
         sensorValue = self._trigger.sensorValue
         sensorCompare = self._trigger.comparison
         if sensorValue.startswith('eval::'):
+            #sensorValue === eval::on || eval::off
             if not self._onState:
                 self._logger.critical("Unknown sensor eval: %s" % sensorValue[6:])
                 return None
-            isOn = eval('value %s' % self._onState)
+            isOn = eval('%(value)s %(comp)s' % {'value': value, 'comp': self._onState})
             if sensorValue[6:] == 'off':
                 return not isOn
             elif sensorValue[6:] == 'on':
@@ -42,4 +43,4 @@ class SensorTrigger(TriggerInterface):
                 self._logger.critical("Unknown sensor eval: %s" % sensorValue[6:])
                 return None
         else:
-            return eval('value %s%s' % (sensorCompare, sensorValue))
+            return eval('%(value) %(comp)s %(compVal)s' % {'value': value, 'comp': sensorCompare, 'compVal': sensorValue})

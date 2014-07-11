@@ -11,8 +11,7 @@ class ActionRunner(Runner):
             self._runner = runner
 
         def _runInternal(self, action, session):
-            self._handle = self._runner.executeAsync(action)
-            return self.waitForComplete()
+            return self._runner.execute(action)
 
     _runnerClasses = None
 

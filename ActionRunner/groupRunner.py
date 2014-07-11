@@ -1,4 +1,4 @@
-from Data.Model import GroupAction, Robot
+from Data.Model import GroupAction
 from actionRunner import ActionRunner
 from base import Runner
 
