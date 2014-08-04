@@ -1,9 +1,12 @@
 from triggerInterface import TriggerInterface
+from collections import namedtuple
 from Processor.hotKeys import KeyEvents
+import logging
 
 
 class ButtonTrigger(TriggerInterface):
-
+    supportedClass = 'ButtonTrigger'
+    Runable = namedtuple('ButtonTrigger', TriggerInterface.Runable._fields + ('keybindings', ))
     keyEvents = None
 
     # Match with the javscript side of things, should cover most common keys
@@ -47,10 +50,9 @@ class ButtonTrigger(TriggerInterface):
         if ButtonTrigger.keyEvents == None:
             ButtonTrigger.keyEvents = KeyEvents()
 
-        keybindings = [t.keyString.upper() for t in trigger.hotKeys]
-        if keybindings:
+        if trigger.keybindings:
             ButtonTrigger.keyEvents.keyUpEvent += self.handleKeyPress
-            self._keybindings = keybindings
+            self._keybindings = trigger.keybindings
 
         self._active = False
 
@@ -59,6 +61,16 @@ class ButtonTrigger(TriggerInterface):
             ButtonTrigger.keyEvents.keyUpEvent -= self.handleKeyPress
         except:
             pass
+
+    @staticmethod
+    def getRunable(trigger):
+        if trigger.type == ButtonTrigger.supportedClass:
+            keybindings = [t.keyString.upper() for t in trigger.hotKeys]
+            return ButtonTrigger.Runable(trigger.name, trigger.id, trigger.type, keybindings)
+        else:
+            logger = logging.getLogger(ButtonTrigger.__name__)
+            logger.error("Trigger: %s has an unknown trigger type: %s" % (trigger.name, trigger.type))
+            return None
 
     def getActive(self):
         return self._active

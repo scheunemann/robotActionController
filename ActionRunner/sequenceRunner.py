@@ -1,36 +1,48 @@
-from Data.Model import SequenceAction
-from base import Runner
-from actionRunner import ActionRunner
+from base import ActionRunner, ActionExecutionHandle
+from collections import namedtuple
+import logging
 
 
-class SequenceRunner(Runner):
+class SequenceExecutionHandle(ActionExecutionHandle):
 
-    class SequenceHandle(Runner.ExecutionHandle):
+    def __init__(self, sequence, robot):
+        super(SequenceExecutionHandle, self).__init__(sequence, ActionRunner(robot))
+        self._robot = robot
+        self._cancel = False
 
-        def __init__(self, sequence, robot):
-            super(SequenceRunner.SequenceHandle, self).__init__(sequence)
-            self._robot = robot
-            self._cancel = False
+    def _runInternal(self, action):
+        result = True
+        for a in action.actions:
+            actionResult = self._runner.execute(a)
+            if self._cancel or not actionResult:
+                result = False
+                break
+            else:
+                result = result and actionResult
 
-        def _runInternal(self, action, session):
-            robot = session.merge(self._robot, load=False)
-            ar = ActionRunner(robot)
-            result = True
-            for action in action.actions:
-                actionResult = ar.execute(action)
-                if self._cancel or not actionResult:
-                    result = False
-                    break
-                else:
-                    result = result and actionResult
+        return result
 
-            return result
+    def stop(self):
+        self._cancel = True
+        self.waitForComplete()
 
-        def stop(self):
-            self._cancel = True
-            self.waitForComplete()
 
-    supportedClass = SequenceAction
+class SequenceRunner(ActionRunner):
+    supportedClass = 'SequenceAction'
+    Runable = namedtuple('SequenceAction', ActionRunner.Runable._fields + ('actions', ))
+
+    @staticmethod
+    def getRunable(action):
+        if action.type == SequenceRunner.supportedClass:
+            actions = []
+            for a in action.actions:
+                actions.append(ActionRunner.getRunable(a))
+
+            return SequenceRunner.Runable(action.name, action.id, action.type, action.minLength, actions)
+        else:
+            logger = logging.getLogger(SequenceRunner.__name__)
+            logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
+            return None
 
     def __init__(self, robot):
         super(SequenceRunner, self).__init__(robot)
@@ -43,4 +55,4 @@ class SequenceRunner(Runner):
                 break
 
     def _getHandle(self, action):
-        return SequenceRunner.SequenceHandle(action, self._robot)
+        return SequenceExecutionHandle(action, self._robot)

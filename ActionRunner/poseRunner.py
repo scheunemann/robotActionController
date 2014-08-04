@@ -1,91 +1,75 @@
 import threading
-from Robot.ServoInterface.servoInterface import ServoInterface
-from base import Runner
-from Data.Model import PoseAction
+from base import ActionRunner, ActionExecutionHandle
 from multiprocessing.pool import ThreadPool as Pool
+from collections import namedtuple
+import logging
 
 
-class PoseRunner(Runner):
+class PoseExecutionHandle(ActionExecutionHandle):
 
-    class PoseHandle(Runner.ExecutionHandle):
+    def __init__(self, pose, robot):
+        super(PoseExecutionHandle, self).__init__(pose)
+        self._robot = robot
 
-        def __init__(self, pose, robot):
-            super(PoseRunner.PoseHandle, self).__init__(pose)
-            self._robot = robot
+    def _runInternal(self, action):
+        self._cancel = False
+        interfaces = {}
+        pool = Pool(processes=len(action.jointPositions))
 
-        def _runInternal(self, action, session):
-            self._cancel = False
-            interfaces = {}
-            robot = session.merge(self._robot, load=False)
-            pool = Pool(processes=len(action.jointPositions))
+        l = []
+        for jointPosition in action.jointPositions:
+            servos = filter(lambda s: s.jointName == jointPosition.jointName, self._robot.servos)
+            if len(servos) != 1:
+                self._logger.critical("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, self._robot.name, len(servos)))
+                raise ValueError("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, self._robot.name, len(servos)))
+            servo = servos[0]
+            speed = jointPosition.speed
+            speed = speed * (action.speedModifier or 1)
+            position = float(jointPosition.position) if jointPosition.position != None else eval(jointPosition.positions or 'None')
+            l.append((position, speed, servo))
+            interfaces[jointPosition] = servo
 
-            l = []
-            for jointPosition in action.jointPositions:
-                servos = filter(lambda s: s.jointName == jointPosition.jointName, robot.servos)
-                if len(servos) != 1:
-                    self._logger.critical("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, robot.name, len(servos)))
-                    raise ValueError("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, robot.name, len(servos)))
-                servo = servos[0]
-                speed = jointPosition.speed or servo.defaultSpeed
-                speed = speed * (action.speedModifier or 1)
-                position = jointPosition.position
-                if position == None:
-                    if jointPosition.positions != None:
-                        try:
-                            position = eval(jointPosition.positions)
-                        except Exception as e:
-                            self._logger.critical("Invalid multiple position(%s) specified for servo %s.  Joint Positions %s" % (jointPosition.position, servo, jointPosition.id))
-                            self._logger.critical(e)
-                            return False
-                    elif servo.defaultPosition != None:
-                        position = servo.defaultPosition
-                    elif servo.defaultPositions != None:
-                        try:
-                            position = eval(servo.defaultPositions)
-                        except Exception as e:
-                            self._logger.critical("Invalid multiple position(%s) default specified for servo %s." % (jointPosition.position, servo))
-                            self._logger.critical(e)
-                            return False
-                    else:
-                        self._logger.critical("Could not determine servo position for joint %s" % jointPosition)
-                        self._logger.critical(e)
-                try:
-                    servoInterface = ServoInterface.getServoInterface(servo)
-                except ValueError as e:
-                    self._logger.critical("Servo %s is in an error state" % (servo))
-                    self._logger.critical(e)
-                    return False
+        results = [pool.apply_async(servoInterface.setPosition, args=(position, speed)) for (position, speed, servoInterface) in l]
 
-                l.append((position, speed, servoInterface))
-                interfaces[jointPosition] = servoInterface
+        pool.close()
+        pool.join()
 
-            results = [pool.apply_async(servoInterface.setPosition, args=(position, speed)) for (position, speed, servoInterface) in l]
+        if self._cancel:
+            result = False
+        else:
+            # TODO: Make all joints blocking?
+            result = all([r.get() for r in results])
 
-            pool.close()
-            pool.join()
+        return result
 
-            if self._cancel:
-                result = False
-            else:
-                # TODO: Make all joints blocking?
-                result = all([r.get() for r in results])
+    def waitForComplete(self):
+        if not self is threading.current_thread():
+            self.join()
 
-            return result
+        return self._result
 
-        def waitForComplete(self):
-            if not self is threading.current_thread():
-                self.join()
+    def stop(self):
+        self._cancel = True
+        self.waitForComplete()
 
-            return self._result
 
-        def stop(self):
-            self._cancel = True
-            self.waitForComplete()
+class PoseRunner(ActionRunner):
+    supportedClass = 'PoseAction'
+    Runable = namedtuple('PoseAction', ActionRunner.Runable._fields + ('speedModifier', 'jointPositions'))
+    JointPosition = namedtuple('JointPosition', ['jointName', 'speed', 'position', 'positions'])
 
-    supportedClass = PoseAction
+    @staticmethod
+    def getRunable(action):
+        if action.type == PoseRunner.supportedClass:
+            positions = []
+            for position in action.jointPositions:
+                positions.append(PoseRunner.JointPosition(position.jointName, position.speed, position.position, position.positions))
 
-    def _getHandle(self, action):
-        return PoseRunner.PoseHandle(action, self._robot)
+            return PoseRunner.Runable(action.name, action.id, action.type, action.minLength, action.speedModifier, positions)
+        else:
+            logger = logging.getLogger(PoseRunner.__name__)
+            logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
+            return None
 
     def __init__(self, robot):
         super(PoseRunner, self).__init__(robot)
@@ -98,3 +82,6 @@ class PoseRunner(Runner):
             return True
         else:
             return False
+
+    def _getHandle(self, action):
+        return PoseExecutionHandle(action, self._robot)

@@ -5,7 +5,6 @@ import inspect
 import logging
 import random
 from threading import RLock
-from Data.Model import RobotSensor, ExternalSensor
 
 __all__ = ['SensorInterface', ]
 
@@ -91,21 +90,23 @@ class SensorInterface(object):
             return SensorInterface._interfaces[sensor]
 
     def __init__(self, sensor):
-        # servo type properties
-        if type(sensor) == RobotSensor:
-            configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.sensorConfigs)
-            if not configs:
-                raise ValueError('Config could not be found for model %s on robot %s' % (sensor.model, sensor.robot))
-            else:
-                config = configs[0]
-        elif type(sensor) == ExternalSensor:
-            # TODO: External Sensors
-            config = None
-
         # sensor properties
-        self._sensor = sensor
-        self._config = config
+        self._sensorName = sensor.name
+
+        if not sensor.onStateComparison or sensor.onStateValue:
+            self._onState = None
+        else:
+            self._onState = sensor.onStateComparison + sensor.onStateValue
+
         self._logger = logging.getLogger(self.__class__.__name__)
+
+    @property
+    def sensorName(self):
+        return self._sensorName
+
+    @property
+    def onState(self):
+        return self._onState
 
     def getCurrentValue(self):
         return None
@@ -119,7 +120,7 @@ class Dummy(SensorInterface):
         from multiprocessing import Value
         import ctypes
         super(Dummy, self).__init__(sensor)
-        self._sensorId = self._sensor.id
+        self._sensorId = sensor.id
 
         basePath = os.path.dirname(os.path.abspath(__file__))
         basePath = os.path.join(basePath, 'sensorData')
@@ -128,8 +129,8 @@ class Dummy(SensorInterface):
         fileName = 'dummySensorData_%s' % self._sensorId
         self._fileName = os.path.join(basePath, fileName)
 
-        if self._sensor.id not in Dummy.sensor_values:
-            Dummy.sensor_values[self._sensorId] = Value(ctypes.c_float)
+        if sensor.id not in Dummy.sensor_values:
+            Dummy.sensor_values[sensor.id] = Value(ctypes.c_float)
 
         value = self._readData()
         if value != None:
@@ -174,6 +175,13 @@ class Robot(SensorInterface):
 
     def __init__(self, sensor):
         super(Robot, self).__init__(sensor)
+        # servo type properties
+        configs = filter(lambda c: c.model.name == sensor.model.name, sensor.robot.sensorConfigs)
+        if not configs:
+            raise ValueError('Config could not be found for model %s on robot %s' % (sensor.model, sensor.robot))
+        else:
+            config = configs[0]
+
         self._externalId = sensor.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
@@ -185,7 +193,7 @@ class Robot(SensorInterface):
         if sensor.model.name.lower() not in Robot._interfaceMap:
             raise ValueError("Unknown sensor type: %s" % sensor.model.name)
 
-        self._sensorInt = Robot._interfaceMap[sensor.model.name.lower()](sensor, self._config)
+        self._sensorInt = Robot._interfaceMap[sensor.model.name.lower()](sensor, config)
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()
@@ -197,6 +205,8 @@ def External(SensorInterface):
 
     def __init__(self, sensor):
         super(External, self).__init__(sensor)
+        # TODO: External Sensors
+        config = None
         self._externalId = sensor.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("%s sensor %s is missing its external Id!", (sensor.model.name, sensor.name))
@@ -207,7 +217,7 @@ def External(SensorInterface):
         if sensor.model.name.lower() not in External._interfaceMap:
             raise ValueError("Unknown sensor type: %s" % sensor.model.name)
 
-        self._sensorInt = External._interfaceMap[sensor.model.name.lower()](sensor, self._config)
+        self._sensorInt = External._interfaceMap[sensor.model.name.lower()](sensor, config)
 
     def getCurrentValue(self):
         return self._sensorInt.getCurrentValue()

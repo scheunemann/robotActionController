@@ -101,21 +101,21 @@ class FSR_Arduino(object):
 
 
 class Sensor_Poller(Thread):
-    
+
     HistItem = namedtuple('SensorHist', ['hist', 'sensor_id', 'lastValue'])
-    
+
     def __init__(self, connection, rate=60, maxHistory=60, ids=[]):
         """
         @param connection: connection object to use, must support getPosition(id)
         @param rate: rate of the polling loop
-        @param maxHistory: size of the history for each sensor   
-        @param ids: the initial id set to poll     
+        @param maxHistory: size of the history for each sensor
+        @param ids: the initial id set to poll
         """
         super(Sensor_Poller, self).__init__()
         self.daemon(True)
         self._conn = connection
         self._rate = rate
-        self._rateMS = 1.0 / rate 
+        self._rateMS = 1.0 / rate
         self._maxHistory = maxHistory
         self._sensors = {}
         self._threadLock = RLock()
@@ -125,18 +125,18 @@ class Sensor_Poller(Thread):
         with self._threadLock:
             if id not in self._sensors:
                 self._sensors[sid] = deque(maxlen=self._maxHistory)
-    
+
     def cancel(self):
         self._run = False
         self.join()
-        
+
     def getValues(self, sid, default=None):
         with self._threadLock:
             if id in self._sensors:
                 return self._sensors[sid].hist
             else:
                 return default
-        
+
     def run(self):
         self._run = True
         while self._run:
@@ -152,13 +152,13 @@ class Sensor_Poller(Thread):
                 except Exception as e:
                     self._logger.warning(e, exc_info=True)
                     continue
-                
+
                 if val < 0:
-                    #maestro/herkulex specific, might need to look into a general 'error_value' param
+                    # maestro/herkulex specific, might need to look into a general 'error_value' param
                     continue
-                
+
                 hist.hist.append(val)
-                #hist.lastValue = sum(hist.hist) / len(hist.hist)                                
+                # hist.lastValue = sum(hist.hist) / len(hist.hist)
                 sTime = time.time() - startTime
                 if sTime > 0:
                     time.sleep(sTime)
@@ -183,15 +183,15 @@ class FSR_MiniMaestro(object):
             if port not in FSR_MiniMaestro._pollers:
                 FSR_MiniMaestro._pollers[port] = Sensor_Poller(port, speed)
                 FSR_MiniMaestro._pollers[port].start()
-        
+
         self._port = port
-        #self._conn = connections.Connection.getConnection('minimaestro', port, speed)
+        # self._conn = connections.Connection.getConnection('minimaestro', port, speed)
 
     def getCurrentValue(self):
         with FSR_MiniMaestro._pollerLock:
             hist = FSR_MiniMaestro._pollerLock[self._port].getValues(self._externalId)
-        
-        samples = hist[-1 * min(len(hist), self._numSamples): ]
+
+        samples = hist[-1 * min(len(hist), self._numSamples):]
         return float(sum(samples)) / len(samples)
 
 

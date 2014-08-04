@@ -1,31 +1,30 @@
 from threading import Thread
 from TriggerInterface import TriggerInterface
+from ActionRunner import ActionRunner
 from datetime import datetime, timedelta
 from collections import namedtuple
 import time
 import event
+import logging
 
 
 __all__ = ['TriggerProcessor', ]
 
-TriggerActivatedEventArg = namedtuple('TriggerActivatedEvent', ['trigger_id', 'value'])
+TriggerActivatedEventArg = namedtuple('TriggerActivatedEvent', ['trigger_id', 'value', 'action'])
 
 
 class TriggerProcessor(object):
-
     triggerActivated = event.Event('Trigger activated event')
 
     def __init__(self, triggers, robot, maxUpdateInterval=None):
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._handlers = []
         for trigger in triggers:
             try:
                 handler = _TriggerHandler(trigger, self.triggerActivated, robot, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
                 self._handlers.append(handler)
-            except Exception as e:
-                #TODO: Error handling
-                import traceback
-                print traceback.format_exc()
-                print e
+            except Exception:
+                self._logger.warning("Error handling trigger! %s" % trigger, exc_info=True)
                 continue
 
     def start(self):
@@ -44,6 +43,7 @@ class _TriggerHandler(Thread):
         super(_TriggerHandler, self).__init__()
         self._triggerId = trigger.id
         self._triggerInt = TriggerInterface.getTriggerInterface(trigger, robot)
+        self._action = ActionRunner.getRunable(trigger.action)
         self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
         self._activatedEvent = activatedEvent
@@ -66,7 +66,8 @@ class _TriggerHandler(Thread):
                 last_update = datetime.utcnow()
                 last_value = value
                 # Fire the handlers in thread to prevent long handlers from interrupting the loop
-                Thread(target=self._activatedEvent, args=(TriggerActivatedEventArg(self._triggerId, value), )).start()
+                #Thread(target=self._activatedEvent, args=(TriggerActivatedEventArg(self._trigger, value), )).start()
+                self._activatedEvent(TriggerActivatedEventArg(self._triggerId, value, self._action))
 
             sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
             time.sleep(sleepTime)

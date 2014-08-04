@@ -1,22 +1,35 @@
-from Data.Model import GroupAction
-from actionRunner import ActionRunner
-from base import Runner
+from collections import namedtuple
+import logging
+from base import ActionRunner, ActionExecutionHandle
 
 
-class GroupRunner(Runner):
+class GroupExecutionHandle(ActionExecutionHandle):
 
-    class GroupHandle(Runner.ExecutionHandle):
+    def __init__(self, group, robot):
+        super(GroupRunner.GroupHandle, self).__init__(group)
+        self._robot = robot
 
-        def __init__(self, group, robot):
-            super(GroupRunner.GroupHandle, self).__init__(group)
-            self._robot = robot
+    def _runInternal(self, action):
+        self._handles = [ActionRunner(self._robot).executeAsync(a) for a in action.actions]
+        return self.waitForComplete()
 
-        def _runInternal(self, action, session):
-            robot = session.merge(self._robot, load=False)
-            self._handles = [ActionRunner(robot).executeAsync(a) for a in action.actions]
-            return self.waitForComplete()
 
-    supportedClass = GroupAction
+class GroupRunner(ActionRunner):
+    supportedClass = 'GroupAction'
+    Runable = namedtuple(GroupRunner.supportedClass, ActionRunner.Runable._fields + ('actions', ))
+
+    @staticmethod
+    def getRunable(action):
+        if action.type == GroupRunner.supportedClass:
+            actions = []
+            for a in action.actions:
+                actions.append(ActionRunner.getRunable(a))
+
+            return GroupRunner.Runable(action.name, action.id, action.type, action.minLength, actions)
+        else:
+            logger = logging.getLogger(GroupRunner.__name__)
+            logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
+            return None
 
     def __init__(self, robot):
         super(GroupRunner, self).__init__(robot)
@@ -29,4 +42,4 @@ class GroupRunner(Runner):
                 break
 
     def _getHandle(self, action):
-        return GroupRunner.GroupHandle(action, self._robot)
+        return GroupExecutionHandle(action, self._robot)

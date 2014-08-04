@@ -7,7 +7,7 @@ __all__ = ['ServoInterface', ]
 
 
 class ServoInterface(object):
-
+    _servoCache = {}
     _servoInterfaces = {}
     _globalLock = RLock()
     _interfaces = {}
@@ -47,22 +47,23 @@ class ServoInterface(object):
             return ServoInterface._interfaces[servo.id]
 
     def __init__(self, servo):
-
         # servo type properties
         configs = filter(lambda c: c.model_id == servo.model_id, servo.robot.servoConfigs)
         if not configs:
             raise ValueError('Config could not be found for model %s on robot %s' % (servo.model, servo.robot))
         else:
             config = configs[0]
+
         self._port = config.port
         self._portSpeed = config.portSpeed
 
         # servo properties
         self._moving = False
         self._servoId = servo.id
+        self._jointName = servo.jointName
         self._minPos = float(servo.minPosition if servo.minPosition != None else servo.model.minPosition)
         self._maxPos = float(servo.maxPosition if servo.maxPosition != None else servo.model.maxPosition)
-        self._defaultPos = float(servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition)
+        self._defaultPosition = float(servo.defaultPosition if servo.defaultPosition != None else servo.model.defaultPosition)
         self._minSpeed = float(servo.minSpeed if servo.minSpeed != None else servo.model.minSpeed)
         self._maxSpeed = float(servo.maxSpeed if servo.maxSpeed != None else servo.model.maxSpeed)
         self._defaultSpeed = float(servo.defaultSpeed if servo.defaultSpeed != None else servo.model.defaultSpeed)
@@ -76,6 +77,10 @@ class ServoInterface(object):
     @property
     def servoId(self):
         return self._servoId
+
+    @property
+    def jointName(self):
+        return self._jointName
 
     def isMoving(self):
         return self._moving
@@ -150,7 +155,7 @@ class AX12(ServoInterface):
         self._externalId = servo.extraData.get('externalId', None)
         if self._externalId == None:
             self._logger.critical("AX12 servo %s is missing its external Id!", servo.name)
-            raise ValueException()
+            raise ValueError()
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("AX12", self._port, self._portSpeed)
@@ -167,7 +172,12 @@ class AX12(ServoInterface):
 
         return self._realToScalePos(posSteps)
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         realSpeed = int(round(self._scaleToRealSpeed(float(speed))))
         realPosition = int(round(self._scaleToRealPos(float(position))))
         with Connection.getLock(self._conn):
@@ -229,7 +239,12 @@ class MINISSC(ServoInterface):
     def getPosition(self):
         return self._lastPosition
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         validTarget = self._getInRangeVal(position, self._minPos, self._maxPos)
         if position != validTarget:
             self._logger.warning("Target position has to be between %s and %s, got %s", self._minPos, self._maxPos, position)
@@ -265,7 +280,12 @@ class HerkuleX(ServoInterface):
             posSteps = self._conn.getPosition(self._externalId)
             return self._realToScalePos(posSteps)
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         realPosition = int(round(float(self._scaleToRealPos(position))))
         realSpeed = self._scaleToRealSpeed(speed)  # steps per second
         totalSteps = abs(realPosition - self._conn.getPosition(self._externalId))
@@ -320,7 +340,12 @@ class SSC32(ServoInterface):
         p = int(response)
         return self._realToScalePos(p * 10)
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         validTarget = self._getInRangeVal(position, self._minPos, self._maxPos)
         if position != validTarget:
             self._logger.warning("Target position has to be between %s and %s, got %s", self._minPos, self._maxPos, position)
@@ -361,7 +386,12 @@ class HS82MG(ServoInterface):
             posSteps = self._conn.getPosition(self._externalId)
             return self._realToScalePos(posSteps)
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         validTarget = self._getInRangeVal(position, self._minPos, self._maxPos)
         if position != validTarget:
             self._logger.warning("Target position has to be between %s and %s, got %s", self._minPos, self._maxPos, position)
@@ -402,7 +432,12 @@ class Dummy(ServoInterface):
         self._readData()
         return self._posable
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         diff = abs(self._position - position)
         secs = 1.0 / 1024 * diff
         self._position = position
@@ -460,7 +495,12 @@ class Virtual(ServoInterface):
     def getPosition(self):
         return self._master.getPosition()
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         if self._absolute:
             slavePosition = position * self._ratio
         else:
@@ -504,6 +544,11 @@ class Robot(ServoInterface):
                 posRaw = 0
         return self._realToScalePos(posRaw)
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position=None, speed=None):
+        if position == None:
+            position = self._defaultPos
+        if speed == None:
+            speed = self._defaultSpeed
+
         scaledPosition = self._scaleToRealPos(position)
         return self._robot.setComponentState(self._componentName, scaledPosition) == 'SUCCEEDED'
