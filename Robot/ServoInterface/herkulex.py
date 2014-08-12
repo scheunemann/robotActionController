@@ -583,9 +583,9 @@ class HerkuleX(object):
                 return (-1, 0x00)
             return -1
 
-	if detail:
+        if detail:
             return (readBuf[7], readBuf[8])  # return status
-	else:
+        else:
             return readBuf[7]
 
     def error_text(self, servoID):

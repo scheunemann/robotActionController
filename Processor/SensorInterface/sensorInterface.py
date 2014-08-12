@@ -93,7 +93,7 @@ class SensorInterface(object):
         # sensor properties
         self._sensorName = sensor.name
 
-        if not sensor.onStateComparison or sensor.onStateValue:
+        if sensor.onStateComparison == None or sensor.onStateValue == None:
             self._onState = None
         else:
             self._onState = sensor.onStateComparison + sensor.onStateValue

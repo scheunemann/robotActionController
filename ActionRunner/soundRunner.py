@@ -13,7 +13,7 @@ class SoundExeuctionHandle(ActionExecutionHandle):
         super(SoundExeuctionHandle, self).__init__(sound)
         self._cancel = True
 
-    def _runInternal(self, action, session):
+    def _runInternal(self, action):
         CHUNK = 1024
         p = pyaudio.PyAudio()
         cb = cStringIO.StringIO(action.data)

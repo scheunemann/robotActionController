@@ -107,7 +107,7 @@ class SoundAction(Action):
     def readData(uuid=None):
         if not uuid:
             return None
-        fileName = SoundAction.__fileName(uuid)
+        fileName = SoundAction.__fileName(uuid)[1]
         if os.path.isfile(fileName):
             with open(fileName, 'rb') as f:
                 b = f.read()

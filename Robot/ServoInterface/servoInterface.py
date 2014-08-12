@@ -299,7 +299,7 @@ class HerkuleX(ServoInterface):
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
             self._moving = False
 
-        return self._isInPosition(position)
+        return self._conn.stat(self._externalId) == 0
 
     def getPositioning(self):
         return self._positioning
@@ -405,7 +405,7 @@ class HS82MG(ServoInterface):
             self._conn.setSpeed(self._externalId, int(spd))
             self._conn.setTarget(self._externalId, int(pos))
 
-        return self._isInPosition(position)
+        return True
 
 
 class Dummy(ServoInterface):

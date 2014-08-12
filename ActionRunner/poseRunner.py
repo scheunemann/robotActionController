@@ -1,6 +1,5 @@
 import threading
 from base import ActionRunner, ActionExecutionHandle
-from multiprocessing.pool import ThreadPool as Pool
 from collections import namedtuple
 import logging
 
@@ -13,8 +12,6 @@ class PoseExecutionHandle(ActionExecutionHandle):
 
     def _runInternal(self, action):
         self._cancel = False
-        interfaces = {}
-        pool = Pool(processes=len(action.jointPositions))
 
         l = []
         for jointPosition in action.jointPositions:
@@ -27,18 +24,14 @@ class PoseExecutionHandle(ActionExecutionHandle):
             speed = speed * (action.speedModifier or 1)
             position = float(jointPosition.position) if jointPosition.position != None else eval(jointPosition.positions or 'None')
             l.append((position, speed, servo))
-            interfaces[jointPosition] = servo
 
-        results = [pool.apply_async(servoInterface.setPosition, args=(position, speed)) for (position, speed, servoInterface) in l]
-
-        pool.close()
-        pool.join()
+        results = [servoInterface.setPosition(position, speed) for (position, speed, servoInterface) in l]
 
         if self._cancel:
             result = False
         else:
             # TODO: Make all joints blocking?
-            result = all([r.get() for r in results])
+            result = all(results)
 
         return result
 

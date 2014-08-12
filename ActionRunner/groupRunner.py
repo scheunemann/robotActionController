@@ -6,7 +6,7 @@ from base import ActionRunner, ActionExecutionHandle
 class GroupExecutionHandle(ActionExecutionHandle):
 
     def __init__(self, group, robot):
-        super(GroupRunner.GroupHandle, self).__init__(group)
+        super(GroupExecutionHandle, self).__init__(group)
         self._robot = robot
 
     def _runInternal(self, action):
@@ -16,15 +16,12 @@ class GroupExecutionHandle(ActionExecutionHandle):
 
 class GroupRunner(ActionRunner):
     supportedClass = 'GroupAction'
-    Runable = namedtuple(GroupRunner.supportedClass, ActionRunner.Runable._fields + ('actions', ))
+    Runable = namedtuple('GroupAction', ActionRunner.Runable._fields + ('actions', ))
 
     @staticmethod
     def getRunable(action):
         if action.type == GroupRunner.supportedClass:
-            actions = []
-            for a in action.actions:
-                actions.append(ActionRunner.getRunable(a))
-
+            actions = [ActionRunner.getRunable(a) for a in action.actions]
             return GroupRunner.Runable(action.name, action.id, action.type, action.minLength, actions)
         else:
             logger = logging.getLogger(GroupRunner.__name__)

@@ -11,6 +11,8 @@ class ActionExecutionHandle(Thread):
     def __init__(self, action, runner=None):
         super(ActionExecutionHandle, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
+        if not isinstance(action, tuple):
+            raise Exception('Action must be a runnable type')
         self._action = action
         self._handles = []
         self._handle = None

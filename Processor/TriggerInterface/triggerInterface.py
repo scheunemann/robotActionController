@@ -21,10 +21,12 @@ class TriggerInterface(object):
             from time import TimeTrigger
             from button import ButtonTrigger
             from sensor import SensorTrigger
+            from compound import CompoundTrigger
             TriggerInterface._interfaceClasses = {
                                  'TimeTrigger': TimeTrigger,
                                  'ButtonTrigger': ButtonTrigger,
                                  'SensorTrigger': SensorTrigger,
+                                 'CompoundTrigger': CompoundTrigger,
                                  }
 
         return TriggerInterface._interfaceClasses
@@ -35,14 +37,16 @@ class TriggerInterface(object):
             if trigger.id not in TriggerInterface._interfaces:
                 if not issubclass(trigger.__class__, TriggerInterface.Runable):
                     trigger = TriggerInterface.getRunable(trigger)
-
-                try:
-                    triggerIntClass = TriggerInterface._getInterfaceClasses()[trigger.type]
-                except:
-                    logging.getLogger(__name__).critical("No known interface for trigger type: %s", trigger.type)
-                    raise ValueError("No known interface for trigger type: %s" % trigger.type)
+                if trigger:
+                    try:
+                        triggerIntClass = TriggerInterface._getInterfaceClasses()[trigger.type]
+                    except Exception:
+                        logging.getLogger(__name__).critical("No known interface for trigger type: %s", trigger.type)
+                        raise ValueError("No known interface for trigger type: %s" % trigger.type)
+                    else:
+                        triggerInt = triggerIntClass(trigger=trigger, robot=robot)
                 else:
-                    triggerInt = triggerIntClass(trigger=trigger, robot=robot)
+                    triggerInt = None
 
                 TriggerInterface._interfaces[trigger.id] = triggerInt
 
