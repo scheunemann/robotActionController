@@ -112,7 +112,7 @@ class Sensor_Poller(Thread):
         @param ids: the initial id set to poll
         """
         super(Sensor_Poller, self).__init__()
-        self.daemon(True)
+        self.daemon = True
         self._conn = connection
         self._rate = rate
         self._rateMS = 1.0 / rate
@@ -142,6 +142,9 @@ class Sensor_Poller(Thread):
         while self._run:
             with self._threadLock:
                 sensors = self._sensors.items()
+            if not sensors:
+                time.sleep(1)
+                continue
             sTime = self._rateMS / len(sensors)
             for (sid, hist) in sensors:
                 if not self._run:
