@@ -22,22 +22,21 @@ class PoseExecutionHandle(ActionExecutionHandle):
                 raise ValueError("Could not determine appropriate servo(%s) on Robot(%s).  Expected 1 match, got %s" % (jointPosition.jointName, self._robot.name, len(servos)))
             servo = servos[0]
             speed = jointPosition.speed
-            speed = speed * (action.speedModifier or 1)
+            speed = speed * ((action.speedModifier / 100.0) or 1)
             position = float(jointPosition.position) if jointPosition.position != None else eval(jointPosition.positions or 'None')
             l.append((position, speed, servo))
 
         [servoInterface.setPosition(position, speed, False) for (position, speed, servoInterface) in l]
         moving = [si for _, _, si in l]
-        #TODO: status messages now that it's non-blocking
-        results = [True,]
+        # TODO: status messages now that it's non-blocking
+        results = [True, ]
         while moving:
             for servoInterface in moving:
                 print threading.current_thread().ident
                 if not servoInterface.isMoving():
                     moving.remove(servoInterface)
-                #release the GIL
+                # release the GIL
                 time.sleep(0.0001)
-        
 
         if self._cancel:
             result = False
