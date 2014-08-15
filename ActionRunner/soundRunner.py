@@ -18,7 +18,7 @@ class SoundExecutionHandle(ActionExecutionHandle):
 
     @property
     def _audio(self):
-       if SoundExecutionHandle.__audio == None:
+        if SoundExecutionHandle.__audio == None:
             SoundExecutionHandle.__audio = pyaudio.PyAudio()
         return SoundExecutionHandle.__audio
 
@@ -27,10 +27,10 @@ class SoundExecutionHandle(ActionExecutionHandle):
         cb = cStringIO.StringIO(action.data)
         wf = wave.open(cb, 'rb')
         stream = p.open(format=p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True)
-        data = wf.readframes(CHUNK)
+        data = wf.readframes(SoundExecutionHandle.CHUNK)
         while data != '':
             stream.write(data)
-            data = wf.readframes(CHUNK)
+            data = wf.readframes(SoundExecutionHandle.CHUNK)
 
         stream.stop_stream()
         stream.close()
