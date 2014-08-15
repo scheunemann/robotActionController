@@ -25,12 +25,11 @@ class PoseExecutionHandle(ActionExecutionHandle):
             position = float(jointPosition.position) if jointPosition.position != None else eval(jointPosition.positions or 'None')
             l.append((position, speed, servo))
 
-        results = [servoInterface.setPosition(position, speed) for (position, speed, servoInterface) in l]
+        results = [servoInterface.setPosition(position, speed, True) for (position, speed, servoInterface) in l]
 
         if self._cancel:
             result = False
         else:
-            # TODO: Make all joints blocking?
             result = all(results)
 
         return result

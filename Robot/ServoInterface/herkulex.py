@@ -71,10 +71,14 @@ class HerkuleX(object):
     H_ERROR_OVERLOAD = 0x10
     H_ERROR_DRIVER_FAULT = 0x20
     H_ERROR_EEPREG_DISTORT = 0x40
+
+    H_DETAIL_MOVING = 0x01
+    H_DETAIL_INPOSITION = 0x02
     H_PKTERR_CHECKSUM = 0x04
     H_PKTERR_UNKNOWN_CMD = 0x08
     H_PKTERR_EXCEED_REG_RANGE = 0x10
     H_PKTERR_GARBAGE = 0x20
+    H_DETAIL_MOTORON = 0x04
 
     def __init__(self, portstring, portspeed):
         self.portLock = RLock()

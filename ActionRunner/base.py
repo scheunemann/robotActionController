@@ -195,12 +195,21 @@ class ActionRunner(object):
             self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
             raise ValueError("Could not determine action runner for type %s" % action.type)
 
+    def _getRunner(self, action):
+        try:
+            return ActionRunner._getRunners()[action.type](self._robot)
+        except Exception:
+            self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
+            raise ValueError("Could not determine action runner for type %s" % action.type)
+
     def execute(self, action):
-        handle = self._getHandle(action)
+        runner = self._getRunner(action)
+        handle = runner._getHandle(action)
         handle.run()
         return handle.result
 
     def executeAsync(self, action, callback=None, callbackData=None):
-        handle = self._getHandle(action)
+        runner = self._getRunner(action)
+        handle = runner._getHandle(action)
         handle.start(callback, callbackData)
         return handle

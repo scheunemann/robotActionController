@@ -91,7 +91,7 @@ class ServoInterface(object):
     def getPositioning(self):
         return False
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position, speed, blocking=False):
         raise ValueError('Setting position not supported on servo %s' % self._servoId)
 
     def getPosition(self):
@@ -172,7 +172,7 @@ class AX12(ServoInterface):
 
         return self._realToScalePos(posSteps)
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -184,8 +184,9 @@ class AX12(ServoInterface):
             self._conn.SetMovingSpeed(self._externalId, realSpeed)
             self._conn.SetPosition(self._externalId, realPosition)
 
-        while self.isMoving():
-            time.sleep(0.001)
+        if blocking:
+            while self.isMoving():
+                time.sleep(0.001)
 
         return self._isInPosition(position)
 
@@ -239,7 +240,7 @@ class MINISSC(ServoInterface):
     def getPosition(self):
         return self._lastPosition
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -258,6 +259,10 @@ class MINISSC(ServoInterface):
             self._moving = True
             self._conn.write(send)
             self._moving = False
+
+        if blocking:
+            time.sleep(1)
+
         return True
 
 
@@ -275,12 +280,18 @@ class HerkuleX(ServoInterface):
         self._conn.initialize(self._externalId)
         self._positioning = False
 
+    def isMoving(self):
+        with Connection.getLock(self._conn):
+            _, detailCode = self._conn.stat(self._externalId, True)
+
+        return detailCode & self._conn.H_DETAIL_MOVING
+
     def getPosition(self):
         with Connection.getLock(self._conn):
             posSteps = self._conn.getPosition(self._externalId)
             return self._realToScalePos(posSteps)
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -295,9 +306,11 @@ class HerkuleX(ServoInterface):
         realSpeed = min(realSpeed, 2856)
 
         with Connection.getLock(self._conn):
-            self._moving = True
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
-            self._moving = False
+
+        if blocking:
+            while self.isMoving():
+                time.sleep(0.01)
 
         return self._conn.stat(self._externalId) == 0
 
@@ -340,7 +353,7 @@ class SSC32(ServoInterface):
         p = int(response)
         return self._realToScalePos(p * 10)
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -361,6 +374,9 @@ class SSC32(ServoInterface):
             self._moving = True
             self._conn.write(send)
             self._moving = False
+
+        if blocking:
+            time.sleep(1)
 
         return self._isInPosition(position)
 
@@ -386,7 +402,7 @@ class HS82MG(ServoInterface):
             posSteps = self._conn.getPosition(self._externalId)
             return self._realToScalePos(posSteps)
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -405,7 +421,22 @@ class HS82MG(ServoInterface):
             self._conn.setSpeed(self._externalId, int(spd))
             self._conn.setTarget(self._externalId, int(pos))
 
+        if blocking:
+            while self.isMoving():
+                time.sleep(0.01)
+
         return True
+
+    def setPositioning(self, enablePositioning):
+        with Connection.getLock(self._conn):
+            if enablePositioning:
+                self._conn.setTarget(self._externalId, 0)
+            else:
+                self.setPosition(self.getPosition())
+            self._positioning = enablePositioning
+
+    def getPositioning(self):
+        return self._conn.getPosition(self._externalId) != 0
 
 
 class Dummy(ServoInterface):
@@ -432,7 +463,7 @@ class Dummy(ServoInterface):
         self._readData()
         return self._posable
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -446,6 +477,9 @@ class Dummy(ServoInterface):
         time.sleep(secs / (speed / 100.0))
         self._writeData()
         self._logger.debug("%s Set position to: %s", self._servoId, position)
+        if blocking:
+            time.sleep(0.5)
+
         self._moving = False
         return True
 
