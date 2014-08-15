@@ -5,6 +5,7 @@ import logging
 import pyaudio
 import cStringIO
 import wave
+import time
 
 
 class SoundExecutionHandle(ActionExecutionHandle):
@@ -19,6 +20,7 @@ class SoundExecutionHandle(ActionExecutionHandle):
     @property
     def _audio(self):
         if SoundExecutionHandle.__audio == None:
+            #TODO: when to call PyAudio.terminate()?
             SoundExecutionHandle.__audio = pyaudio.PyAudio()
         return SoundExecutionHandle.__audio
 
@@ -30,11 +32,14 @@ class SoundExecutionHandle(ActionExecutionHandle):
         data = wf.readframes(SoundExecutionHandle.CHUNK)
         while data != '':
             stream.write(data)
+            #python Y U NO THREAD!!?
+            #sleep to, hopefully briefly, release the GIL so other threads can execute
+            #important for simultaneous running, i.e. groups, but potentially causes audio distortion
+            time.sleep(0.0001)
             data = wf.readframes(SoundExecutionHandle.CHUNK)
 
         stream.stop_stream()
         stream.close()
-        p.terminate()
 
         return not self._cancel
 

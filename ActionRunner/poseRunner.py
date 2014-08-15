@@ -2,6 +2,7 @@ import threading
 from base import ActionRunner, ActionExecutionHandle
 from collections import namedtuple
 import logging
+import time
 
 
 class PoseExecutionHandle(ActionExecutionHandle):
@@ -25,7 +26,18 @@ class PoseExecutionHandle(ActionExecutionHandle):
             position = float(jointPosition.position) if jointPosition.position != None else eval(jointPosition.positions or 'None')
             l.append((position, speed, servo))
 
-        results = [servoInterface.setPosition(position, speed, True) for (position, speed, servoInterface) in l]
+        [servoInterface.setPosition(position, speed, False) for (position, speed, servoInterface) in l]
+        moving = [si for _, _, si in l]
+        #TODO: status messages now that it's non-blocking
+        results = [True,]
+        while moving:
+            for servoInterface in moving:
+                print threading.current_thread().ident
+                if not servoInterface.isMoving():
+                    moving.remove(servoInterface)
+                #release the GIL
+                time.sleep(0.0001)
+        
 
         if self._cancel:
             result = False

@@ -1,6 +1,7 @@
 from base import ActionRunner, ActionExecutionHandle
 from collections import namedtuple
 import logging
+import time
 
 
 class SequenceExecutionHandle(ActionExecutionHandle):
@@ -19,6 +20,8 @@ class SequenceExecutionHandle(ActionExecutionHandle):
                 break
             else:
                 result = result and actionResult
+            #Release the GIL
+            time.sleep(0.0001)
 
         return result
 

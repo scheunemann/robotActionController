@@ -416,6 +416,7 @@ class HS82MG(ServoInterface):
 
         pos = self._scaleToRealPos(position)
         spd = self._scaleToRealSpeed(speed)
+        print "set %s to %s@%s(%spct)" % (self._externalId, pos, spd, speed)
 
         with Connection.getLock(self._conn):
             self._conn.setSpeed(self._externalId, int(spd))
