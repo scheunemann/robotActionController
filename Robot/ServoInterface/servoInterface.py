@@ -529,7 +529,7 @@ class Virtual(ServoInterface):
     def getPosition(self):
         return self._master.getPosition()
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
@@ -543,8 +543,8 @@ class Virtual(ServoInterface):
             diff = position - curMaster
             slavePosition = curSlave + (diff * self._ratio)
 
-        masterSuccess = self._master.setPosition(position, speed)
-        slaveSuccess = self._slave.setPosition(slavePosition, speed)
+        masterSuccess = self._master.setPosition(position, speed, blocking)
+        slaveSuccess = self._slave.setPosition(slavePosition, speed, blocking)
         return masterSuccess & slaveSuccess
 
 
@@ -578,11 +578,11 @@ class Robot(ServoInterface):
                 posRaw = 0
         return self._realToScalePos(posRaw)
 
-    def setPosition(self, position=None, speed=None):
+    def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
             position = self._defaultPos
         if speed == None:
             speed = self._defaultSpeed
 
         scaledPosition = self._scaleToRealPos(position)
-        return self._robot.setComponentState(self._componentName, scaledPosition) == 'SUCCEEDED'
+        return self._robot.setComponentState(self._componentName, scaledPosition, blocking) == 'SUCCEEDED'

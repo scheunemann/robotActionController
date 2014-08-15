@@ -7,15 +7,23 @@ import cStringIO
 import wave
 
 
-class SoundExeuctionHandle(ActionExecutionHandle):
+class SoundExecutionHandle(ActionExecutionHandle):
+
+    CHUNK = 1024
+    __audio = None
 
     def __init__(self, sound):
-        super(SoundExeuctionHandle, self).__init__(sound)
+        super(SoundExecutionHandle, self).__init__(sound)
         self._cancel = True
 
+    @property
+    def _audio(self):
+       if SoundExecutionHandle.__audio == None:
+            SoundExecutionHandle.__audio = pyaudio.PyAudio()
+        return SoundExecutionHandle.__audio
+
     def _runInternal(self, action):
-        CHUNK = 1024
-        p = pyaudio.PyAudio()
+        p = self._audio
         cb = cStringIO.StringIO(action.data)
         wf = wave.open(cb, 'rb')
         stream = p.open(format=p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True)
@@ -61,4 +69,4 @@ class SoundRunner(ActionRunner):
         return len(sound.data) > 0
 
     def _getHandle(self, sound):
-        return SoundExeuctionHandle(sound)
+        return SoundExecutionHandle(sound)
