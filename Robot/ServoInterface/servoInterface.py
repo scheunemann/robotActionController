@@ -203,25 +203,28 @@ class AX12(ServoInterface):
             self._positioning = enablePositioning
 
     def _checkMinMaxValues(self):
-        # We can check the hardware limits set in the servos
-        with Connection.getLock(self._conn):
-            readMinPos = self._conn.GetCWAngleLimit(self._externalId)
-            readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
-        minPos = round(self._scaleToRealPos(self._minPos))
-        maxPos = round(self._scaleToRealPos(self._maxPos))
+        try:
+            # We can check the hardware limits set in the servos
+            with Connection.getLock(self._conn):
+                readMinPos = self._conn.GetCWAngleLimit(self._externalId)
+                readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
+            minPos = round(self._scaleToRealPos(self._minPos))
+            maxPos = round(self._scaleToRealPos(self._maxPos))
 
-        if readMinPos > minPos:
-            # The motor doesn't allow for the minimum defined so far!
-            self._logger.warning("Requested minimum value of %s lower than hardware limits (%s) for servo %s", minPos, readMinPos, self._externalId)
-            self._minPos = self._realToScalePos(readMinPos)
-        if readMaxPos < maxPos:
-            # The motor doesn't allow for the maximum defined so far!
-            self._logger.warning("Requested maximum value of %s higher than hardware limits (%s) for servo %s", maxPos, readMaxPos, self._externalId)
-            self._maxPos = self._realToScalePos(readMaxPos)
-        if self._defaultPos < self._minPos or self._defaultPos > self._maxPos:
-            # The motor doesn't allow for this d!
-            self._logger.warning("Requested default value of %s outside allowed interval [%s,%s] for servo %s", self._defaultPos, self._minPos, self._maxPos, self._externalId)
-            self._defaultPos = self._posScaleValue / 2
+            if readMinPos > minPos:
+                # The motor doesn't allow for the minimum defined so far!
+                self._logger.warning("Requested minimum value of %s lower than hardware limits (%s) for servo %s", minPos, readMinPos, self._externalId)
+                self._minPos = self._realToScalePos(readMinPos)
+            if readMaxPos < maxPos:
+                # The motor doesn't allow for the maximum defined so far!
+                self._logger.warning("Requested maximum value of %s higher than hardware limits (%s) for servo %s", maxPos, readMaxPos, self._externalId)
+                self._maxPos = self._realToScalePos(readMaxPos)
+            if self._defaultPos < self._minPos or self._defaultPos > self._maxPos:
+                # The motor doesn't allow for this d!
+                self._logger.warning("Requested default value of %s outside allowed interval [%s,%s] for servo %s", self._defaultPos, self._minPos, self._maxPos, self._externalId)
+                self._defaultPos = self._posScaleValue / 2
+        except Exception:
+            self._logger.warn("Error reading angle limits", exc_info=True)
 
 
 class MINISSC(ServoInterface):

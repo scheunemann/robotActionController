@@ -29,7 +29,7 @@ def _realToScaleSpeed(value, scaleValue):
         return None
 
     value = float(value)
-    scaled = value * scaleValue
+    scaled = value * (scaleValue or 1)
     return round(scaled, 2)
 
 
@@ -355,7 +355,7 @@ class ActionImporter(object):
                     position = _realToScalePos(positionReal, offset, servo.model.positionScale)
                     print "%s O: %s, pR: %s, sC: %s, mN: %s, mX: %s, pS: %s" % (jointName.ljust(12), offset, positionReal, servo.model.positionScale, minPos, maxPos,  position)
                     if servo.model.speedScale != None:
-                        speed = speed * servo.model.speedScale
+                        speed = _realToScaleSpeed(speed, servo.model.speedScale)
                     else:
                         speed = None
                 except Exception:
