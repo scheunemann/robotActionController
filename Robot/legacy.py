@@ -1,5 +1,6 @@
 import os
 import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')))
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
@@ -9,7 +10,7 @@ from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
 def _realToScalePos(value, offset, scaleValue):
     if value == None:
         return None
-    scaled = (float(value) * scaleValue) - offset
+    scaled = (float(value) - offset) * scaleValue
     return round(scaled, 2)
 
 
@@ -28,12 +29,12 @@ def _realToScaleSpeed(value, scaleValue):
         return None
 
     value = float(value)
-    scaled = value * scaleValue
+    scaled = value * (scaleValue or 1)
     return round(scaled, 2)
 
 
 def _scaleToRealPos(offset, scale, value):
-    real = (value + offset) / float(scale)
+    real = (value / float(scale)) + offset
     return round(real, 2)
 
 
@@ -77,7 +78,7 @@ class KasparImporter(object):
                             'MIN_SPEED': 1,
                             'POSEABLE': True,
                             'SCALE_SPEED': 1,
-                            'SCALE_POS': 300.0 / 1024.0,
+                            'SCALE_POS': 360.0 / 1024.0,
                             },
                 'DEFAULT': {
                             'MAX_POS': 1023,
@@ -89,6 +90,30 @@ class KasparImporter(object):
                             'SCALE_POS': 360.0 / 1023.0,
                             }
                 }
+
+    #Calibration offsets (scaled values)
+    #From Calibration.pose
+    _offsets = {
+        'Kaspar_1c': {
+                    'ARM_L_1' : 420,
+                    'ARM_L_2' : 200,
+                    'ARM_L_3' : 640,
+                    'ARM_L_4' : 37,
+                    'ARM_R_1' : 580,
+                    'ARM_R_2' : 790,
+                    'ARM_R_3' : 450,
+                    'ARM_R_4' : 840,
+                    'HEAD_ROT' : 570,
+                    'HEAD_TLT' : 720,
+                    'HEAD_VERT' : 430,
+                    'EYES_LR' : 350,
+                    'EYES_UD' : 210,
+                    'EYELIDS' : 800,
+                    'MOUTH_OPEN' : 520,
+                    'MOUTH_SMILE' : 520,
+                    'TORSO' : 370,
+                    }
+        }
 
     def __init__(self, configDir):
         robotConfig = os.path.join(configDir, 'robot.xml')
@@ -102,7 +127,7 @@ class KasparImporter(object):
     def getRobot(self):
         r = Robot(name=self._getText('NAME', None, 'KASPAR'), version=self._version)
         r.servoGroups = self._getServoGroups()
-        r.servos = self._getServos(r.servoGroups)
+        r.servos = self._getServos(r.servoGroups, KasparImporter._offsets.get(r.name, {}))
         r.servoConfigs = self._getServoConfigs()
         r.model = self._getModel('KASPAR')
 
@@ -117,7 +142,7 @@ class KasparImporter(object):
 
         return self._models[modelName]
 
-    def _getServos(self, servoGroups):
+    def _getServos(self, servoGroups, offsets):
         servos = []
         for servo in self._get("SERVOLIST/SERVO"):
             s = Servo()
@@ -125,12 +150,18 @@ class KasparImporter(object):
             s.model = self._getServoModel(servo.get('type', None))
             s.defaultPosition = 0
 
-            minPos = self._getText("LIMITS[@type='pos']/MIN", servo)
-            maxPos = self._getText("LIMITS[@type='pos']/MAX", servo)
-            offset = int(self._getText("DEFAULT/POS", servo) or 0)
-            defaults = self._get("DEFAULT", servo)
-            if defaults and defaults[0].get("type") == 'scaled':
-                offset = _legacyUnscaleValue(minPos, maxPos, offset)
+            p1 = int(self._getText("LIMITS[@type='pos']/MIN", servo))
+            p2 = int(self._getText("LIMITS[@type='pos']/MAX", servo))
+            minPos = min(p1, p2)
+            maxPos = max(p1, p2)
+            if offsets and s.jointName in offsets:
+                #calibrated offsets
+                offset = _legacyUnscaleValue(minPos, maxPos, offsets.get(s.jointName))
+            else:
+                offset = int(self._getText("DEFAULT/POS", servo) or 0)
+                defaults = self._get("DEFAULT", servo)
+                if defaults and defaults[0].get("type") == 'scaled':
+                    offset = _legacyUnscaleValue(minPos, maxPos, offset)
 
             s.positionOffset = offset
             s.minPosition = _realToScalePos(minPos, s.positionOffset, s.model.positionScale)
@@ -320,10 +351,11 @@ class ActionImporter(object):
                     offset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
                     minPos = _scaleToRealPos(offset, servo.model.positionScale, servo.minPosition)
                     maxPos = _scaleToRealPos(offset, servo.model.positionScale, servo.maxPosition)
-                    position = _legacyUnscaleValue(minPos, maxPos, position)
-                    position = _realToScalePos(position, offset, servo.model.positionScale)
+                    positionReal = _legacyUnscaleValue(minPos, maxPos, position)
+                    position = _realToScalePos(positionReal, offset, servo.model.positionScale)
+                    print "%s O: %s, pR: %s, sC: %s, mN: %s, mX: %s, pS: %s" % (jointName.ljust(12), offset, positionReal, servo.model.positionScale, minPos, maxPos,  position)
                     if servo.model.speedScale != None:
-                        speed = speed * servo.model.speedScale
+                        speed = _realToScaleSpeed(speed, servo.model.speedScale)
                     else:
                         speed = None
                 except Exception:
@@ -382,11 +414,11 @@ class TriggerImporter(object):
 
 
 def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTriggers=True, loadRobots=True):
-    t = TriggerImporter()
 
-    if loadRobots:
+    if loadRobots or loadActions:
         k = KasparImporter(subDir)
         r = k.getRobot()
+    if loadRobots:
         robots.append(r)
 
     if loadActions:
@@ -416,6 +448,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                     print "Skipping sequence %s, another by the same name already exists" % pose.name
 
     if loadTriggers:
+        t = TriggerImporter()
         searchDir = os.path.join(subDir, 'keyMaps')
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
@@ -427,6 +460,8 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                         print "Trigger named %s already imported, skipping" % trigger.name
                     else:
                         triggers[trigger.name] = trigger
+	
+    return (robots, actions.values(), triggers.values())
 
 def loadAllConfigs(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
@@ -436,6 +471,6 @@ def loadAllConfigs(rootDir, loadActions=True, loadTriggers=True, loadRobots=True
     loadedRobots = []
 
     for subDir in dirs:
-        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subdir, loadActions, loadTriggers, loadRobots)
+        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, loadActions, loadTriggers)
 
     return (loadedRobots, loadedActions.values(), loadedTriggers.values())

@@ -23,9 +23,9 @@ def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=
 def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTriggers=True, loadRobots=True):
 
     robotConfig = os.path.join(subDir, 'robot.xml')
-    configType = et.parse(robotConfig).getroot().get('configType', None)
-    if configType == 'legacy':
-        return legacyLoadDirectory(actions, triggers, robots, subDir, actions, triggers, robots)
+    configType = et.parse(robotConfig).getroot().tag
+    if configType == 'KASPAR':
+        return legacyLoadDirectory(actions, triggers, robots, subDir, loadActions, loadTriggers, loadRobots)
 
     if loadActions:
         a = ActionImporter()
