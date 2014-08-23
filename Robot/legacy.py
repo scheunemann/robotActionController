@@ -393,7 +393,9 @@ class ActionImporter(object):
                     else:
                         speed = None
                     if name == 'Calibration':
-                        print "%s: %s @ %s" % (jointName, positionReal, speed)
+                        if i == 2:
+                            print 'Calibration Pose:'
+                        print "    %s: %s @ %s" % (jointName, positionReal, speed)
                 except Exception:
                     print >> sys.stderr, "Servo with name %s not attached to robot %s, using default conversion" % (jointName, legacyRobot.name)
                     position = position * self.defaultPosition
@@ -471,7 +473,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                 else:
                     print "Skipping pose %s, another by the same name already exists" % pose.name
 
-        searchDir = os.path.join(subDir, 'seq')
+        searchDir = os.path.join(subDir, 'seqs')
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
             for fileName in filter(lambda f: f.endswith(".seq"), files):

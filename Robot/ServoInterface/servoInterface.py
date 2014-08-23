@@ -180,7 +180,7 @@ class AX12(ServoInterface):
 
         realSpeed = int(round(self._scaleToRealSpeed(float(speed))))
         realPosition = int(round(self._scaleToRealPos(float(position))))
-        print "%s: %s @ %s" % (self._jointName, realPosition, realSpeed)
+        #print "%s: %s @ %s" % (self._jointName, realPosition, realSpeed)
         with Connection.getLock(self._conn):
             try:
                 self._conn.SetMovingSpeed(self._externalId, realSpeed)
