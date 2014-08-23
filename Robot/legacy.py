@@ -181,9 +181,9 @@ class KasparImporter(object):
             s.legacyInverted = p1 > p2
             minPos = min(p1, p2)
             maxPos = max(p1, p2)
-            if offsets and s.jointName in offsets:
+            if offsets and legacyName in offsets:
                 # calibrated offsets
-                offset = _legacyUnscaleValue(minPos, maxPos, offsets.get(s.jointName))
+                offset = _legacyUnscaleValue(minPos, maxPos, offsets.get(legacyName))
             else:
                 offset = int(self._getText("DEFAULT/POS", servo) or 0)
                 defaults = self._get("DEFAULT", servo)
@@ -379,13 +379,14 @@ class ActionImporter(object):
                         raise ValueError('Could not located servo for joint %s' % jointName)
 
                     servo = servos[0]
+                    jointName = servo.jointName
                     offset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
                     minPos = _scaleToRealPos(offset, servo.model.positionScale, servo.minPosition)
                     maxPos = _scaleToRealPos(offset, servo.model.positionScale, servo.maxPosition)
-                    if servo.legacyInverted:
-                        positionReal = _legacyUnscaleValue(maxPos, minPos, position)
-                    else:
-                        positionReal = _legacyUnscaleValue(minPos, maxPos, position)
+#                     if servo.legacyInverted:
+#                         positionReal = _legacyUnscaleValue(maxPos, minPos, position)
+#                     else:
+                    positionReal = _legacyUnscaleValue(minPos, maxPos, position)
                     position = _realToScalePos(positionReal, offset, servo.model.positionScale)
                     if servo.model.speedScale != None:
                         speed = _realToScaleSpeed(speed, servo.model.speedScale)
