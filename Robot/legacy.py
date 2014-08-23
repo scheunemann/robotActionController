@@ -95,25 +95,45 @@ class KasparImporter(object):
     # From Calibration.pose
     _offsets = {
         'Kaspar_1c': {
-                    'ARM_L_1' : 420,
-                    'ARM_L_2' : 200,
-                    'ARM_L_3' : 640,
-                    'ARM_L_4' : 37,
-                    'ARM_R_1' : 580,
-                    'ARM_R_2' : 790,
-                    'ARM_R_3' : 450,
-                    'ARM_R_4' : 840,
-                    'HEAD_ROT' : 570,
-                    'HEAD_TLT' : 720,
-                    'HEAD_VERT' : 430,
-                    'EYES_LR' : 350,
-                    'EYES_UD' : 210,
-                    'EYELIDS' : 800,
-                    'MOUTH_OPEN' : 520,
-                    'MOUTH_SMILE' : 520,
-                    'TORSO' : 370,
+                    'ARM_L_1': 420,
+                    'ARM_L_2': 200,
+                    'ARM_L_3': 640,
+                    'ARM_L_4': 37,
+                    'ARM_R_1': 580,
+                    'ARM_R_2': 790,
+                    'ARM_R_3': 450,
+                    'ARM_R_4': 840,
+                    'HEAD_ROT': 570,
+                    'HEAD_TLT': 720,
+                    'HEAD_VERT': 430,
+                    'EYES_LR': 350,
+                    'EYES_UD': 210,
+                    'EYELIDS': 800,
+                    'MOUTH_OPEN': 520,
+                    'MOUTH_SMILE': 520,
+                    'TORSO': 370,
                     }
         }
+
+    _nameMap = {
+                    'HEAD_ROT': 'HEAD_YAW',
+                    'HEAD_PITCH': 'HEAD_PITCH',
+                    'HEAD_TLT': 'HEAD_ROLL',
+                    'EYES_LR': 'EYES_YAW',
+                    'EYES_UD': 'EYES_PITCH',
+                    'EYELIDS': 'EYELIDS',
+                    'MOUTH_OPEN': 'MOUTH_OPEN',
+                    'MOUTH_SMILE': 'MOUTH_SMILE',
+                    'ARM_L_1': 'L_SHOULDER_ROLL_UPPER',
+                    'ARM_L_2': 'L_SHOULDER_PITCH',
+                    'ARM_L_3': 'L_SHOULDER_ROLL_LOWER',
+                    'ARM_L_4': 'L_ELBOW',
+                    'ARM_R_1': 'R_SHOULDER_ROLL_UPPER',
+                    'ARM_R_2': 'R_SHOULDER_PITCH',
+                    'ARM_R_3': 'R_SHOULDER_ROLL_LOWER',
+                    'ARM_R_4': 'R_ELBOW',
+                    'TORSO': 'TORSO',
+                    }
 
     def __init__(self, configDir):
         robotConfig = os.path.join(configDir, 'robot.xml')
@@ -146,7 +166,13 @@ class KasparImporter(object):
         servos = []
         for servo in self._get("SERVOLIST/SERVO"):
             s = Servo()
-            s.jointName = self._getText("NAME", servo)
+            legacyName = self._getText("NAME", servo)
+            if legacyName in KasparImporter._nameMap:
+                jointName = KasparImporter._nameMap[legacyName]
+            else:
+                jointName = legacyName
+            s.jointName = jointName
+            s.legacyName = legacyName
             s.model = self._getServoModel(servo.get('type', None))
             s.defaultPosition = 0
 
@@ -348,7 +374,11 @@ class ActionImporter(object):
 
             if legacyRobot:
                 try:
-                    servo = filter(lambda x: x.jointName == jointName, legacyRobot.servos)[0]
+                    servos = filter(lambda x: x.jointName == jointName, legacyRobot.servos) or filter(lambda x: x.legacyName == jointName, legacyRobot.servos)
+                    if not servos:
+                        raise ValueError('Could not located servo for joint %s' % jointName)
+
+                    servo = servos[0]
                     offset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
                     minPos = _scaleToRealPos(offset, servo.model.positionScale, servo.minPosition)
                     maxPos = _scaleToRealPos(offset, servo.model.positionScale, servo.maxPosition)
