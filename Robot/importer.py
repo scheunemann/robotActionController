@@ -23,6 +23,8 @@ def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=
 def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTriggers=True, loadRobots=True):
 
     robotConfig = os.path.join(subDir, 'robot.xml')
+    if not os.path.isfile(robotConfig):
+        return
     configType = et.parse(robotConfig).getroot().tag
     if configType == 'KASPAR':
         return legacyLoadDirectory(actions, triggers, robots, subDir, loadActions, loadTriggers, loadRobots)
