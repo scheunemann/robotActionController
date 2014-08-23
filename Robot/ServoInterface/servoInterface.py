@@ -174,25 +174,38 @@ class AX12(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
         realSpeed = int(round(self._scaleToRealSpeed(float(speed))))
         realPosition = int(round(self._scaleToRealPos(float(position))))
+        print "%s: %s @ %s" % (self._jointName, realPosition, realSpeed)
         with Connection.getLock(self._conn):
-            self._conn.SetMovingSpeed(self._externalId, realSpeed)
-            self._conn.SetPosition(self._externalId, realPosition)
+            try:
+                self._conn.SetMovingSpeed(self._externalId, realSpeed)
+                self._conn.SetPosition(self._externalId, realPosition)
+            except:
+                self._logger.error("Error occurred while setting servo position.", exc_info=True)
+                return False
 
         if blocking:
             while self.isMoving():
                 time.sleep(0.001)
 
-        return self._isInPosition(position)
+        try:
+            return self._isInPosition(position)
+        except:
+            self._logger.error("Error occurred while setting servo position.", exc_info=True)
+            return False
 
     def isMoving(self):
         with Connection.getLock(self._conn):
-            return self._conn.Moving(self._externalId)
+            try:
+                return self._conn.Moving(self._externalId)
+            except:
+                self._logger.error("Error occurred while checking moving state.", exc_info=True)
+                return False
 
     def getPositioning(self):
         return self._positioning
@@ -219,10 +232,10 @@ class AX12(ServoInterface):
                 # The motor doesn't allow for the maximum defined so far!
                 self._logger.warning("Requested maximum value of %s higher than hardware limits (%s) for servo %s", maxPos, readMaxPos, self._externalId)
                 self._maxPos = self._realToScalePos(readMaxPos)
-            if self._defaultPos < self._minPos or self._defaultPos > self._maxPos:
+            if self._defaultPosition < self._minPos or self._defaultPosition > self._maxPos:
                 # The motor doesn't allow for this d!
-                self._logger.warning("Requested default value of %s outside allowed interval [%s,%s] for servo %s", self._defaultPos, self._minPos, self._maxPos, self._externalId)
-                self._defaultPos = self._posScaleValue / 2
+                self._logger.warning("Requested default value of %s outside allowed interval [%s,%s] for servo %s", self._defaultPosition, self._minPos, self._maxPos, self._externalId)
+                self._defaultPosition = self._posScaleValue / 2
         except Exception:
             self._logger.warn("Error reading angle limits", exc_info=True)
 
@@ -245,7 +258,7 @@ class MINISSC(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
@@ -296,7 +309,7 @@ class HerkuleX(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
@@ -358,7 +371,7 @@ class SSC32(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
@@ -407,7 +420,7 @@ class HS82MG(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
@@ -468,7 +481,7 @@ class Dummy(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
@@ -534,7 +547,7 @@ class Virtual(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 
@@ -583,7 +596,7 @@ class Robot(ServoInterface):
 
     def setPosition(self, position=None, speed=None, blocking=False):
         if position == None:
-            position = self._defaultPos
+            position = self._defaultPosition
         if speed == None:
             speed = self._defaultSpeed
 

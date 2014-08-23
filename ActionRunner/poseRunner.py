@@ -32,7 +32,6 @@ class PoseExecutionHandle(ActionExecutionHandle):
         results = [True, ]
         while moving:
             for servoInterface in moving:
-                print threading.current_thread().ident
                 if not servoInterface.isMoving():
                     moving.remove(servoInterface)
                 # release the GIL

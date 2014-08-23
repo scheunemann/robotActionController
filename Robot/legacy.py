@@ -91,8 +91,8 @@ class KasparImporter(object):
                             }
                 }
 
-    #Calibration offsets (scaled values)
-    #From Calibration.pose
+    # Calibration offsets (scaled values)
+    # From Calibration.pose
     _offsets = {
         'Kaspar_1c': {
                     'ARM_L_1' : 420,
@@ -152,10 +152,11 @@ class KasparImporter(object):
 
             p1 = int(self._getText("LIMITS[@type='pos']/MIN", servo))
             p2 = int(self._getText("LIMITS[@type='pos']/MAX", servo))
+            s.legacyInverted = p1 > p2
             minPos = min(p1, p2)
             maxPos = max(p1, p2)
             if offsets and s.jointName in offsets:
-                #calibrated offsets
+                # calibrated offsets
                 offset = _legacyUnscaleValue(minPos, maxPos, offsets.get(s.jointName))
             else:
                 offset = int(self._getText("DEFAULT/POS", servo) or 0)
@@ -351,13 +352,17 @@ class ActionImporter(object):
                     offset = servo.positionOffset if servo.positionOffset != None else servo.model.positionOffset
                     minPos = _scaleToRealPos(offset, servo.model.positionScale, servo.minPosition)
                     maxPos = _scaleToRealPos(offset, servo.model.positionScale, servo.maxPosition)
-                    positionReal = _legacyUnscaleValue(minPos, maxPos, position)
+                    if servo.legacyInverted:
+                        positionReal = _legacyUnscaleValue(maxPos, minPos, position)
+                    else:
+                        positionReal = _legacyUnscaleValue(minPos, maxPos, position)
                     position = _realToScalePos(positionReal, offset, servo.model.positionScale)
-                    print "%s O: %s, pR: %s, sC: %s, mN: %s, mX: %s, pS: %s" % (jointName.ljust(12), offset, positionReal, servo.model.positionScale, minPos, maxPos,  position)
                     if servo.model.speedScale != None:
                         speed = _realToScaleSpeed(speed, servo.model.speedScale)
                     else:
                         speed = None
+                    if name == 'Calibration':
+                        print "%s: %s @ %s" % (jointName, positionReal, speed)
                 except Exception:
                     print >> sys.stderr, "Servo with name %s not attached to robot %s, using default conversion" % (jointName, legacyRobot.name)
                     position = position * self.defaultPosition
@@ -426,7 +431,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
         searchDir = os.path.join(subDir, 'pos')
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-            for fileName in filter(lambda f:f.endswith(".pose"), files):
+            for fileName in filter(lambda f: f.endswith(".pose"), files):
                 f = open(fileName)
                 lines = f.readlines()
                 pose = a.getPose(lines, r)
@@ -438,7 +443,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
         searchDir = os.path.join(subDir, 'seq')
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-            for fileName in filter(lambda f:f.endswith(".seq"), files):
+            for fileName in filter(lambda f: f.endswith(".seq"), files):
                 f = open(fileName)
                 lines = f.readlines()
                 sequence = a.getSequence(lines, actions.values(), os.path.join(subDir, 'sounds'))
@@ -452,7 +457,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
         searchDir = os.path.join(subDir, 'keyMaps')
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
-            for fileName in filter(lambda f:f.endswith(".skm"), files):
+            for fileName in filter(lambda f: f.endswith(".skm"), files):
                 f = open(fileName)
                 lines = f.readlines()
                 for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
@@ -460,8 +465,9 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                         print "Trigger named %s already imported, skipping" % trigger.name
                     else:
                         triggers[trigger.name] = trigger
-	
+
     return (robots, actions.values(), triggers.values())
+
 
 def loadAllConfigs(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]

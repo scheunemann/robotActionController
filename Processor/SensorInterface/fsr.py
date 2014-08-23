@@ -46,7 +46,7 @@ class FSR_Arduino(object):
             c += 1
 
         if c > 0:
-            print "Skipped %s bytes to start, packet length = %s" % (c, self._packetLength)
+            self._logger.info("Skipped %s bytes to start, packet length = %s" % (c, self._packetLength))
 
         packetRaw = self._port.read(self._packetLength)
         packet = [1023 - (ord(packetRaw[i]) * 256) - ord(packetRaw[i + 1]) for i in range(0, len(packetRaw), 2)]
