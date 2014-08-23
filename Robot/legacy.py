@@ -132,7 +132,7 @@ class KasparImporter(object):
                     'ARM_R_2': 'R_SHOULDER_PITCH',
                     'ARM_R_3': 'R_SHOULDER_ROLL_LOWER',
                     'ARM_R_4': 'R_ELBOW',
-                    'TORSO': 'TORSO',
+                    'TORSO': 'TORSO_YAW',
                     }
 
     def __init__(self, configDir):
