@@ -117,7 +117,7 @@ class KasparImporter(object):
 
     _nameMap = {
                     'HEAD_ROT': 'HEAD_YAW',
-                    'HEAD_PITCH': 'HEAD_PITCH',
+                    'HEAD_VERT': 'HEAD_PITCH',
                     'HEAD_TLT': 'HEAD_ROLL',
                     'EYES_LR': 'EYES_YAW',
                     'EYES_UD': 'EYES_PITCH',
