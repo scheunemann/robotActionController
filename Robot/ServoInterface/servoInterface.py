@@ -563,6 +563,13 @@ class Virtual(ServoInterface):
         slaveSuccess = self._slave.setPosition(slavePosition, speed, blocking)
         return masterSuccess & slaveSuccess
 
+    def setPositioning(self, enablePositioning):
+        self._master.setPositioning(enablePositioning)
+        self._slave.setPositioning(enablePositioning)
+
+    def getPositioning(self):
+        return self.getPosition() != 0
+	
 
 class Robot(ServoInterface):
 

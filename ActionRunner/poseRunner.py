@@ -37,6 +37,12 @@ class PoseExecutionHandle(ActionExecutionHandle):
                 # release the GIL
                 time.sleep(0.0001)
 
+        #TODO: Find a better way to handle the buzzing from the HS82MGs
+        for _, _, servoInterface in l:
+            if servoInterface.__class__.__name__ in ['HS82MG', 'Virtual']:
+                # Disable torque on HS82MGs after moving
+                servoInterface.setPositioning(True)
+
         if self._cancel:
             result = False
         else:
