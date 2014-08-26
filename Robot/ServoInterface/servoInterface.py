@@ -220,8 +220,8 @@ class AX12(ServoInterface):
         try:
             # We can check the hardware limits set in the servos
             with Connection.getLock(self._conn):
-                readMinPos = self._conn.GetCWAngleLimit(self._externalId)
-                readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
+               readMinPos = self._conn.GetCWAngleLimit(self._externalId)
+               readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
             minPos = round(self._scaleToRealPos(self._minPos))
             maxPos = round(self._scaleToRealPos(self._maxPos))
 
@@ -328,6 +328,8 @@ class HerkuleX(ServoInterface):
         realSpeed = max(realSpeed, 0)
         realSpeed = min(realSpeed, 2856)
 
+        self.__temperatureHackDONOTUSEINRELEASE()
+
         with Connection.getLock(self._conn):
             self._logger.debug("Setting ServoID: %s to Position %s at Speed %s" % (self._externalId, realPosition, realSpeed))
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
@@ -348,6 +350,17 @@ class HerkuleX(ServoInterface):
             else:
                 self._conn.torqueON(self._externalId)
             self._positioning = enablePositioning
+
+    def __temperatureHackDONOTUSEINRELEASE(self):
+        with Connection.getLock(self._conn):
+            if self._conn.getTorque(self._externalId) == 0:
+                if self._conn.getTemperature(self._externalId) < 0xD1:
+                    self._logger.warning("AUTOCLEARING TEMPERATURE ERROR ON SERVO %s", self._externalId)
+                    self._conn.clearError(self._externalId)
+                    self._conn.torqueON(self._externalId)
+                else:
+                    self._logger.warning("SERVO %s STILL IN OVERHEAT, CANNOT CLEAR ERROR", self._externalId)
+                
 
 
 class SSC32(ServoInterface):
