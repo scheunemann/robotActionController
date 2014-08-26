@@ -711,8 +711,9 @@ class HerkuleX(object):
     * @param writeByte
     *
     """
-    def writeRegistryEEP(self, servoID, address, writeByte):
-        length = 1 + (writeByte > 255)
+    def writeRegistryEEP(self, servoID, address, writeByte, length=1):
+        if length == None:
+            length = 1 + (writeByte > 255)
         optData = [0] * (2 + length)
         optData[0] = address  # Address
         optData[1] = length  # Length
