@@ -192,7 +192,7 @@ class FSR_MiniMaestro(object):
 
     def getCurrentValue(self):
         with FSR_MiniMaestro._pollerLock:
-            hist = FSR_MiniMaestro._pollerLock[self._port].getValues(self._externalId)
+            hist = FSR_MiniMaestro._pollers[self._port].getValues(self._externalId)
 
         samples = hist[-1 * min(len(hist), self._numSamples):]
         return float(sum(samples)) / len(samples)
