@@ -93,25 +93,25 @@ class KasparImporter(object):
 
     # Calibration offsets (scaled values)
     # From Calibration.pose
-    _offsets = {
+    _conversionMatrix = {
         'Kaspar_1c': {
-                    'ARM_L_1': 420,
-                    'ARM_L_2': 200,
-                    'ARM_L_3': 640,
-                    'ARM_L_4': 37,
-                    'ARM_R_1': 580,
-                    'ARM_R_2': 790,
-                    'ARM_R_3': 450,
-                    'ARM_R_4': 840,
-                    'HEAD_ROT': 570,
-                    'HEAD_TLT': 720,
-                    'HEAD_VERT': 430,
-                    'EYES_LR': 350,
-                    'EYES_UD': 210,
-                    'EYELIDS': 800,
-                    'MOUTH_OPEN': 520,
-                    'MOUTH_SMILE': 520,
-                    'TORSO': 370,
+                    'ARM_L_1': {'offset': 420, 'modifier': 1},
+                    'ARM_L_2': {'offset': 200, 'modifier': 1},
+                    'ARM_L_3': {'offset': 640, 'modifier': 1},
+                    'ARM_L_4': {'offset': 37, 'modifier': 1},
+                    'ARM_R_1': {'offset': 580, 'modifier': 1},
+                    'ARM_R_2': {'offset': 790, 'modifier': 1},
+                    'ARM_R_3': {'offset': 450, 'modifier': 1},
+                    'ARM_R_4': {'offset': 840, 'modifier': 1},
+                    'HEAD_ROT': {'offset': 570, 'modifier': 1},
+                    'HEAD_TLT': {'offset': 720, 'modifier': 1},
+                    'HEAD_VERT': {'offset': 430, 'modifier': 1},
+                    'EYES_LR': {'offset': 350, 'modifier': 1},
+                    'EYES_UD': {'offset': 210, 'modifier': -1},
+                    'EYELIDS': {'offset': 800, 'modifier': 1},
+                    'MOUTH_OPEN': {'offset': 520, 'modifier': 1},
+                    'MOUTH_SMILE': {'offset': 520, 'modifier': 1},
+                    'TORSO': {'offset': 370, 'modifier': 1},
                     }
         }
 
@@ -147,7 +147,7 @@ class KasparImporter(object):
     def getRobot(self):
         r = Robot(name=self._getText('NAME', None, 'KASPAR'), version=self._version)
         r.servoGroups = self._getServoGroups()
-        r.servos = self._getServos(r.servoGroups, KasparImporter._offsets.get(r.name, {}))
+        r.servos = self._getServos(r.servoGroups, KasparImporter._conversionMatrix.get(r.name, {}))
         r.servoConfigs = self._getServoConfigs()
         r.model = self._getModel('KASPAR')
 
@@ -162,7 +162,7 @@ class KasparImporter(object):
 
         return self._models[modelName]
 
-    def _getServos(self, servoGroups, offsets):
+    def _getServos(self, servoGroups, conversions=None):
         servos = []
         for servo in self._get("SERVOLIST/SERVO"):
             s = Servo()
@@ -178,12 +178,12 @@ class KasparImporter(object):
 
             p1 = int(self._getText("LIMITS[@type='pos']/MIN", servo))
             p2 = int(self._getText("LIMITS[@type='pos']/MAX", servo))
-            s.legacyInverted = p1 > p2
             minPos = min(p1, p2)
             maxPos = max(p1, p2)
-            if offsets and legacyName in offsets:
+            if conversions and legacyName in conversions:
                 # calibrated offsets
-                offset = _legacyUnscaleValue(minPos, maxPos, offsets.get(legacyName))
+                offset = _legacyUnscaleValue(minPos, maxPos, conversions.get(legacyName).get('offset'))
+                s.positionModifier = conversions.get(legacyName).get('modifier', 1)
             else:
                 offset = int(self._getText("DEFAULT/POS", servo) or 0)
                 defaults = self._get("DEFAULT", servo)
@@ -388,6 +388,9 @@ class ActionImporter(object):
 #                     else:
                     positionReal = _legacyUnscaleValue(minPos, maxPos, position)
                     position = _realToScalePos(positionReal, offset, servo.model.positionScale)
+                    position = position * servo.positionModifier
+                    if position < servo.minPosition or position > servo.maxPosition:
+                        print >> sys.stderr, "Converted position (%s) for pose %s is out of range [%s:%s]" % (position, name, minPos, maxPos)
                     if servo.model.speedScale != None:
                         speed = _realToScaleSpeed(speed, servo.model.speedScale)
                     else:
