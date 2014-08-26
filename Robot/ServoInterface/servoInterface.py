@@ -316,14 +316,20 @@ class HerkuleX(ServoInterface):
 
         realPosition = int(round(float(self._scaleToRealPos(position))))
         realSpeed = self._scaleToRealSpeed(speed)  # steps per second
-        totalSteps = abs(realPosition - self._conn.getPosition(self._externalId))
+        with Connection.getLock(self._conn):
+            currentPosition = int(self._conn.getPosition(self._externalId))
+
+        if currentPosition == -1:
+            totalSteps = 1500 # Default to slow if no position returned
+        else:
+            totalSteps = abs(realPosition - currentPosition)
         realSpeed = (totalSteps / realSpeed) * 1000
         realSpeed = int(round(float(realSpeed)))
         realSpeed = max(realSpeed, 0)
         realSpeed = min(realSpeed, 2856)
 
         with Connection.getLock(self._conn):
-            self._logger.debug("Setting ServoID: %s to Position %s" % (self._externalId, realPosition))
+            self._logger.debug("Setting ServoID: %s to Position %s at Speed %s" % (self._externalId, realPosition, realSpeed))
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
 
         if blocking:
@@ -415,7 +421,7 @@ class HS82MG(ServoInterface):
     def isMoving(self):
         # drivers getMovingState is rather inacturate
         # compute the estimated time in ms to complete moving and pad by 20%
-        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1200 > self._lastPosition[2]
+        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1500 > self._lastPosition[2]
         #with Connection.getLock(self._conn):
         #    return self._conn.getMovingState()
 

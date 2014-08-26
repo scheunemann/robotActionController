@@ -373,6 +373,9 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 10:
+            self._logger.warning("Invalid packet! %s" % [str(x) for x in readBuf])
+            return -1
         pos = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return pos
 
@@ -812,24 +815,31 @@ class HerkuleX(object):
     def sendDataForResult(self, buf):
         with self.portLock:
             self.sendData(buf)
+            ackDelay = HerkuleX.WAIT_TIME_BY_ACK / 1000.0
 
             try:
-                time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
+                time.sleep(ackDelay)
             except:
                 #pass
                 self._logger.error(sys.exc_info()[0])
 
+            startTime = time.time()
             readBuf = [0xFF, 0xFF]
             #print "Waiting for result..."
-            while len(readBuf) == 2:
+            # Locate the start of the header
+            while len(readBuf) == 2 and time.time() - startTime < 0.1:
                 inBuffer = self.mPort.read(1)
+                if len(inBuffer) == 0:
+                    continue
                 byte = ord(inBuffer) & 0xFF
                 if byte == 0xFF:
-                    continue
+                   continue
                 readBuf.append(byte)
 
+            #readBuf = []
             #inBuffer = self.mPort.read(3)
             #[readBuf.append(ord(c) & 0xFF) for c in inBuffer]
+            
             if len(readBuf) > 2 and readBuf[2] < 255:
                 inBuffer = self.mPort.read(readBuf[2] - 3)
                 [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
