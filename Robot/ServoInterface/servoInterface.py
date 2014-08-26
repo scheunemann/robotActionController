@@ -413,7 +413,9 @@ class HS82MG(ServoInterface):
         self._lastPosition = (datetime.datetime.utcnow(), 0, 0)
 
     def isMoving(self):
-        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1000 > self._lastPosition[2]
+        # drivers getMovingState is rather inacturate
+        # compute the estimated time in ms to complete moving and pad by 20%
+        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1200 > self._lastPosition[2]
         #with Connection.getLock(self._conn):
         #    return self._conn.getMovingState()
 

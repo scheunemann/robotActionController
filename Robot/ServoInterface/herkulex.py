@@ -27,6 +27,7 @@ import sys
 import time
 import logging
 from threading import RLock
+import time
 import connections
 
 __all__ = ['HerkuleX', ]
@@ -83,6 +84,7 @@ class HerkuleX(object):
     def __init__(self, portstring, portspeed):
         self.portLock = RLock()
         self.mPort = connections.Connection.getConnection('serial', portstring, portspeed)
+        self.mPort.timeout = 0.1
         self.setAckPolicy(1)  # set ACK policy
         self.multipleMoveData = []
         self.mIDs = []
@@ -327,8 +329,10 @@ class HerkuleX(object):
     """
     def moveOne(self, servoID, goalPos, playTime, led=0):
         if goalPos > 1023 or goalPos < 0:
+            self._logger.warning("Got out of range position: %s", goalPos)
             return  # speed (goal) non correct
         if playTime < 0 or playTime > 2856:
+            self._logger.warning("Got out of range playtime: %s", playTime)
             return
 
         # Position definition
@@ -346,6 +350,7 @@ class HerkuleX(object):
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HSJOG, optData)
         self.sendData(packetBuf)
+        self._logger.debug(self.error_text(servoID))
 
     """
     * Get servo position
@@ -610,6 +615,8 @@ class HerkuleX(object):
     def error_text(self, servoID):
         statusCode, detailCode = self.stat(servoID, True)
         codes = []
+        if statusCode == -1:
+            return ['Invalid response recieved, unknown status',]
         if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
             pass
         if statusCode & HerkuleX.H_ERROR_INPUT_VOLTAGE == HerkuleX.H_ERROR_INPUT_VOLTAGE:
@@ -795,7 +802,9 @@ class HerkuleX(object):
 
     def sendData(self, buf):
         with self.portLock:
-            self.mPort.write(''.join([chr(x) for x in buf]))
+            packet = ''.join([chr(x) for x in buf])
+            #print "Sending packet: [%s]" % ', '.join([str(x) for x in buf])
+            self.mPort.write(packet)
 
     def sendDataForResult(self, buf):
         with self.portLock:
@@ -804,13 +813,21 @@ class HerkuleX(object):
             try:
                 time.sleep(HerkuleX.WAIT_TIME_BY_ACK / 1000.0)
             except:
+                #pass
                 self._logger.error(sys.exc_info()[0])
 
             readBuf = []
-            while self.mPort.inWaiting() > 0:
-                inBuffer = self.mPort.read(1)
-                readBuf.append(ord(inBuffer) & 0xFF)
+            #print "Waiting for result..."
+            inBuffer = self.mPort.read(3)
+            [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
+            if len(readBuf) > 2 and readBuf[2] < 255:
+                inBuffer = self.mPort.read(readBuf[2] - 3)
+                [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
+            #else:
+            #    print "Strange packet recieved: %s" % ', '.join([str(x) for x in inBuffer])
+            #    print self.mPort
 
+        #print "Result:  %s" % readBuf
         return readBuf
 
 
