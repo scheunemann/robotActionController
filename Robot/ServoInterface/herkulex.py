@@ -750,14 +750,17 @@ class HerkuleX(object):
 
     def isRightPacket(self, buf):
         if len(buf) < 7:
+            #print [str(x) for x in buf]
             return False
 
         chksum1 = self.checksum1(buf)  # Checksum1
         chksum2 = self.checksum2(chksum1)  # Checksum2
 
         if chksum1 != buf[5]:
+            #print [str(x) for x in buf]
             return False
         if chksum2 != buf[6]:
+            #print [str(x) for x in buf]
             return False
 
         return True
@@ -816,10 +819,17 @@ class HerkuleX(object):
                 #pass
                 self._logger.error(sys.exc_info()[0])
 
-            readBuf = []
+            readBuf = [0xFF, 0xFF]
             #print "Waiting for result..."
-            inBuffer = self.mPort.read(3)
-            [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
+            while len(readBuf) == 2:
+                inBuffer = self.mPort.read(1)
+                byte = ord(inBuffer) & 0xFF
+                if byte == 0xFF:
+                    continue
+                readBuf.append(byte)
+
+            #inBuffer = self.mPort.read(3)
+            #[readBuf.append(ord(c) & 0xFF) for c in inBuffer]
             if len(readBuf) > 2 and readBuf[2] < 255:
                 inBuffer = self.mPort.read(readBuf[2] - 3)
                 [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
