@@ -1,4 +1,5 @@
 import logging
+import datetime
 import time
 from threading import RLock
 from connections import Connection
@@ -408,10 +409,12 @@ class HS82MG(ServoInterface):
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("minimaestro", self._port, self._portSpeed)
+        self._lastPosition = (datetime.datetime.utcnow(), 0, 0)
 
     def isMoving(self):
-        with Connection.getLock(self._conn):
-            return self._conn.getMovingState()
+        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1000 > self._lastPosition[2]
+        #with Connection.getLock(self._conn):
+        #    return self._conn.getMovingState()
 
     def getPosition(self):
         with Connection.getLock(self._conn):
@@ -436,6 +439,9 @@ class HS82MG(ServoInterface):
         with Connection.getLock(self._conn):
             self._conn.setSpeed(self._externalId, int(spd))
             self._conn.setTarget(self._externalId, int(pos))
+
+        self._lastPosition = (datetime.datetime.utcnow(), pos, spd * 0.025 * abs(self._lastPosition[1] - pos))
+        self._logger.debug("HS82MG setting pos: %s spd: %s time: %s" % (pos, spd, self._lastPosition[2]))
 
         if blocking:
             while self.isMoving():
