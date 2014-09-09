@@ -116,6 +116,23 @@ class HumanDirectionSensor(object):
                 return None
 
 
+class HumanDetectorSensor(HumanDirectionSensor):
+    sensorType = 'HumanDetectors'
+
+    def __init__(self, sensor, config):
+        super(HumanDetectorSensor, self).__init__(sensor, config)
+        self._spread = sensor.extraData.get('spread', 30)
+        self._length = 360 / self._spread
+        self._locPart = 'angle'
+
+    def getCurrentValue(self):
+        angle = super(HumanDetectorSensor, self).getCurrentValue()
+        activated = angle / 360
+        weight = (angle % 360) / float(self._spread)
+        ret = [0] * self._length
+        ret[activated] = weight
+        return ret
+
 if __name__ == '__main__':
     from Data.Model import Sensor
     dbConfig = dbConfig = {
