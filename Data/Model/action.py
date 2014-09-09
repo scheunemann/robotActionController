@@ -3,11 +3,10 @@ import uuid
 from base import StandardMixin, Base
 from sqlalchemy import Column, String, Integer, ForeignKey, Table, Float
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.orderinglist import ordering_list
 
 
-__all__ = ['Action', 'ExpressionAction', 'GroupAction', 'JointPosition', 'SequenceOrder', 'PoseAction', 'SequenceAction', 'SoundAction', ]
+__all__ = ['Action', 'GroupAction', 'JointPosition', 'SequenceOrder', 'PoseAction', 'SequenceAction', 'SoundAction', ]
 
 
 nextActions_table = Table('nextActions', Base.metadata,
@@ -21,8 +20,6 @@ class Action(StandardMixin, Base):
     name = Column(String(50))
     type = Column(String(50))
 
-    # minimum action length, in seconds
-    minLength = Column(Float)
     next_actions = relationship("Action", secondary=nextActions_table)
     triggers = relationship("Trigger", back_populates="action")
     overrides = relationship("CustomAction", back_populates="overridden", foreign_keys="CustomAction.overridden_id")
@@ -47,15 +44,15 @@ class Action(StandardMixin, Base):
                 if 'type' in dictObj:
                     actionType = dictObj.pop('type')
                     actionClass = None
-                    if actionType.lower() == 'expression':
+                    if actionType.lower() == 'expressionaction':
                         actionClass = ExpressionAction
-                    elif actionType.lower() == 'group':
+                    elif actionType.lower() == 'groupaction':
                         actionClass = GroupAction
-                    elif actionType.lower() == 'pose':
+                    elif actionType.lower() == 'poseaction':
                         actionClass = PoseAction
-                    elif actionType.lower() == 'sequence':
+                    elif actionType.lower() == 'sequenceaction':
                         actionClass = SequenceAction
-                    elif actionType.lower() == 'sound':
+                    elif actionType.lower() == 'soundaction':
                         actionClass = SoundAction
                     else:
                         raise ValueError('Unknown action type: %s' % actionType)
@@ -175,16 +172,25 @@ class PoseAction(Action):
         self.speedModifier = speedModifier
 
 
-class ExpressionAction(Action):
+class SequenceOrder(StandardMixin, Base):
 
-    id = Column(Integer, ForeignKey(Action.id), primary_key=True)
-    __mapper_args__ = {
-            'polymorphic_identity': 'ExpressionAction',
-            'inherit_condition': (id == Action.id),
-    }
+    order = Column(Integer)
 
-    def __init__(self, **kwargs):
-        super(ExpressionAction, self).__init__(**kwargs)
+    action_id = Column(Integer, ForeignKey('Action.id'))
+    action = relationship("Action", foreign_keys=action_id)
+
+    sequence_id = Column(Integer, ForeignKey('SequenceAction.id'))
+    sequence = relationship("SequenceAction", back_populates="actions", foreign_keys=sequence_id)
+
+    forcedLength = Column(Integer, nullable=True)
+
+    def __init__(self, action=None, action_id=None, sequence=None, sequence_id=None, forcedLength=None, **kwargs):
+        super(SequenceOrder, self).__init__(**kwargs)
+        self.action = action
+        self.action_id = action_id
+        self.sequence = sequence
+        self.sequence_id = sequence_id
+        self.forcedLength = forcedLength
 
 
 class SequenceAction(Action):
@@ -195,31 +201,12 @@ class SequenceAction(Action):
             'polymorphic_identity': 'SequenceAction',
     }
 
-    ordered_actions = relationship("SequenceOrder", order_by="SequenceOrder.order", collection_class=ordering_list("order"), lazy=False)
-    actions = association_proxy('ordered_actions', 'action')
+    actions = relationship("SequenceOrder", back_populates="sequence", lazy=False, order_by="SequenceOrder.order", collection_class=ordering_list("order"))
 
-    def __init__(self, ordered_actions=[], actions=[], **kwargs):
+    def __init__(self, actions=[], **kwargs):
         super(SequenceAction, self).__init__(**kwargs)
-        self.ordered_actions = ordered_actions
         self.actions = actions
 
-
-class SequenceOrder(StandardMixin, Base):
-
-    order = Column(Integer)
-
-    action_id = Column(Integer, ForeignKey('Action.id'))
-    action = relationship("Action", foreign_keys=action_id)
-
-    sequence_id = Column(Integer, ForeignKey('SequenceAction.id'))
-    sequence = relationship("SequenceAction", back_populates="ordered_actions", foreign_keys=sequence_id)
-
-    def __init__(self, action=None, action_id=None, sequence=None, sequence_id=None, **kwargs):
-        super(SequenceOrder, self).__init__(**kwargs)
-        self.action = action
-        self.action_id = action_id
-        self.sequence = sequence
-        self.sequence_id = sequence_id
 
 groupActions_table = Table('groupActions', Base.metadata,
     Column('Group_id', Integer, ForeignKey('GroupAction.id')),

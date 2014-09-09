@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__f
 from xml.etree import ElementTree as et
 
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, PoseAction, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey, SequenceAction, SoundAction
+    ServoConfig, PoseAction, JointPosition, SensorTrigger, SequenceOrder, ButtonTrigger, ButtonHotkey, SequenceAction, SoundAction
 
 
 def _realToScalePos(value, offset, scaleValue):
@@ -336,7 +336,7 @@ class ActionImporter(object):
             line = lines[i].split(',')
             if len(line) == 3:
                 (dispName, actionName, postDelay) = line
-                postDelay = int(postDelay)
+                postDelay = int(postDelay) + 500  # pad delay since we're counting from the start now, not the end
                 possibleActions = [a for a in actions if a.name == actionName or a.name == dispName]
                 if len(possibleActions) == 0:
                     print >> sys.stderr, "Action with name %s not found, skipping to next item in sequence" % actionName
@@ -344,6 +344,7 @@ class ActionImporter(object):
                 else:
                     action = possibleActions[0]
             elif len(line) == 1 and soundDir != None:
+                postDelay = 0
                 soundFile = line[0]
                 fullPath = os.path.join(soundDir, soundFile)
                 if not os.path.isdir(soundDir) or not os.path.isfile(fullPath):
@@ -354,7 +355,7 @@ class ActionImporter(object):
                 with open(fullPath, 'rb') as f:
                     action.data = f.read()
 
-            sequence.actions.append(action)
+            sequence.actions.append(SequenceOrder(action, forcedLength=postDelay))
         return sequence
 
     def getPose(self, legacyData, legacyRobot=None):

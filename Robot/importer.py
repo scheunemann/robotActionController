@@ -4,7 +4,7 @@ from xml.etree import ElementTree as et
 
 from legacy import loadDirectory as legacyLoadDirectory
 from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, PoseAction, SequenceAction, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
+    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, PoseAction, SequenceAction, SequenceOrder, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
 from Data.Model.sensor import DiscreteSensorValue
 
 
@@ -472,60 +472,24 @@ class ActionImporter(object):
 
     def getSequence(self, sequenceLines, actions):
         """
-            r_down
-            JOINT_NAME, position, speed
-            JOINT_NAME, [position0, position1, ], speed
-            ACTION_NAME
-            HEAD_ROT,515,100
-            HEAD_VERT,436,100
-            HEAD_TLT,545,80
-            ARM_L_1,554,140
-            ARM_L_2,733,140
-            ARM_L_3,683,140
-            ARM_L_4,693,140
-            ARM_R_1,634,140
-            ARM_R_2,426,140
-            ARM_R_3,149,140
-            ARM_R_4,168,140
-            EYES_LR,600,330
-            EYES_UD,450,330
-            MOUTH_OPEN,520,330
-            MOUTH_SMILE,740,330
-            EYELIDS,614,330
+            Blink
+            ActionName
+            ActionName, forcedLength
+            Eyes Shut
+            Eyes Open
         """
         name = sequenceLines[0].strip()
         seq = SequenceAction(name=name)
 
         for i in range(1, len(sequenceLines)):
-            line = sequenceLines[i].strip()
-            if ',' in line:
-                seqStep = PoseAction(name="%s:%s" % (name, i))
-                idx1 = line.find(',')
-                idx2 = line.rfind(',')
-                jointName = line[0:idx1].strip()
-                pos = line[idx1 + 1:idx2].strip()
-                spd = line[idx2 + 1:].strip()
-
-                speed = int(spd.strip())
-                if '[' in pos and ']' in pos:
-                    positions = str([float(p.strip()) for p in pos[1:-1].split(',') if p.strip() != ''])
-                    position = None
-                else:
-                    positions = None
-                    position = float(pos.strip())
-
-                jp = JointPosition(jointName=jointName.upper())
-                jp.position = position
-                jp.positions = positions
-                jp.speed = speed
-                seqStep.jointPositions.append(jp)
-                seq.actions.append(seqStep)
+            parts = sequenceLines[i].strip().split(',', 1)
+            name = parts[0].strip()
+            length = parts[1].strip() if len(parts) > 1 else None
+            if name in actions:
+                seq.actions.append(SequenceOrder(actions[name], forcedLength=length))
             else:
-                if line in actions:
-                    seq.actions.append(actions[line])
-                else:
-                    return None
-                    print >> sys.stderr, "Unable to find action named %s for sequence %s, skipping step" % (line, name)
+                return None
+                print >> sys.stderr, "Unable to find action named %s for sequence %s, skipping step" % (sequenceLines[i], name)
 
         return seq
 

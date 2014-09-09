@@ -13,8 +13,23 @@ class SequenceExecutionHandle(ActionExecutionHandle):
 
     def _runInternal(self, action):
         result = True
-        for a in action.actions:
-            actionResult = self._runner.execute(a)
+        for orderedAction in action.actions:
+            if orderedAction.forcedLength:
+                start = time.time()
+                handle = self._runner.executeAsync(orderedAction.action)
+                while not self._cancel:
+                    elapsed = time.time() - start
+                    if elapsed < 0:
+                        break  # system clock rolled back
+                    if elapsed * 1000 >= orderedAction.forcedLength:
+                        break
+                    time.sleep(0.01)
+                actionResult = handle.result
+                if self._cancel:
+                    handle.stop()
+            else:
+                actionResult = self._runner.execute(orderedAction.action)
+
             if self._cancel or not actionResult:
                 result = False
                 break
@@ -33,15 +48,16 @@ class SequenceExecutionHandle(ActionExecutionHandle):
 class SequenceRunner(ActionRunner):
     supportedClass = 'SequenceAction'
     Runable = namedtuple('SequenceAction', ActionRunner.Runable._fields + ('actions', ))
+    OrderedAction = namedtuple('OrderedAction', ('forcedLength', 'action'))
 
     @staticmethod
     def getRunable(action):
         if action.type == SequenceRunner.supportedClass:
             actions = []
-            for a in action.actions:
-                actions.append(ActionRunner.getRunable(a))
+            for orderedAction in action.actions:
+                actions.append(SequenceRunner.OrderedAction(orderedAction.forcedLength, ActionRunner.getRunable(orderedAction.action)))
 
-            return SequenceRunner.Runable(action.name, action.id, action.type, action.minLength, actions)
+            return SequenceRunner.Runable(action.name, action.id, action.type, actions)
         else:
             logger = logging.getLogger(SequenceRunner.__name__)
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
