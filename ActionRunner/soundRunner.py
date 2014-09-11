@@ -31,6 +31,8 @@ class SoundExecutionHandle(ActionExecutionHandle):
         stream = p.open(format=p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True)
         data = wf.readframes(SoundExecutionHandle.CHUNK)
         while data != '':
+            if self._cancel:
+                break
             stream.write(data)
             #python Y U NO THREAD!!?
             #sleep to, hopefully briefly, release the GIL so other threads can execute
