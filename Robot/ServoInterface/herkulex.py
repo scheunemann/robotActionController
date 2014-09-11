@@ -547,6 +547,7 @@ class HerkuleX(object):
         packetBuf = self.buildPacket(servoID, HerkuleX.HRAMWRITE, optData)
         self.sendData(packetBuf)
 
+
     """
     * Reboot single servo
     *
@@ -558,6 +559,20 @@ class HerkuleX(object):
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HREBOOT, None)
         self.sendData(packetBuf)
+
+
+    """
+    * Revert single servo to factory defaults
+    *
+    * @param servoID 0 ~ 253 (0x00 ~ 0xFD)
+    """
+    def rollback(self, servoID):
+        if servoID == 0xFE:
+            return
+
+        packetBuf = self.buildPacket(servoID, HerkuleX.HROLLBACK, None)
+        self.sendData(packetBuf)
+
 
     """
     * Servo Status
