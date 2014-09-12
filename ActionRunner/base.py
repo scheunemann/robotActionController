@@ -133,7 +133,9 @@ class ActionRunner(object):
         if action.id not in ActionRunner._actionCache:
             runners = ActionRunner._getRunners()
             if action.type in runners:
-                ActionRunner._actionCache[action.id] = runners[action.type].getRunable(action)
+                return runners[action.type].getRunable(action)
+                #ActionRunner._actionCache[action.id] = runners[action.type].getRunable(action)
+                pass
             elif action.type == 'Action':
                 logger.warn("Action: %s has an undefined action type: %s" % (action.name, action.type))
                 return ActionRunner.Runable(action.name, action.id, action.type, action.minLength)
@@ -197,6 +199,7 @@ class ActionRunner(object):
 
     def _getRunner(self, action):
         try:
+            self._logger.debug("Building runnable action for %s (%s)" % (action.name, action.type))
             return ActionRunner._getRunners()[action.type](self._robot)
         except Exception:
             self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)

@@ -16,6 +16,7 @@ class SoundExecutionHandle(ActionExecutionHandle):
     def __init__(self, sound):
         super(SoundExecutionHandle, self).__init__(sound)
         self._cancel = True
+        print "Sound init"
 
     @property
     def _audio(self):
@@ -30,9 +31,11 @@ class SoundExecutionHandle(ActionExecutionHandle):
         wf = wave.open(cb, 'rb')
         stream = p.open(format=p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True)
         data = wf.readframes(SoundExecutionHandle.CHUNK)
+        self._cancel = False
+        print "Start sound"
         while data != '':
-            if self._cancel:
-                break
+            #if self._cancel:
+            #    break
             stream.write(data)
             #python Y U NO THREAD!!?
             #sleep to, hopefully briefly, release the GIL so other threads can execute
