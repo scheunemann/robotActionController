@@ -194,8 +194,11 @@ class FSR_MiniMaestro(object):
         with FSR_MiniMaestro._pollerLock:
             hist = FSR_MiniMaestro._pollers[self._port].getValues(self._externalId)
 
-        samples = hist[-1 * min(len(hist), self._numSamples):]
-        return float(sum(samples)) / len(samples)
+        if hist:
+            samples = hist[-1 * min(len(hist), self._numSamples):]
+            return float(sum(samples)) / len(samples)
+        else:
+            return None
 
 
 if __name__ == '__main__':

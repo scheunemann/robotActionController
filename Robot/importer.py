@@ -203,37 +203,44 @@ class RobotImporter(object):
     def _getRobotSensors(self, node, sensorGroups):
         sensors = []
         for sensor in self._get("SENSORLIST/ROBOT/SENSOR", node):
-            s = RobotSensor()
-            s.name = self._getText("NAME", sensor).upper()
-            s.model = self._getSensorModel(sensor.get('type', None))
-            s.onStateComparison = self._getText("ONSTATE/COMPARISON", sensor, ">")
-            s.onStateValue = self._getText("ONSTATE/VALUE", sensor, "0")
-            s.value_type = self._getValueType(sensor.get('datatype', 'continuous'))
-            if isinstance(s.value_type, ContinuousValueType):
-                s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
-                s.value_type.maxValue = self._getText("LIMITS/MAX", sensor)
-                s.value_type.precision = self._getText("LIMITS/PRECISION", sensor)
-            elif isinstance(s.value_type, DiscreteValueType):
-                # TODO Discrete values
-                for value in self._get("VALUES/VALUE", sensor):
-                    dsv = DiscreteSensorValue()
-                    dsv.value = value.text
-                    s.value_type.values.append(dsv)
-            else:
-                # TODO Error handling
-                pass
-            extId = sensor.get('id', None)
-            if extId != None:
-                s.extraData = {'externalId': extId}
-            else:
-                s.extraData = {}
-            extra = sensor.get('extraData', '')
-            for line in extra.split(','):
-                if line:
-                    (key, value) = line.split(':')
-                    s.extraData[key] = value
-            s.groups = self._getGroupsForSensor(s, sensorGroups, node)
-            sensors.append(s)
+            multiple = int(self._getText("ISMULTIPLE", node, 1))
+
+            for i in range(0, multiple):
+                s = RobotSensor()
+                s.name = self._getText("NAME", sensor).upper()
+                if multiple > 1:
+                    s.name += '_' + str(i)
+                s.model = self._getSensorModel(sensor.get('type', None))
+                s.onStateComparison = self._getText("ONSTATE/COMPARISON", sensor, ">")
+                s.onStateValue = self._getText("ONSTATE/VALUE", sensor, "0")
+                s.value_type = self._getValueType(sensor.get('datatype', 'continuous'))
+                if isinstance(s.value_type, ContinuousValueType):
+                    s.value_type.minValue = self._getText("LIMITS/MIN", sensor)
+                    s.value_type.maxValue = self._getText("LIMITS/MAX", sensor)
+                    s.value_type.precision = self._getText("LIMITS/PRECISION", sensor)
+                elif isinstance(s.value_type, DiscreteValueType):
+                    # TODO Discrete values
+                    for value in self._get("VALUES/VALUE", sensor):
+                        dsv = DiscreteSensorValue()
+                        dsv.value = value.text
+                        s.value_type.values.append(dsv)
+                else:
+                    # TODO Error handling
+                    pass
+                extId = sensor.get('id', None)
+                if extId != None:
+                    s.extraData = {'externalId': extId}
+                else:
+                    s.extraData = {}
+                extra = sensor.get('extraData', '')
+                for line in extra.split(','):
+                    if line:
+                        (key, value) = line.split(':')
+                        s.extraData[key] = value
+                if multiple > 1:
+                    s.extraData.setDefault('arrayIndex', i)
+                s.groups = self._getGroupsForSensor(s, sensorGroups, node)
+                sensors.append(s)
 
         return sensors
 

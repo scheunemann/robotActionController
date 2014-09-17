@@ -1,4 +1,5 @@
 import logging
+import datetime
 import time
 from threading import RLock
 from connections import Connection
@@ -322,6 +323,7 @@ class HerkuleX(ServoInterface):
         realSpeed = min(realSpeed, 2856)
 
         with Connection.getLock(self._conn):
+            self._logger.debug("Setting ServoID: %s to Position %s" % (self._externalId, realPosition))
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
 
         if blocking:
@@ -408,10 +410,14 @@ class HS82MG(ServoInterface):
         self._externalId = int(self._externalId)
 
         self._conn = Connection.getConnection("minimaestro", self._port, self._portSpeed)
+        self._lastPosition = (datetime.datetime.utcnow(), 0, 0)
 
     def isMoving(self):
-        with Connection.getLock(self._conn):
-            return self._conn.getMovingState()
+        # drivers getMovingState is rather inacturate
+        # compute the estimated time in ms to complete moving and pad by 20%
+        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1200 > self._lastPosition[2]
+        #with Connection.getLock(self._conn):
+        #    return self._conn.getMovingState()
 
     def getPosition(self):
         with Connection.getLock(self._conn):
@@ -419,6 +425,7 @@ class HS82MG(ServoInterface):
             return self._realToScalePos(posSteps)
 
     def setPosition(self, position=None, speed=None, blocking=False):
+        self._logger.debug("%s Got scaled Position: %s, Speed: %s", self._externalId, position, speed)
         if position == None:
             position = self._defaultPosition
         if speed == None:
@@ -426,7 +433,7 @@ class HS82MG(ServoInterface):
 
         validTarget = self._getInRangeVal(position, self._minPos, self._maxPos)
         if position != validTarget:
-            self._logger.warning("Target position has to be between %s and %s, got %s", self._minPos, self._maxPos, position)
+            self._logger.warning("%s Target position has to be between %s and %s, got %s", self._externalId, self._minPos, self._maxPos, position)
             # Force target to be within range
             position = validTarget
 
@@ -436,6 +443,9 @@ class HS82MG(ServoInterface):
         with Connection.getLock(self._conn):
             self._conn.setSpeed(self._externalId, int(spd))
             self._conn.setTarget(self._externalId, int(pos))
+
+        self._lastPosition = (datetime.datetime.utcnow(), pos, spd * 0.025 * abs(self._lastPosition[1] - pos))
+        self._logger.debug("%s Setting real pos: %s spd: %s time: %s", self._externalId, pos, spd, self._lastPosition[2])
 
         if blocking:
             while self.isMoving():
@@ -532,6 +542,7 @@ class Virtual(ServoInterface):
         slaveServo = filter(lambda s: s.jointName == slaveServoName, servo.robot.servos)
         self._ratio = int(servo.extraData.get('RATIO', 1))
         self._absolute = servo.extraData.get('absolute', True)
+        self._jointName = servo.jointName
         if not masterServo:
             self._logger.critical("Could not locate physical servo %s for virtual servo %s!" % (masterServoName, servo.jointName))
             raise ValueError("Could not locate physical servo %s for virtual servo %s!" % (masterServoName, servo.jointName))
@@ -559,6 +570,7 @@ class Virtual(ServoInterface):
             diff = position - curMaster
             slavePosition = curSlave + (diff * self._ratio)
 
+        self._logger.debug("%s Master Pos: %s, Slave Pos: %s", self._jointName, position, slavePosition)
         masterSuccess = self._master.setPosition(position, speed, blocking)
         slaveSuccess = self._slave.setPosition(slavePosition, speed, blocking)
         return masterSuccess & slaveSuccess
