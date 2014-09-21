@@ -38,11 +38,11 @@ class PoseExecutionHandle(ActionExecutionHandle):
                 time.sleep(0.0001)
 
         #TODO: Find a better way to handle the buzzing from the HS82MGs
-        for _, _, servoInterface in l:
-            if servoInterface.__class__.__name__ in ['HS82MG', 'Virtual']:
-                # Disable torque on HS82MGs after moving
-                self._logger.warning('Disabling torque on HS82MG to prevent noise')
-                servoInterface.setPositioning(True)
+        #for _, _, servoInterface in l:
+        #    if servoInterface.__class__.__name__ in ['HS82MG', 'Virtual']:
+        #        # Disable torque on HS82MGs after moving
+        #        self._logger.warning('Disabling torque on HS82MG to prevent noise')
+        #        servoInterface.setPositioning(True)
 
         if self._cancel:
             result = False

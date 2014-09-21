@@ -129,6 +129,8 @@ class ActionRunner(object):
         """
             Convert a DAO action into a minimised cacheable action for running
         """
+        if action == None:
+            return None
         logger = logging.getLogger(ActionRunner.__name__)
         if action.id not in ActionRunner._actionCache:
             runners = ActionRunner._getRunners()

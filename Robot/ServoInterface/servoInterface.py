@@ -220,8 +220,8 @@ class AX12(ServoInterface):
         try:
             # We can check the hardware limits set in the servos
             with Connection.getLock(self._conn):
-                readMinPos = self._conn.GetCWAngleLimit(self._externalId)
-                readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
+               readMinPos = self._conn.GetCWAngleLimit(self._externalId)
+               readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
             minPos = round(self._scaleToRealPos(self._minPos))
             maxPos = round(self._scaleToRealPos(self._maxPos))
 
@@ -316,14 +316,22 @@ class HerkuleX(ServoInterface):
 
         realPosition = int(round(float(self._scaleToRealPos(position))))
         realSpeed = self._scaleToRealSpeed(speed)  # steps per second
-        totalSteps = abs(realPosition - self._conn.getPosition(self._externalId))
+        with Connection.getLock(self._conn):
+            currentPosition = int(self._conn.getPosition(self._externalId))
+
+        if currentPosition == -1:
+            totalSteps = 1500 # Default to slow if no position returned
+        else:
+            totalSteps = abs(realPosition - currentPosition)
         realSpeed = (totalSteps / realSpeed) * 1000
         realSpeed = int(round(float(realSpeed)))
         realSpeed = max(realSpeed, 0)
         realSpeed = min(realSpeed, 2856)
 
+        self.__temperatureHackDONOTUSEINRELEASE()
+
         with Connection.getLock(self._conn):
-            self._logger.debug("Setting ServoID: %s to Position %s" % (self._externalId, realPosition))
+            self._logger.debug("Setting ServoID: %s to Position %s at Speed %s" % (self._externalId, realPosition, realSpeed))
             self._conn.moveOne(self._externalId, realPosition, realSpeed)
 
         if blocking:
@@ -342,6 +350,17 @@ class HerkuleX(ServoInterface):
             else:
                 self._conn.torqueON(self._externalId)
             self._positioning = enablePositioning
+
+    def __temperatureHackDONOTUSEINRELEASE(self):
+        with Connection.getLock(self._conn):
+            if self._conn.getTorque(self._externalId) == 0:
+                if self._conn.getTemperature(self._externalId) < 0xD1:
+                    self._logger.warning("AUTOCLEARING TEMPERATURE ERROR ON SERVO %s", self._externalId)
+                    self._conn.clearError(self._externalId)
+                    self._conn.torqueON(self._externalId)
+                else:
+                    self._logger.warning("SERVO %s STILL IN OVERHEAT, CANNOT CLEAR ERROR", self._externalId)
+                
 
 
 class SSC32(ServoInterface):
@@ -415,7 +434,7 @@ class HS82MG(ServoInterface):
     def isMoving(self):
         # drivers getMovingState is rather inacturate
         # compute the estimated time in ms to complete moving and pad by 20%
-        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1200 > self._lastPosition[2]
+        return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1500 > self._lastPosition[2]
         #with Connection.getLock(self._conn):
         #    return self._conn.getMovingState()
 
