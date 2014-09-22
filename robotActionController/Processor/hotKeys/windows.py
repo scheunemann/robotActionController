@@ -1,7 +1,7 @@
 from select import select
 from sets import Set
 from collections import namedtuple
-from Processor.event import Event
+from robotActionController.Processor.event import Event
 from threading import Thread
 
 __all__ = ['KeyEvents']

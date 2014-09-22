@@ -1,4 +1,4 @@
-import connections
+from robotActionController import connections
 
 
 class minimaestro(object):
@@ -147,7 +147,6 @@ class minimaestro(object):
         return error
 
 if __name__ == '__main__':
-    import time
     m = minimaestro("COM16", 115200)
     print m.getDeviceId()
 #     while True:

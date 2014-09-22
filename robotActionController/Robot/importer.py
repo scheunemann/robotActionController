@@ -2,10 +2,9 @@ import os
 import sys
 from xml.etree import ElementTree as et
 
-from legacy import loadDirectory as legacyLoadDirectory
-from Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
+from robotActionController.Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
     ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, PoseAction, SequenceAction, SequenceOrder, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
-from Data.Model.sensor import DiscreteSensorValue
+from robotActionController.Data.Model.sensor import DiscreteSensorValue
 
 
 def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
@@ -24,10 +23,10 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
 
     robotConfig = os.path.join(subDir, 'robot.xml')
     if not os.path.isfile(robotConfig):
-        return
+        return None
     configType = et.parse(robotConfig).getroot().tag
-    if configType == 'KASPAR':
-        return legacyLoadDirectory(actions, triggers, robots, subDir, loadActions, loadTriggers, loadRobots)
+    if configType != 'ROBOT':
+        return None
 
     if loadActions:
         a = ActionImporter()

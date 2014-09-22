@@ -1,6 +1,6 @@
 from triggerInterface import TriggerInterface
 from collections import namedtuple
-from Processor.hotKeys import KeyEvents
+from robotActionController.Processor.hotKeys import KeyEvents
 import logging
 
 

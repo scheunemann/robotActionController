@@ -1,5 +1,5 @@
 import logging
-from Robot.RosInterface import rosHelper, robotFactory
+from robotActionController.Robot.RosInterface import rosHelper, robotFactory
 
 
 __all__ = ['RosSensor', 'MessageSensor', 'SonarSensor']

@@ -1,6 +1,6 @@
 from threading import Thread
 from TriggerInterface import TriggerInterface
-from ActionRunner import ActionRunner
+from robotActionController.ActionRunner import ActionRunner
 from datetime import datetime, timedelta
 from collections import namedtuple
 import time

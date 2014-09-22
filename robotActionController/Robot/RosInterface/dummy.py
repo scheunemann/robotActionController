@@ -1,7 +1,7 @@
 import time
 import robot
 import random
-import logger
+import logging
 
 
 class DummyRobot(robot.Robot):
@@ -62,25 +62,3 @@ class DummyInterface(object):
             return 3
         else:
             return 1
-
-
-class PoseUpdater(robot.PoseUpdater):
-    def __init__(self, robot):
-        super(PoseUpdater, self).__init__(robot)
-
-    def checkUpdatePose(self, robot):
-        states = {}
-        states.update(self.getTrayStates(robot))
-        states.update(self.getHeadStates(robot))
-        self.updateStates(states)
-
-    def getHeadStates(self, robot):
-        return {
-                   'eyePosition': 'Front',
-                   }
-
-    def getTrayStates(self, robot):
-        return {
-                   'trayStatus': 'raised',
-                   'trayIs': 'Empty'
-        }

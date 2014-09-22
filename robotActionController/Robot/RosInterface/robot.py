@@ -128,7 +128,7 @@ class ROSRobot(Robot):
         super(ROSRobot, self).__init__(name, robotInterface)
         self._rs = None
         self._serverTopic = serverTopic
-        
+
         self._tfLock = RLock()
         self._tf = None
         self._tfFromFrame = '/base_link'
@@ -136,7 +136,7 @@ class ROSRobot(Robot):
 
     @property
     def _transform(self):
-        
+
         with self._tfLock:
             if self._tf == None:
                 try:

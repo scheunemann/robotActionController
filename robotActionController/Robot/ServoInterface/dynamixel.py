@@ -31,7 +31,7 @@
 
 
 import sys
-import connections
+from robotActionController import connections
 import time
 from threading import RLock
 

@@ -1,4 +1,4 @@
-from connections import Connection
+from robotActionController.connections import Connection
 
 
 class BatteryLevelSensor(object):

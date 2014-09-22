@@ -2,14 +2,14 @@ from sqlalchemy.ext.declarative import declared_attr, declarative_base
 from sqlalchemy import inspect, Column, Integer, Sequence
 from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
 from dateutil.tz import tzutc
-import Data.config
+import robotActionController.Data.config
 import datetime
 
 
 __all__ = ['Base', 'SerializeMixin', 'SettingMixin', 'StandardMixin']
 
 
-class IDBase(Data.config.modelBase):
+class IDBase(robotActionController.Data.config.modelBase):
 
     @declared_attr
     def __tablename__(cls):

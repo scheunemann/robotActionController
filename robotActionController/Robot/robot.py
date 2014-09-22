@@ -1,6 +1,6 @@
 from collections import namedtuple
-from Robot.ServoInterface import ServoInterface
-from Processor.SensorInterface import SensorInterface
+from robotActionController.Robot.ServoInterface import ServoInterface
+from robotActionController.Processor.SensorInterface import SensorInterface
 
 
 class Robot(object):

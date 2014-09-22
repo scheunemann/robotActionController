@@ -11,7 +11,7 @@ class CareOBot(robot.ROSRobot):
     def __init__(self, name, rosMaster):
         rosHelper.ROS.configureROS(rosMaster=rosMaster)
         super(CareOBot, self).__init__(name, ActionLib, 'script_server')
-        
+
         self._tfFromFrame = '/base_footprint'
 
     def getCameraAngle(self):
@@ -41,7 +41,7 @@ class CareOBot(robot.ROSRobot):
             return self.resolveComponentState(componentName, ret)
         else:
             return ('', ret)
-        
+
     def setComponentState(self, name, value, blocking=True):
         # check if the component has been initialised, and init if it hasn't
         if len(self._ros.getTopics('/%(name)s_controller' % {'name': name})) == 0:

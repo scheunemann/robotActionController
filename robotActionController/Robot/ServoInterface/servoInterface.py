@@ -2,7 +2,7 @@ import logging
 import datetime
 import time
 from threading import RLock
-from connections import Connection
+from robotActionController.connections import Connection
 
 __all__ = ['ServoInterface', ]
 
@@ -181,7 +181,7 @@ class AX12(ServoInterface):
 
         realSpeed = int(round(self._scaleToRealSpeed(float(speed))))
         realPosition = int(round(self._scaleToRealPos(float(position))))
-        #print "%s: %s @ %s" % (self._jointName, realPosition, realSpeed)
+        # print "%s: %s @ %s" % (self._jointName, realPosition, realSpeed)
         with Connection.getLock(self._conn):
             try:
                 self._conn.SetMovingSpeed(self._externalId, realSpeed)
@@ -220,8 +220,8 @@ class AX12(ServoInterface):
         try:
             # We can check the hardware limits set in the servos
             with Connection.getLock(self._conn):
-               readMinPos = self._conn.GetCWAngleLimit(self._externalId)
-               readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
+                readMinPos = self._conn.GetCWAngleLimit(self._externalId)
+                readMaxPos = self._conn.GetCCWAngleLimit(self._externalId)
             minPos = round(self._scaleToRealPos(self._minPos))
             maxPos = round(self._scaleToRealPos(self._maxPos))
 
@@ -320,7 +320,7 @@ class HerkuleX(ServoInterface):
             currentPosition = int(self._conn.getPosition(self._externalId))
 
         if currentPosition == -1:
-            totalSteps = 1500 # Default to slow if no position returned
+            totalSteps = 1500  # Default to slow if no position returned
         else:
             totalSteps = abs(realPosition - currentPosition)
         realSpeed = (totalSteps / realSpeed) * 1000
@@ -360,7 +360,6 @@ class HerkuleX(ServoInterface):
                     self._conn.torqueON(self._externalId)
                 else:
                     self._logger.warning("SERVO %s STILL IN OVERHEAT, CANNOT CLEAR ERROR", self._externalId)
-                
 
 
 class SSC32(ServoInterface):
@@ -435,7 +434,7 @@ class HS82MG(ServoInterface):
         # drivers getMovingState is rather inacturate
         # compute the estimated time in ms to complete moving and pad by 20%
         return (datetime.datetime.utcnow() - self._lastPosition[0]).total_seconds() * 1500 > self._lastPosition[2]
-        #with Connection.getLock(self._conn):
+        # with Connection.getLock(self._conn):
         #    return self._conn.getMovingState()
 
     def getPosition(self):
@@ -600,7 +599,7 @@ class Virtual(ServoInterface):
 
     def getPositioning(self):
         return self.getPosition() != 0
-	
+
 
 class Robot(ServoInterface):
 
@@ -612,7 +611,7 @@ class Robot(ServoInterface):
             raise ValueError()
 
         #         self._checkMinMaxValues()
-        from Robot.RosInterface.robotFactory import Factory
+        from robotActionController.Robot.RosInterface.robotFactory import Factory
         self._robot = Factory.getRobotInterface(servo.robot)
         if not self._robot:
             raise ValueError("Robot attached to servo could not be resolved")
