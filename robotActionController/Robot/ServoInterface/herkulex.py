@@ -179,11 +179,11 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
-        if len(readBuf) < 10:
-            print "getVoltage: %s" % [str(x) for x in readBuf]
-            return -1
+#         if len(readBuf) < 10:
+#             print "getVoltage: %s" % [str(x) for x in readBuf]
+#             return -1
 
-        adc = ((readBuf[-1] & 0x03) << 8) | (readBuf[-2] & 0xFF)
+        adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return adc * 0.074  # return ADC converted back to voltage
 
     """
@@ -203,7 +203,7 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
-        adc = ((readBuf[-1] & 0x03) << 8) | (readBuf[-2] & 0xFF)
+        adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return adc  # return ADC converted back to temperature (need to find a formula or copy the chart...)
 
     """
@@ -223,7 +223,7 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
-        return ((readBuf[-1] & 0x03) << 8) | (readBuf[-2] & 0xFF)  # return torque
+        return ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)  # return torque
 
     """
     * Torque ON
@@ -313,9 +313,9 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return 0
 
-        speedy = ((readBuf[-1] & 0x03) << 8) | (readBuf[-2] & 0xFF)
+        speedy = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
 
-        if (readBuf[-1] & 0x40) == 0x40:
+        if (readBuf[10] & 0x40) == 0x40:
             speedy *= -1
 
         return speedy
@@ -376,7 +376,7 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
-        pos = ((readBuf[-1] & 0x03) << 8) | (readBuf[-2] & 0xFF)
+        pos = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return pos
 
     """
@@ -611,9 +611,9 @@ class HerkuleX(object):
             return -1
 
         if detail:
-            return (readBuf[-2], readBuf[-1])  # return status
+            return (readBuf[7], readBuf[8])  # return status
         else:
-            return readBuf[-2]
+            return readBuf[7]
 
     def error_text(self, servoID):
         statusCode, detailCode = self.stat(servoID, True)
@@ -666,7 +666,7 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
-        return readBuf[-1]  # return model
+        return readBuf[8]  # return model
 
     """
     * @example HerkuleX_Set_ID
@@ -811,8 +811,8 @@ class HerkuleX(object):
 
     def sendData(self, buf):
         with self.portLock:
+            self._logger.debug("Sending packet: [%s]" % ', '.join([str(x) for x in buf]))
             packet = ''.join([chr(x) for x in buf])
-            # print "Sending packet: [%s]" % ', '.join([str(x) for x in buf])
             self.mPort.write(packet)
 
     def sendDataForResult(self, buf):
@@ -823,37 +823,40 @@ class HerkuleX(object):
             try:
                 time.sleep(ackDelay)
             except:
-                # pass
                 self._logger.error(sys.exc_info()[0])
 
-            startTime = time.time()
-            readBuf = [0xFF, 0xFF]
-            # print "Waiting for result..."
+#             readBuf = []
+#             while self.mPort.inWaiting() > 0:
+#                 inBuffer = self.mPort.read(1)
+#                 readBuf.append(ord(inBuffer) & 0xFF)
+
             # Locate the start of the header
-            while len(readBuf) == 2 and time.time() - startTime < 0.1:
+            readBuf = [0xFF, 0xFF]
+            startTime = time.time()
+            while time.time() - startTime < self.mPort.timeout:
                 inBuffer = self.mPort.read(1)
                 if len(inBuffer) == 0:
                     continue
                 byte = ord(inBuffer) & 0xFF
                 if byte == 0xFF:
-                   continue
+                    continue
                 readBuf.append(byte)
+                break
 
-            # readBuf = []
-            # inBuffer = self.mPort.read(3)
-            # [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
-
-            if len(readBuf) > 2 and readBuf[2] < 255:
+            if len(readBuf) > 2 and readBuf[2] < 253:
                 inBuffer = self.mPort.read(readBuf[2] - 3)
                 [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
-            # else:
-            #    print "Strange packet recieved: %s" % ', '.join([str(x) for x in inBuffer])
-            #    print self.mPort
+            else:
+                self._logger.debug("Strange packet received: %s" % ', '.join([str(x) for x in inBuffer]))
 
-            # if len(readBuf) > 2 and len(readBuf) < readBuf[2] and self.mPort.inWaiting():
-            #     self._logger.warning("Not all bytes recieved before timeout!")
-            #     inBuffer = self.mPort.read(min(self.mPort.inWaiting(), readBuf[2] - len(readBuf)))
-        # print "Result:  %s" % readBuf
+            if len(readBuf) > 2 and len(readBuf) < readBuf[2] and self.mPort.inWaiting():
+                self._logger.warning("Not all bytes received before timeout!")
+                inBuffer = self.mPort.read(min(self.mPort.inWaiting(), readBuf[2] - len(readBuf)))
+
+        if len(readBuf) == 2:
+            readBuf = []
+        self._logger.debug("Received packet: [%s]" % ', '.join([str(x) for x in readBuf]))
+
         return readBuf
 
 
