@@ -6,7 +6,7 @@
 * This library is free software you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
 * License as published by the Free Software Foundation either
-* version 2.1 of the License, or (at your option) any later version.
+:* version 2.1 of the License, or (at your option) any later version.
 *
 * This library is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY without even the implied warranty of
@@ -838,16 +838,14 @@ class HerkuleX(object):
                 if len(inBuffer) == 0:
                     continue
                 byte = ord(inBuffer) & 0xFF
-                if byte == 0xFF:
+                if byte > 0xE9: #max valid packet length
                     continue
                 readBuf.append(byte)
                 break
 
-            if len(readBuf) > 2 and readBuf[2] < 253:
+            if len(readBuf) > 2:
                 inBuffer = self.mPort.read(readBuf[2] - 3)
                 [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
-            else:
-                self._logger.debug("Strange packet received: %s" % ', '.join([str(x) for x in inBuffer]))
 
             if len(readBuf) > 2 and len(readBuf) < readBuf[2] and self.mPort.inWaiting():
                 self._logger.warning("Not all bytes received before timeout!")
