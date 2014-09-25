@@ -811,7 +811,7 @@ class HerkuleX(object):
 
     def sendData(self, buf):
         with self.portLock:
-            self._logger.debug("Sending packet: [%s]" % ', '.join([str(x) for x in buf]))
+            self._logger.log(1, "Sending packet: [%s]" % ', '.join([str(x) for x in buf]))
             packet = ''.join([chr(x) for x in buf])
             self.mPort.write(packet)
 
@@ -855,7 +855,7 @@ class HerkuleX(object):
 
         if len(readBuf) == 2:
             readBuf = []
-        self._logger.debug("Received packet: [%s]" % ', '.join([str(x) for x in readBuf]))
+        self._logger.log(1, "Received packet: [%s]" % ', '.join([str(x) for x in readBuf]))
 
         return readBuf
 
