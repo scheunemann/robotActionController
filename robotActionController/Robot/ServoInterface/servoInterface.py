@@ -355,7 +355,7 @@ class HerkuleX(ServoInterface):
         with Connection.getLock(self._conn):
             errors = self._conn.stat(self._externalId)
             if errors & self._conn.H_ERROR_TEMPERATURE_LIMIT:
-                if self._conn.getTemperature(self._externalId) < 0xD1:
+                if self._conn.getTemperature(self._externalId) < 60:
                     self._logger.warning("AUTOCLEARING TEMPERATURE ERROR ON SERVO %s", self._externalId)
                     self._conn.clearError(self._externalId)
                     self._conn.torqueON(self._externalId)
