@@ -12,7 +12,7 @@ if platform.system() == 'Linux':
 
         def __init__(self, serial):
             self._serial = serial
-            # file descriptor locks are recursive, so keep a recursive lock
+            # file descriptor locks are not recursive, so keep a recursive lock
             # in order to make this class recursible
             self._rlock = RLock()
 
