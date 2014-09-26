@@ -1,8 +1,35 @@
 from threading import RLock
 import serial
 import logging
+import platform
 
 __all__ = ['Connection', ]
+
+
+if platform.system() == 'Linux':
+    import fcntl
+    class SerialLock(object):
+
+        def __init__(self, serial):
+            self._serial = serial
+            # file descriptor locks are recursive, so keep a recursive lock
+            # in order to make this class recursible
+            self._rlock = RLock()
+
+        def __enter__(self):
+            if self._rlock._is_owned():
+                self._rlock.acquire()
+                return
+            else:
+                self._rlock.acquire()
+                fcntl.flock(self._serial.fileno(), fcntl.LOCK_EX)
+
+        def __exit__(self, type, value, tb):
+            self._rlock.release()
+            if not self._rlock._is_owned():
+                fcntl.flock(self._serial.fileno(), fcntl.LOCK_UN)
+else:
+    SerialLock = lambda x: RLock()
 
 
 class Connection(object):
@@ -14,7 +41,12 @@ class Connection(object):
     @staticmethod
     def getLock(connection):
         if connection not in Connection._locks:
-            Connection._locks[connection] = RLock()
+            if type(connection) == serial.Serial:
+                print SerialLock
+                Connection._locks[connection] = SerialLock(connection)
+            else:
+                print type(connection)
+                Connection._locks[connection] = RLock()
 
         return Connection._locks[connection]
 
