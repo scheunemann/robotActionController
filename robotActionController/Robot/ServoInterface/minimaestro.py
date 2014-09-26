@@ -77,7 +77,7 @@ class minimaestro(object):
 
     def __init__(self, ser_port, ser_speed):
         self._conn = connections.Connection.getConnection('serial', ser_port, ser_speed)
-        self._lock = connection.Connection.getLock(self._conn)
+        self._lock = connections.Connection.getLock(self._conn)
 
     def goHome(self):
         with self._lock:

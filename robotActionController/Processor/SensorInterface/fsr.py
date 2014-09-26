@@ -116,7 +116,7 @@ class Sensor_Poller(Thread):
         super(Sensor_Poller, self).__init__()
         self.daemon = True
         self._conn = connection
-        self._portLock = connection.Connection.getLock(connection)
+        self._portLock = connections.Connection.getLock(connection)
         self._rate = rate
         self._rateMS = 1.0 / rate
         self._maxHistory = maxHistory
@@ -178,6 +178,7 @@ class FSR_MiniMaestro(object):
 
     def __init__(self, sensor, config):
         port = config.port
+        self._port = port
         speed = config.portSpeed
         self._externalId = sensor.extraData.get('externalId', None)
         if self._externalId == None:

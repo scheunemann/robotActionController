@@ -19,7 +19,7 @@ class BatteryLevelSensor(object):
             self._conn.initialize(self._externalId)
 
     def getCurrentValue(self):
-        self._connLock:
+        with self._connLock:
             rawValue = self._conn.getVoltage(self._externalId)
 
         if rawValue:
