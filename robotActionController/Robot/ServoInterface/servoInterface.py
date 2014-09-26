@@ -353,13 +353,18 @@ class HerkuleX(ServoInterface):
 
     def __temperatureHackDONOTUSEINRELEASE(self):
         with Connection.getLock(self._conn):
-            if self._conn.getTorque(self._externalId) == 0:
+            errors = self._conn.stat(self._externalId)
+            if errors & self._conn.H_ERROR_TEMPERATURE_LIMIT:
                 if self._conn.getTemperature(self._externalId) < 0xD1:
                     self._logger.warning("AUTOCLEARING TEMPERATURE ERROR ON SERVO %s", self._externalId)
                     self._conn.clearError(self._externalId)
                     self._conn.torqueON(self._externalId)
                 else:
                     self._logger.warning("SERVO %s STILL IN OVERHEAT, CANNOT CLEAR ERROR", self._externalId)
+            if errors & self._conn.H_ERROR_OVERLOAD:
+                self._logger.warning("AUTOCLEARING TORQUE ERROR ON SERVO %s", self._externalId)
+                self._conn.clearError(self._externalId)
+                self._conn.torqueON(self._externalId)
 
 
 class SSC32(ServoInterface):

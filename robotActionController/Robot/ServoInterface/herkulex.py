@@ -82,8 +82,9 @@ class HerkuleX(object):
 
     def __init__(self, portstring, portspeed):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self.portLock = RLock()
+        #self.portLock = RLock()
         self.mPort = connections.Connection.getConnection('serial', portstring, portspeed)
+        self.portLock = connections.Connection.getLock(self.mPort)
         self.mPort.timeout = 0.2
         self.setAckPolicy(1)  # set ACK policy
         self.multipleMoveData = []
@@ -183,6 +184,9 @@ class HerkuleX(object):
 #             print "getVoltage: %s" % [str(x) for x in readBuf]
 #             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return adc * 0.074  # return ADC converted back to voltage
 
@@ -203,6 +207,9 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return adc  # return ADC converted back to temperature (need to find a formula or copy the chart...)
 
@@ -223,6 +230,9 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         return ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)  # return torque
 
     """
@@ -311,7 +321,11 @@ class HerkuleX(object):
         readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
-            return 0
+            return -1
+
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
 
         speedy = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
 
@@ -376,6 +390,9 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         pos = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return pos
 
@@ -402,7 +419,7 @@ class HerkuleX(object):
     def getAngle(self, servoID):
         pos = self.getPosition(servoID)
         if pos < 0:
-            return 0
+            return -1
         return (pos - 512) * 0.325
 
     """
