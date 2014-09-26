@@ -33,7 +33,6 @@
 import sys
 from robotActionController import connections
 import time
-from threading import RLock
 
 __all__ = ['ServoController', ]
 
@@ -144,12 +143,14 @@ class ServoController:
         Provide the name of the serial port to which the servos are connected.
         """
         self.portstring = portstring
-        self.portLock = RLock()
         self.port = connections.Connection.getConnection('serial', self.portstring, portspeed)
+        self.portLock = connections.Connection.getLock(self.port)
 
     def Close(self):
         """Close the serial port."""
-        self.port.close()
+        #Connections can be shared, do nothing
+        pass
+        #self.port.close()
 
     def __del__(self):
         """

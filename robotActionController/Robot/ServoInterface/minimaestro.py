@@ -77,9 +77,11 @@ class minimaestro(object):
 
     def __init__(self, ser_port, ser_speed):
         self._conn = connections.Connection.getConnection('serial', ser_port, ser_speed)
+        self._lock = connection.Connection.getLock(self._conn)
 
     def goHome(self):
-        self._conn.write(minimaestro.uscCommand.COMMAND_GO_HOME)
+        with self._lock:
+            self._conn.write(minimaestro.uscCommand.COMMAND_GO_HOME)
 
     def setTarget(self, id_, target):
         """
@@ -92,35 +94,40 @@ class minimaestro(object):
         lowByte = target & 0x7F
         highByte = (target >> 7) & 0x7F
         data = chr(cmd) + chr(id_) + chr(lowByte) + chr(highByte)
-        self._conn.write(data)
+        with self._lock:
+            self._conn.write(data)
 
     def setSpeed(self, id_, speed):
         cmd = minimaestro.uscCommand.COMMAND_SET_SPEED
         lowByte = speed & 0x7F
         highByte = (speed >> 7) & 0x7F
         data = chr(cmd) + chr(id_) + chr(lowByte) + chr(highByte)
-        self._conn.write(data)
+        with self._lock:
+            self._conn.write(data)
 
     def setAcceleration(self, id_, accel):
         cmd = minimaestro.uscCommand.COMMAND_SET_ACCELERATION
         lowByte = accel & 0x7F
         highByte = (accel >> 7) & 0x7F
         data = chr(cmd) + chr(id_) + chr(lowByte) + chr(highByte)
-        self._conn.write(data)
+        with self._lock:
+            self._conn.write(data)
 
     def getDeviceId(self):
         cmd = minimaestro.uscRequest.REQUEST_GET_PARAMETER
         param = minimaestro.uscParameter.PARAMETER_SERIAL_DEVICE_NUMBER
         data = chr(cmd) + chr(param)
-        self._conn.write(data)
-        return ord(self._conn.read())
+        with self._lock:
+            self._conn.write(data)
+            return ord(self._conn.read())
 
     def getPosition(self, id_):
         cmd = minimaestro.uscCommand.COMMAND_GET_POSITION
         data = chr(cmd) + chr(id_)
-        self._conn.write(data)
-        lowByte = self._conn.read()
-        highByte = self._conn.read()
+        with self._lock:
+            self._conn.write(data)
+            lowByte = self._conn.read()
+            highByte = self._conn.read()
 
         rawVal = (ord(highByte) << 8) + ord(lowByte)
 
@@ -133,15 +140,17 @@ class minimaestro(object):
     def getMovingState(self):
         cmd = minimaestro.uscCommand.COMMAND_GET_MOVING_STATE
         data = chr(cmd)
-        self._conn.write(data)
-        return ord(self._conn.read())
+        with self._lock:
+            self._conn.write(data)
+            return ord(self._conn.read())
 
     def getErrors(self):
         cmd = minimaestro.uscCommand.COMMAND_GET_ERRORS
         data = chr(cmd)
-        self._conn.write(data)
-        lowByte = self._conn.read()
-        highByte = self._conn.read()
+        with self._lock:
+            self._conn.write(data)
+            lowByte = self._conn.read()
+            highByte = self._conn.read()
 
         error = (ord(highByte) << 8) + ord(lowByte)
         return error

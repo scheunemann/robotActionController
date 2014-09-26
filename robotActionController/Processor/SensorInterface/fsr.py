@@ -14,7 +14,7 @@ class FSR_Arduino(object):
     def __init__(self, port, speed):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._port = connections.Connection.getConnection('arduino', port, speed)
-#         self._port = serial.Serial(port, speed)
+        self._portLock = connections.Connection.getLock(self._port)
         self._filterLength = 10
         self._dataLock = RLock()
         self._data = []
@@ -29,26 +29,28 @@ class FSR_Arduino(object):
         self._sensorPoller.join()
 
     def _getPacketLength(self):
-        while ord(self._port.read()) & 0xFF != 0xAB:
-            pass
+        with self._portLock:
+            while ord(self._port.read()) & 0xFF != 0xAB:
+                pass
 
-        c = 0
-        while ord(self._port.read()) & 0xFF != 0xAB:
-            c += 1
+            c = 0
+            while ord(self._port.read()) & 0xFF != 0xAB:
+                c += 1
         return c
 
     def _getNextPacket(self):
         # Discard data to the start of the packet
-        byte = ord(self._port.read()) & 0xFF
-        c = 0
-        while byte != 0xAB:
+        with self._portLock:
             byte = ord(self._port.read()) & 0xFF
-            c += 1
+            c = 0
+            while byte != 0xAB:
+                byte = ord(self._port.read()) & 0xFF
+                c += 1
 
-        if c > 0:
-            self._logger.info("Skipped %s bytes to start, packet length = %s" % (c, self._packetLength))
+            if c > 0:
+                self._logger.info("Skipped %s bytes to start, packet length = %s" % (c, self._packetLength))
 
-        packetRaw = self._port.read(self._packetLength)
+            packetRaw = self._port.read(self._packetLength)
         packet = [1023 - (ord(packetRaw[i]) * 256) - ord(packetRaw[i + 1]) for i in range(0, len(packetRaw), 2)]
         return packet
 
@@ -114,6 +116,7 @@ class Sensor_Poller(Thread):
         super(Sensor_Poller, self).__init__()
         self.daemon = True
         self._conn = connection
+        self._portLock = connection.Connection.getLock(connection)
         self._rate = rate
         self._rateMS = 1.0 / rate
         self._maxHistory = maxHistory
@@ -151,7 +154,8 @@ class Sensor_Poller(Thread):
                     break
                 startTime = time.time()
                 try:
-                    val = self._conn.getPosition(sid)
+                    with self._portLock:
+                        val = self._conn.getPosition(sid)
                 except Exception as e:
                     self._logger.warning(e, exc_info=True)
                     continue
@@ -182,13 +186,12 @@ class FSR_MiniMaestro(object):
         self._externalId = int(self._externalId)
 
         self._numSamples = sensor.extraData.get('numSamples', 10)
+        conn = connections.Connection.getConnection('minimaestro', port, speed)
         with FSR_MiniMaestro._pollerLock:
             if port not in FSR_MiniMaestro._pollers:
-                FSR_MiniMaestro._pollers[port] = Sensor_Poller(port, speed)
+                FSR_MiniMaestro._pollers[port] = Sensor_Poller(conn)
                 FSR_MiniMaestro._pollers[port].start()
 
-        self._port = port
-        # self._conn = connections.Connection.getConnection('minimaestro', port, speed)
 
     def getCurrentValue(self):
         with FSR_MiniMaestro._pollerLock:
