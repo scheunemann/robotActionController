@@ -42,10 +42,8 @@ class Connection(object):
     def getLock(connection):
         if connection not in Connection._locks:
             if type(connection) == serial.Serial:
-                print SerialLock
                 Connection._locks[connection] = SerialLock(connection)
             else:
-                print type(connection)
                 Connection._locks[connection] = RLock()
 
         return Connection._locks[connection]
