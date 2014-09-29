@@ -19,19 +19,36 @@ class TriggerProcessor(object):
     def __init__(self, triggers, robot, maxUpdateInterval=None):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._handlers = []
+        self._robot = robot
+        self._maxUpdateInterval = maxUpdateInterval
+        self._running = False
+
+        if len(triggers):
+            self.setTriggers(triggers)
+
+    def start(self):
+        self._running = True
+        map(lambda h: h.start(), self._handlers)
+
+    def stop(self):
+        self._running = False
+        map(lambda h: h.stop(), self._handlers)
+
+    def setTriggers(self, triggers):
+        if self._running:
+            self.stop()
+        
+        self._handlers = []
         for trigger in triggers:
             try:
-                handler = _TriggerHandler(trigger, self.triggerActivated, robot, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
+                handler = _TriggerHandler(trigger, self.triggerActivated, self._robot, self._maxUpdateInterval, timedelta(seconds=self._maxUpdateInterval.seconds / 10.0))
                 self._handlers.append(handler)
             except Exception:
                 self._logger.warning("Error handling trigger! %s" % trigger, exc_info=True)
                 continue
-
-    def start(self):
-        map(lambda h: h.start(), self._handlers)
-
-    def stop(self):
-        map(lambda h: h.stop(), self._handlers)
+        
+        if self._running:
+            self.start()
 
     def __del__(self):
         self.stop()

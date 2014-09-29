@@ -66,7 +66,7 @@ class SoundRunner(ActionRunner):
     @staticmethod
     def getRunable(action):
         if action.type == SoundRunner.supportedClass:
-            return SoundRunner.Runable(action.name, action.id, action.type, action.minLength, action.data)
+            return SoundRunner.Runable(action.name, action.id, action.type, action.data)
         else:
             logger = logging.getLogger(SoundRunner.__name__)
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))

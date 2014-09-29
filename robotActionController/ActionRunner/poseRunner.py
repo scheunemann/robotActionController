@@ -74,7 +74,7 @@ class PoseRunner(ActionRunner):
             for position in action.jointPositions:
                 positions.append(PoseRunner.JointPosition(position.jointName, position.speed, position.position, position.positions))
 
-            return PoseRunner.Runable(action.name, action.id, action.type, action.minLength, action.speedModifier, positions)
+            return PoseRunner.Runable(action.name, action.id, action.type, action.speedModifier, positions)
         else:
             logger = logging.getLogger(PoseRunner.__name__)
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))

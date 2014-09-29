@@ -111,7 +111,7 @@ class ActionRunner(object):
     _actionCache = {}
     _runnerClasses = None
     supportedClass = 'Action'
-    Runable = namedtuple('Action', ('name', 'id', 'type', 'minLength'))
+    Runable = namedtuple('Action', ('name', 'id', 'type'))
 
     def __init__(self, robot):
         self._logger = logging.getLogger(self.__class__.__name__)

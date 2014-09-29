@@ -22,7 +22,7 @@ class GroupRunner(ActionRunner):
     def getRunable(action):
         if action.type == GroupRunner.supportedClass:
             actions = [ActionRunner.getRunable(a) for a in action.actions]
-            return GroupRunner.Runable(action.name, action.id, action.type, action.minLength, actions)
+            return GroupRunner.Runable(action.name, action.id, action.type, actions)
         else:
             logger = logging.getLogger(GroupRunner.__name__)
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
