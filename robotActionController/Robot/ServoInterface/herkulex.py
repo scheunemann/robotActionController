@@ -469,10 +469,13 @@ class HerkuleX(object):
             self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
             return -1
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
-        temp = HerkuleX.T_ADC[adc]
+        if adc <= 0xFF:
+            temp = HerkuleX.T_ADC.get(adc, None)
+        else:
+            return -1
         #The temperature chart after 210 is corrupted in the manual, guestimate the temperature assuming
         #a linear increase based on the two known values
-        return temp if temp else ((adc - 210) * 1.0754) + 71.02
+        return temp if temp else round(((adc - 210) * 1.0754) + 71.02, 2)
 
     """
     * Get servo torque
