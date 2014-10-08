@@ -129,6 +129,9 @@ class minimaestro(object):
             lowByte = self._conn.read()
             highByte = self._conn.read()
 
+        if len(highByte) == 0 or len(lowByte) == 0:
+            return -1
+
         rawVal = (ord(highByte) << 8) + ord(lowByte)
 
         """

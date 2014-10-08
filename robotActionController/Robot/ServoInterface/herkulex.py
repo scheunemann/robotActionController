@@ -343,7 +343,7 @@ class HerkuleX(object):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.mPort = connections.Connection.getConnection('serial', portstring, portspeed)
         self.portLock = connections.Connection.getLock(self.mPort)
-        self.mPort.timeout = 0.2
+        self.mPort.timeout = 0.05
         self.setAckPolicy(1)  # set ACK policy
         self.multipleMoveData = []
         self.mIDs = []
@@ -446,7 +446,7 @@ class HerkuleX(object):
             self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
             return -1
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
-        return adc * 0.074  # return ADC converted back to voltage
+        return round(adc * 0.074, 2)  # return ADC converted back to voltage
 
     """
     * Get servo voltage
@@ -622,6 +622,9 @@ class HerkuleX(object):
         playTime = int(round(playTime / 11.2))  # ms --> value
         led = led & 0xFD  # Pos Ctrl Mode
 
+        self._logger.debug("Moving %s to %s in %s ms" % (servoID, goalPos, playTime))
+        print "Moving %s to %s in %s ms" % (servoID, goalPos, playTime)
+
         optData = [0] * 5
         optData[0] = playTime  # Execution time
         optData[1] = posLSB
@@ -656,6 +659,7 @@ class HerkuleX(object):
 
         if len(readBuf) < 11:
             self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            self._logger.error("Sent packet: %s", [str(x) for x in packetBuf])
             return -1
         pos = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return pos
@@ -1098,13 +1102,15 @@ class HerkuleX(object):
 
     def sendDataForResult(self, buf):
         with self.portLock:
+            self.mPort.flushInput()
+            self._logger.debug("Sending packet: %s", [str(x) for x in buf])
             self.sendData(buf)
             ackDelay = HerkuleX.WAIT_TIME_BY_ACK / 1000.0
 
-            try:
-                time.sleep(ackDelay)
-            except:
-                self._logger.error(sys.exc_info()[0])
+            #try:
+            #    time.sleep(ackDelay)
+            #except:
+            #    self._logger.error(sys.exc_info()[0])
 
 #             readBuf = []
 #             while self.mPort.inWaiting() > 0:
@@ -1114,7 +1120,7 @@ class HerkuleX(object):
             # Locate the start of the header
             readBuf = [0xFF, 0xFF]
             startTime = time.time()
-            while time.time() - startTime < self.mPort.timeout:
+            while time.time() - startTime < self.mPort.timeout + ackDelay:
                 inBuffer = self.mPort.read(1)
                 if len(inBuffer) == 0:
                     continue
@@ -1134,6 +1140,7 @@ class HerkuleX(object):
 
         if len(readBuf) == 2:
             readBuf = []
+            self._logger.warning("No data received before timeout! Send packet: %s", [str(x) for x in buf])
         self._logger.log(1, "Received packet: [%s]" % ', '.join([str(x) for x in readBuf]))
 
         return readBuf
