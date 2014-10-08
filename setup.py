@@ -1,4 +1,19 @@
 from setuptools import setup
+import platform
+
+requires = [
+          'python-dateutil',
+          'gevent',
+          'pyserial',
+          'pyaudio',
+          'sqlalchemy',
+      ]
+
+if platform.system() == 'Linux':
+    requires.append('evdev')
+else:
+    pass
+
 
 def readme():
     with open('README.md') as f:
@@ -18,12 +33,6 @@ setup(name='robotActionController',
       author_email='n.burke@natbur.com',
       license='MIT',
       packages=['robotActionController'],
-      install_requires=[
-          'python-dateutil',
-          'gevent',
-          'pyserial',
-          'pyaudio',
-          'sqlalchemy',
-      ],
+      install_requires=requires,
       include_package_data=True,
       zip_safe=False)
