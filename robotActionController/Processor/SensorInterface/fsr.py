@@ -204,6 +204,13 @@ class FSR_MiniMaestro(object):
         else:
             return None
 
+#TODO: Temporary hack until I can modify the robot.xml to support multiple sensors of the same type
+# on different ports
+class FSR_MiniMaestro2(FSR_MiniMaestro):
+    sensorType = 'FSR_MiniMaestro2'
+
+    def __init__(self, sensor, config):
+        super(FSR_MiniMaestro2, self).__init__(sensor, config)
 
 if __name__ == '__main__':
     class S(object):
