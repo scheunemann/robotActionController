@@ -29,10 +29,9 @@ class Action(StandardMixin, Base):
             'polymorphic_on': type
         }
 
-    def __init__(self, name=None, minLength=None, next_actions=[], triggers=[], overrides=[], **kwargs):
+    def __init__(self, name=None, next_actions=[], triggers=[], overrides=[], **kwargs):
         super(Action, self).__init__(**kwargs)
         self.name = name
-        self.minLength = minLength
         self.next_actions = next_actions
         self.triggers = triggers
         self.overrides = overrides

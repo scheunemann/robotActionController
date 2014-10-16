@@ -5,9 +5,13 @@ requires = [
           'python-dateutil',
           'gevent',
           'pyserial',
-          'pyaudio',
-          'sqlalchemy',
+          'pyaudio>=0.2.8',
+          'sqlalchemy==0.9.8',
       ]
+
+depend_links = [
+          'git+http://people.csail.mit.edu/hubert/git/pyaudio.git#egg=pyaudio-0.2.8',
+]
 
 if platform.system() == 'Linux':
     requires.append('evdev')
@@ -34,5 +38,6 @@ setup(name='robotActionController',
       license='MIT',
       packages=['robotActionController'],
       install_requires=requires,
+      dependency_links=depend_links,
       include_package_data=True,
       zip_safe=False)

@@ -75,11 +75,11 @@ class ActionExecutionHandle(Thread):
             self._logger.critical("%s: %s" % (e.__class__.__name__, e))
             self._result = False
         else:
-            endtime = datetime.utcnow()
-            if self._action.minLength and timedelta(seconds=self._action.minLength) > (starttime - endtime):
-                sleeptime = (starttime - endtime).total_seconds()
-                self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
-                time.sleep(sleeptime)
+            #endtime = datetime.utcnow()
+            #if self._action.minLength and timedelta(seconds=self._action.minLength) > (starttime - endtime):
+            #    sleeptime = (starttime - endtime).total_seconds()
+            #    self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
+            #    time.sleep(sleeptime)
 
             if self._result:
                 self._output.append((datetime.utcnow(), '%s: Completed %s' % (self.__class__.__name__, self._action.name)))
