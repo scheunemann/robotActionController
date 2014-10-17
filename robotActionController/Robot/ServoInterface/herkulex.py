@@ -42,6 +42,7 @@ class HerkuleX(object):
 
     BASIC_PKT_SIZE = 7
     WAIT_TIME_BY_ACK = 30
+    MAX_PLAY_TIME = 2856
 
     # SERVO HERKULEX COMMAND - See Manual p40
     HEEPWRITE = 0x01  # Rom write
@@ -612,21 +613,20 @@ class HerkuleX(object):
         if goalPos > 1023 or goalPos < 0:
             self._logger.warning("Got out of range position: %s", goalPos)
             return  # speed (goal) non correct
-        if playTime < 0 or playTime > 2856:
+        if playTime < 0 or playTime > HerkuleX.MAX_PLAY_TIME:
             self._logger.warning("Got out of range playtime: %s", playTime)
             return
 
         # Position definition
         posLSB = goalPos & 0X00FF  # MSB Pos
         posMSB = (goalPos & 0XFF00) >> 8  # LSB Pos
-        playTime = int(round(playTime / 11.2))  # ms --> value
+        playTimeVal = int(round(playTime / 11.2))  # ms --> value
         led = led & 0xFD  # Pos Ctrl Mode
 
-        self._logger.debug("Moving %s to %s in %s ms" % (servoID, goalPos, playTime))
-        print "Moving %s to %s in %s ms" % (servoID, goalPos, playTime)
+        self._logger.debug("Moving %s to %s in %sms" % (servoID, goalPos, playTime))
 
         optData = [0] * 5
-        optData[0] = playTime  # Execution time
+        optData[0] = playTimeVal  # Execution time in ms / 11.2
         optData[1] = posLSB
         optData[2] = posMSB
         optData[3] = led
@@ -634,7 +634,7 @@ class HerkuleX(object):
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HSJOG, optData)
         self.sendData(packetBuf)
-        self._logger.debug(self.error_text(servoID))
+        #self._logger.debug(self.error_text(servoID))
 
     """
     * Get servo position
@@ -902,11 +902,14 @@ class HerkuleX(object):
 
     def error_text(self, servoID):
         statusCode, detailCode = self.stat(servoID, True)
-        codes = []
-        if statusCode == -1:
+
+        if statusCode >= -1:
             return ['Invalid response recieved, unknown status', ]
+
         if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
-            pass
+            return []
+
+        codes = []
         if statusCode & HerkuleX.H_ERROR_INPUT_VOLTAGE == HerkuleX.H_ERROR_INPUT_VOLTAGE:
             codes.append('Exceeded Input Voltage')
         if statusCode & HerkuleX.H_ERROR_POS_LIMIT == HerkuleX.H_ERROR_POS_LIMIT:
@@ -1103,7 +1106,7 @@ class HerkuleX(object):
     def sendDataForResult(self, buf):
         with self.portLock:
             self.mPort.flushInput()
-            self._logger.debug("Sending packet: %s", [str(x) for x in buf])
+            self._logger.log(1, "Sending packet: %s", [str(x) for x in buf])
             self.sendData(buf)
             ackDelay = HerkuleX.WAIT_TIME_BY_ACK / 1000.0
 
@@ -1111,11 +1114,10 @@ class HerkuleX(object):
             #    time.sleep(ackDelay)
             #except:
             #    self._logger.error(sys.exc_info()[0])
-
-#             readBuf = []
-#             while self.mPort.inWaiting() > 0:
-#                 inBuffer = self.mPort.read(1)
-#                 readBuf.append(ord(inBuffer) & 0xFF)
+            #readBuf = []
+            #while self.mPort.inWaiting() > 0:
+            #    inBuffer = self.mPort.read(1)
+            #    readBuf.append(ord(inBuffer) & 0xFF)
 
             # Locate the start of the header
             readBuf = [0xFF, 0xFF]
