@@ -27,37 +27,25 @@ class SoundExecutionHandle(ActionExecutionHandle):
             SoundExecutionHandle.__audio = pyaudio.PyAudio()
         return SoundExecutionHandle.__audio
 
-    @staticmethod
-    def _contextWrapper(context):
-        """Binds a context to a function"""
-        """Used in the pyaudio callback to bind 'self'"""
-        def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                return func(context, *args, **kwargs)
+    def __callback(self, in_data, frame_count, time_info, status):
+        if self._cancel:
+            return (None, pyaudio.paAbort)
 
-            return wrapper
-        return decorator
+        data = self._file.readframes(frame_count)
+        return (data, pyaudio.paContinue if data else pyaudio.paComplete)
 
     def _runInternal(self, action):
         p = self._audio
         try:
             data = cStringIO.StringIO(action.data)
             self._file = wave.open(data, 'rb')
-
-            @SoundExecutionHandle._contextWrapper(self)
-            def __callback(self, in_data, frame_count, time_info, status):
-                if self._cancel:
-                    return (None, pyaudio.paAbort)
-
-                data = self._file.readframes(frame_count)
-                return (data, pyaudio.paContinue if data else pyaudio.paComplete)
+            callback = lambda in_data, frame_count, time_info, status: self.__callback(in_data, frame_count, time_info, status)
 
             stream = p.open(format=p.get_format_from_width(self._file.getsampwidth()), 
                             channels=self._file.getnchannels(), 
                             rate=self._file.getframerate(), 
                             output=True,
-                            stream_callback=__callback)
+                            stream_callback=callback)
         except Exception as e:
             self._logger.error("Error in portaudio: ", exc_info=True)
             return False
