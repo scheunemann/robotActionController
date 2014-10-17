@@ -208,12 +208,14 @@ class ActionRunner(object):
             raise ValueError("Could not determine action runner for type %s" % action.type)
 
     def execute(self, action):
+        self._logger.debug("Starting %s Sync" % action.name)
         runner = self._getRunner(action)
         handle = runner._getHandle(action)
         handle.run()
         return handle.result
 
     def executeAsync(self, action, callback=None, callbackData=None):
+        self._logger.debug("Starting %s Async" % action.name)
         runner = self._getRunner(action)
         handle = runner._getHandle(action)
         handle.start(callback, callbackData)
