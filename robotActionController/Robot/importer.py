@@ -1,11 +1,12 @@
 import os
-import sys
 from xml.etree import ElementTree as et
+import logging
 
 from robotActionController.Data.Model import Robot, RobotModel, Servo, ServoGroup, ServoModel, \
-    ServoConfig, RobotSensor, ExternalSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, PoseAction, SequenceAction, SequenceOrder, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
+    ServoConfig, RobotSensor, SensorModel, SensorConfig, DiscreteValueType, ContinuousValueType, PoseAction, SequenceAction, SequenceOrder, JointPosition, SensorTrigger, ButtonTrigger, ButtonHotkey
 from robotActionController.Data.Model.sensor import DiscreteSensorValue
 
+logger = logging.getLogger('importer')
 
 def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
     loadedActions = {}
@@ -40,7 +41,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                 if pose.name not in actions:
                     actions[pose.name] = pose
                 else:
-                    print "Skipping pose %s, another by the same name already exists" % pose.name
+                    logger.info("Skipping pose %s, another by the same name already exists" % pose.name)
 
         searchDir = os.path.join(subDir, 'seq')
         recheck = []
@@ -56,7 +57,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                 if seq.name not in actions:
                     actions[seq.name] = seq
                 else:
-                    print "Skipping sequence %s, another by the same name already exists" % seq.name
+                    logger.info("Skipping sequence %s, another by the same name already exists" % seq.name)
         progress = True
         while recheck and progress:
             progress = False
@@ -70,9 +71,9 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                 if seq.name not in actions:
                     actions[seq.name] = seq
                 else:
-                    print "Skipping sequence %s, another by the same name already exists" % seq.name
+                    logger.info("Skipping sequence %s, another by the same name already exists" % seq.name)
         if recheck:
-            print >> sys.stderr, "Unable to import all sequences, missing reference actions"
+            logger.error("Unable to import all sequences, missing reference actions", exc_info=True)
 
     if loadTriggers:
         t = TriggerImporter()
@@ -84,7 +85,7 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                 lines = f.readlines()
                 for trigger in t.getTriggers(lines, actions.values(), triggers.keys()):
                     if trigger.name in triggers:
-                        print "Trigger named %s already imported, skipping" % trigger.name
+                        logger.info("Trigger named %s already imported, skipping" % trigger.name)
                         continue
                     else:
                         triggers[trigger.name] = trigger
@@ -108,7 +109,7 @@ class RobotImporter(object):
     _configs = {}
 
     def __init__(self):
-        pass
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def getRobot(self, robotConfig, poseDict):
         if os.path.exists(robotConfig) and os.path.isfile(robotConfig):
@@ -136,7 +137,7 @@ class RobotImporter(object):
             if defaultAction in poseDict:
                 r.defaultAction = poseDict[defaultAction]
             else:
-                print "Warning: Could not locate action named %s.  Robot will have no default" % defaultAction
+                self._logger.info("Warning: Could not locate action named %s.  Robot will have no default" % defaultAction)
 
         return r
 
@@ -247,7 +248,7 @@ class RobotImporter(object):
         sensors = []
         for sensor in self._get("SENSORLIST/EXTERNAL/SENSOR", node):
             # TODO: Properly handle external sensors
-            s = ExternalSensor()
+            s = RobotSensor()
             s.name = self._getText("NAME", sensor).upper()
             s.model = self._getSensorModel(sensor.get('type', None))
             s.onState = self._getText("ONSTATE", node, None)
@@ -290,7 +291,7 @@ class RobotImporter(object):
             if modelName.lower() in RobotImporter._types:
                 s.model = RobotImporter._types[modelName.lower()]
             else:
-                print "Unknown servo model: %s" % modelName
+                self._logger.info("Unknown servo model: %s" % modelName)
                 pass
             s.minPosition = self._getText("LIMITS/POS/MIN", servo, None)
             s.maxPosition = self._getText("LIMITS/POS/MAX", servo, None)
@@ -299,9 +300,8 @@ class RobotImporter(object):
                 s.defaultPosition = None
                 try:
                     posList = eval(pos)
-                except Exception as e:
-                    print sys.stderr >> "Invalid multi-position specified for servo %s: %s" % (s.jointName, pos)
-                    print sys.stderr >> e
+                except Exception:
+                    self._logger.error("Invalid multi-position specified for servo %s: %s" % (s.jointName, pos), exc_info=True)
                     continue
                 s.defaultPositions = str(posList)
             else:
@@ -461,8 +461,8 @@ class RobotImporter(object):
     def _get(self, xpath, node, default=None):
         try:
             nodes = node.findall(xpath)
-        except Exception as e:
-            print >> sys.stderr, e
+        except Exception:
+            self._logger.error("Error parsing node", exc_info=True)
             return default
 
         if len(nodes) == 0 and default != None:
@@ -474,7 +474,7 @@ class RobotImporter(object):
 class ActionImporter(object):
 
     def __init__(self):
-        pass
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def getSequence(self, sequenceLines, actions):
         """
@@ -494,8 +494,8 @@ class ActionImporter(object):
             if name in actions:
                 seq.actions.append(SequenceOrder(actions[name], forcedLength=length))
             else:
+                self._logger.error("Unable to find action named %s for sequence %s, skipping step" % (sequenceLines[i], name))
                 return None
-                print >> sys.stderr, "Unable to find action named %s for sequence %s, skipping step" % (sequenceLines[i], name)
 
         return seq
 
@@ -552,7 +552,7 @@ class ActionImporter(object):
 class TriggerImporter(object):
 
     def __init__(self):
-        pass
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def getTriggers(self, triggerLines, actions):
         """
@@ -590,7 +590,7 @@ class TriggerImporter(object):
             try:
                 action = filter(lambda x: x.name == actionName, actions)[0]
             except:
-                print >> sys.stderr, "Action %s not found, skipping" % actionName
+                self._logger.error("Action %s not found, skipping" % actionName, exc_info=True)
                 continue
 
             if len(vals) == 1:
@@ -613,7 +613,7 @@ class TriggerImporter(object):
                     t.hotKeys.append(hk)
                     triggers.append(t)
             else:
-                print >> sys.stderr, "Unknown trigger line?? %s" % line
+                self._logger.error("Unknown trigger line?? %s" % line, exc_info=True)
                 continue
 
         return triggers
