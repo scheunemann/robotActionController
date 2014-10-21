@@ -172,7 +172,7 @@ class ROS(object):
                 else:
                     # Final fallback, check /opt/ros for versions
                     versions = [d for d in os.listdir('/opt/ros/') if os.path.isdir(os.path.join('/opt/ros', d))]
-                    sorted(versions, lambda x,y: cmp(x.lower(), y.lower()))
+                    sorted(versions, lambda x, y: cmp(x.lower(), y.lower()))
                     if versions:
                         ROS._activeVersion = versions[-1]
                     else:
@@ -280,7 +280,7 @@ class ROS(object):
         else:
             path = '/opt/ros/%(version)s/share' % {'version': version}
             if 'ROS_ROOT' not in os.environ.keys() or os.environ['ROS_ROOT'] != path:
-                os.environ['ROS_ROOT'] = path            
+                os.environ['ROS_ROOT'] = path
 
         path = '%(root)s/bin' % {'root': os.environ['ROS_ROOT']}
         if os.environ['PATH'].find(path) == -1:
@@ -365,7 +365,7 @@ class Transform(object):
             self._ros = rosHelper
         self._ros.configureROS(packageName='core_transform')
         self._rospy = __import__('rospy', globals(), locals())
-        self._tf = __import__('tf', globals(), locals()) 
+        self._tf = __import__('tf', globals(), locals())
         self._ros.initROS()
         self._listener = None
         self._defaultFrom = fromFrame

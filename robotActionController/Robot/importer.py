@@ -8,6 +8,7 @@ from robotActionController.Data.Model.sensor import DiscreteSensorValue
 
 logger = logging.getLogger('importer')
 
+
 def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=True):
     loadedActions = {}
     loadedTriggers = {}
