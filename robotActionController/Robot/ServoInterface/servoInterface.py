@@ -324,7 +324,7 @@ class HerkuleX(ServoInterface):
         realPosition = int(round(float(self._scaleToRealPos(position))))
         if currentPosition == -1:
             self._logger.debug("Could not get position from servo %s, defaulting to slow movement", self._externalId)
-            steps = [(realPostion, self._conn.MAX_PLAY_TIME),]
+            steps = [(realPosition, self._conn.MAX_PLAY_TIME),]
         else:
             stepsPerSec = self._scaleToRealSpeed(speed)
             totalSteps = abs(realPosition - currentPosition)

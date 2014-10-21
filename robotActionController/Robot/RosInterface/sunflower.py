@@ -1,4 +1,5 @@
 from robot import ROSRobot, ActionLib as RosActionLib
+import logging
 
 
 class Sunflower(ROSRobot):
@@ -24,15 +25,21 @@ class Sunflower(ROSRobot):
         else:
             return ('', ret)
 
-    def setComponentState(self, name, value):
+    def setComponentState(self, name, value, blocking=True):
         # check if the component has been initialised, and init if it hasn't
         if name == 'base' or name == 'base_direct':
             self._robInt.initComponent(name)
 
-        return super(Sunflower, self).setComponentState(name, value)
+        return super(Sunflower, self).setComponentState(name, value, blocking)
 
 
 class ActionLib(RosActionLib):
 
     def __init__(self):
-        super(ActionLib, self).__init__('sf_controller', 'SunflowerAction', 'SunflowerGoal')
+        super(ActionLib, self).__init__('sf_controller', 'sf_controller_msgs', 'SunflowerAction', 'SunflowerGoal')
+
+if __name__ == '__main__':
+    logging.basicConfig()
+    sf = Sunflower('sf1-1', 'http://localhost:11311')
+    sf.setComponentState('base_direct', (1, 0))
+    sf.setComponentState('base_direct', (0, 3.14159))

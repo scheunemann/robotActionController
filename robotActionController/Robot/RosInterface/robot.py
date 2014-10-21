@@ -136,14 +136,13 @@ class ROSRobot(Robot):
 
     @property
     def _transform(self):
-
         with self._tfLock:
             if self._tf == None:
                 try:
                     import rosHelper
                     self._tf = rosHelper.Transform(rosHelper=self._rs, toFrame=self._tfToFrame, fromFrame=self._tfFromFrame)
-                except Exception as e:
-                    self._logger.critical("Error occured while calling transform: %s" % repr(e))
+                except Exception:
+                    self._logger.critical("Error occurred while calling transform", exc_info=True)
             return self._tf
 
     @property
@@ -199,7 +198,7 @@ class ROSRobot(Robot):
         # commencing, time delay to attempt to compensate...
         if status != 3 and len(self._ros.getTopics('/gazebo')) > 0:
             time.sleep(1)
-            self._logger.ward('Gazebo hack: state ' + self._rs._states[status] + ' changed to state ' + self._rs._states[3])
+            self._logger.warning('Gazebo hack: state ' + self._rs._states[status] + ' changed to state ' + self._rs._states[3])
             return _states[3]
 
         if type(status) == int:
@@ -216,19 +215,19 @@ class ROSRobot(Robot):
 
 class ActionLib(object):
 
-    def __init__(self, controllerName, actionName, goalName):
+    def __init__(self, controllerName, packageName, actionName, goalName):
         self._logger = logging.getLogger(self.__class__.__name__)
 
         import rosHelper
         ros = rosHelper.ROS()
         ros.configureROS(packageName='actionlib')
-        ros.configureROS(packageName=controllerName)
+        ros.configureROS(packageName=packageName)
 
-        import actionlib
-        ns = __import__(controllerName + '.msg', globals(), locals())
+        ns = __import__(packageName + '.msg', globals(), locals())
         self._controlMsgs = getattr(ns, 'msg')
         self._goalName = goalName
 
+        actionlib = __import__('actionlib', globals(), locals())
         self._controlClient = actionlib.SimpleActionClient('/%s' % controllerName, getattr(self._controlMsgs, actionName))
         self._logger.info("Waiting for %s..." % controllerName)
         self._controlClient.wait_for_server()

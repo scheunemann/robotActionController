@@ -30,9 +30,8 @@ class Factory(object):
                 robotInt = robotClass(robot.name, **kwargs)
             except ImportError as e:
                 logger.critical("Unknown robot type %s" % robot.model.name)
-            except Exception as e:
-                logger.critical("An error occurred while loading robot %s" % (robot))
-                logger.critical(e)
+            except Exception:
+                logger.critical("An error occurred while loading robot %s" % (robot), exc_info=True)
                 return None
 
             Factory._interfaces[robot.name] = robotInt
