@@ -903,7 +903,7 @@ class HerkuleX(object):
     def error_text(self, servoID):
         statusCode, detailCode = self.stat(servoID, True)
 
-        if statusCode >= -1:
+        if statusCode <= -1:
             return ['Invalid response recieved, unknown status', ]
 
         if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
