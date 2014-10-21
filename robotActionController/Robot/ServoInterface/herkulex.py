@@ -906,7 +906,7 @@ class HerkuleX(object):
         if statusCode <= -1:
             return ['Invalid response recieved, unknown status', ]
 
-        if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
+        if statusCode == HerkuleX.H_STATUS_OK:
             return []
 
         codes = []
