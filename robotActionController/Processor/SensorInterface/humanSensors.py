@@ -134,7 +134,7 @@ class HumanDetectorSensor(HumanDirectionSensor):
         return ret
 
 if __name__ == '__main__':
-    from Data.Model import Sensor
+    from robotActionController.Data.Model import Sensor
     dbConfig = dbConfig = {
        'type': 'MySql',
        'host': 'localhost',
