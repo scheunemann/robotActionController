@@ -2,6 +2,18 @@ from robotActionController import connections
 
 
 class minimaestro(object):
+    class errors(object):
+        STATUS_OK = 0
+        ERROR_SIGNAL = 1
+        ERROR_OVERRUN = 2
+        ERROR_RX_BUFFER = 4
+        ERROR_CRC = 8
+        ERROR_PROTOCOL = 16
+        ERROR_TIMEOUT = 32
+        ERROR_SCRIPT_STACK = 64
+        ERROR_CALL_STACK = 128
+        ERROR_SCRIPT_PROG = 256
+
     # From pololu-usb-sdk\Maestro\protocol.h
     class uscCommand(object):
         COMMAND_SET_TARGET = 0x84  # 3 data bytes
@@ -158,6 +170,37 @@ class minimaestro(object):
 
         error = (ord(highByte) << 8) + ord(lowByte)
         return error
+
+    def getErrorText(self):
+        statusCode = self.getErrors()
+
+        if statusCode <= -1:
+            return ['Invalid response recieved, unknown status', ]
+
+        if statusCode == minimaestro.errors.STATUS_OK:
+            return []
+
+        codes = []
+        if statusCode & minimaestro.errors.ERROR_SIGNAL == minimaestro.errors.ERROR_SIGNAL:
+            codes.append('Serial Signal Error')
+        if statusCode & minimaestro.errors.ERROR_OVERRUN == minimaestro.errors.ERROR_OVERRUN:
+            codes.append('Signal Overrun Error')
+        if statusCode & minimaestro.errors.ERROR_RX_BUFFER == minimaestro.errors.ERROR_RX_BUFFER:
+            codes.append('Serial RX buffer full')
+        if statusCode & minimaestro.errors.ERROR_CRC == minimaestro.errors.ERROR_CRC:
+            codes.append('Serial CRC error')
+        if statusCode & minimaestro.errors.ERROR_PROTOCOL == minimaestro.errors.ERROR_PROTOCOL:
+            codes.append('Serial protocol error')
+        if statusCode & minimaestro.errors.ERROR_TIMEOUT == minimaestro.errors.ERROR_TIMEOUT:
+            codes.append('Serial timeout error')
+        if statusCode & minimaestro.errors.ERROR_SCRIPT_STACK == minimaestro.errors.ERROR_SCRIPT_STACK:
+            codes.append('Script stack error')
+        if statusCode & minimaestro.errors.ERROR_CALL_STACK == minimaestro.errors.ERROR_CALL_STACK:
+            codes.append('Script call stack error')
+        if statusCode & minimaestro.errors.ERROR_SCRIPT_PROG == minimaestro.errors.ERROR_SCRIPT_PROG:
+            codes.append('Script program counter error')
+
+        return codes
 
 if __name__ == '__main__':
     m = minimaestro("COM16", 115200)

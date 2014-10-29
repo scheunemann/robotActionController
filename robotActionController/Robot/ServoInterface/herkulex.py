@@ -1044,16 +1044,18 @@ class HerkuleX(object):
             # print [str(x) for x in buf]
             return False
         if len(buf) != buf[2]:
-            self._logger.warning("Invalid packet! %s", [str(x) for x in buf])
+            self._logger.warning("Invalid packet length! %s", [str(x) for x in buf])
             return False
 
         chksum1 = self.checksum1(buf)  # Checksum1
         chksum2 = self.checksum2(chksum1)  # Checksum2
 
         if chksum1 != buf[5]:
+            self._logger.warning("Invalid packet checksum1! %s", [str(x) for x in buf])
             # print [str(x) for x in buf]
             return False
         if chksum2 != buf[6]:
+            self._logger.warning("Invalid packet checksum2! %s", [str(x) for x in buf])
             # print [str(x) for x in buf]
             return False
 
@@ -1099,14 +1101,13 @@ class HerkuleX(object):
 
     def sendData(self, buf):
         with self.portLock:
+            self.mPort.flushInput()
             self._logger.log(1, "Sending packet: [%s]" % ', '.join([str(x) for x in buf]))
             packet = ''.join([chr(x) for x in buf])
             self.mPort.write(packet)
 
     def sendDataForResult(self, buf):
         with self.portLock:
-            self.mPort.flushInput()
-            self._logger.log(1, "Sending packet: %s", [str(x) for x in buf])
             self.sendData(buf)
             ackDelay = HerkuleX.WAIT_TIME_BY_ACK / 1000.0
 
@@ -1123,6 +1124,7 @@ class HerkuleX(object):
             readBuf = [0xFF, 0xFF]
             startTime = time.time()
             while time.time() - startTime < self.mPort.timeout + ackDelay:
+            #while time.time() - startTime < 5 + ackDelay:
                 inBuffer = self.mPort.read(1)
                 if len(inBuffer) == 0:
                     continue
