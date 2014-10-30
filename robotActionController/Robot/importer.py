@@ -16,12 +16,29 @@ def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=
 
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
     for subDir in dirs:
-        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, 'robot.xml', loadActions, loadTriggers, loadRobots)
+        files = [os.path.join(subDir, o) for o in os.listdir(subDir) if os.path.isfile(os.path.join(subDir, o)) and o.endswith('.xml')]
+        for fileName in files:
+            loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, fileName, loadActions, loadTriggers, loadRobots)
 
     return (loadedRobots, loadedActions.values(), loadedTriggers.values())
 
 
-def loadDirectory(actions, triggers, robots, subDir, robotConfig, loadActions=True, loadTriggers=True, loadRobots=True):
+def _getConfigRoot(configFile):
+    print "Loading file: %s" % configFile
+    root = et.parse(configFile).getroot()
+    parent = root.attrib.get('parent', None)
+    if parent:
+        print "Parent detected...merging"
+        parentFile = os.path.join(os.path.dirname(configFile), parent)
+        if os.path.isfile(parentFile):
+            from xmlCombiner import XMLCombiner
+            parentRoot = et.parse(parentFile).getroot()
+            root = XMLCombiner([parentRoot, root]).combine()
+        root.attrib.pop('parent')
+    return root
+
+
+def loadDirectory(actions, triggers, robots, subDir, robotConfig='robot.xml', loadActions=True, loadTriggers=True, loadRobots=True):
 
     if loadActions:
         a = ActionImporter()
@@ -84,15 +101,18 @@ def loadDirectory(actions, triggers, robots, subDir, robotConfig, loadActions=Tr
                     else:
                         triggers[trigger.name] = trigger
     if loadRobots:
-        if type(robotConfig) == 'str':
-            robotConfig = os.path.join(subDir, 'robot.xml')
+        if type(robotConfig) == str:
+            robotConfig = os.path.join(subDir, robotConfig)
             if not os.path.isfile(robotConfig):
+                print "Config not found: %s" % robotConfig
                 return None
-            robotConfig = et.parse(robotConfig).getroot()
+            robotConfig = _getConfigRoot(robotConfig)
         elif type(robotConfig) != et.Element:
+            print "Config not string or Element: %s" % type(robotConfig)
             return None
 
         if robotConfig.tag != 'ROBOT':
+            print "Config not ROBOT type: %s" % robotConfig.tag
             return None
 
         r = RobotImporter().getRobot(robotConfig, actions)
@@ -119,7 +139,7 @@ class RobotImporter(object):
         if type(robotConfig) == 'str':
             if not os.path.exists(robotConfig) or not os.path.isfile(robotConfig):
                 raise Exception('Cannot locate robot config (path: %s)' % (robotConfig))
-            config = et.parse(robotConfig).getroot()
+            config = _getConfigRoot(robotConfig)
         elif type(robotConfig) != et.Element:
             raise Exception('Invalid config type: %s' % type(robotConfig))
         else:
