@@ -16,19 +16,12 @@ def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=
 
     dirs = [os.path.join(rootDir, o) for o in os.listdir(rootDir) if os.path.isdir(os.path.join(rootDir, o))]
     for subDir in dirs:
-        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, loadActions, loadTriggers, loadRobots)
+        loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, 'robot.xml', loadActions, loadTriggers, loadRobots)
 
     return (loadedRobots, loadedActions.values(), loadedTriggers.values())
 
 
-def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTriggers=True, loadRobots=True):
-
-    robotConfig = os.path.join(subDir, 'robot.xml')
-    if not os.path.isfile(robotConfig):
-        return None
-    configType = et.parse(robotConfig).getroot().tag
-    if configType != 'ROBOT':
-        return None
+def loadDirectory(actions, triggers, robots, subDir, robotConfig, loadActions=True, loadTriggers=True, loadRobots=True):
 
     if loadActions:
         a = ActionImporter()
@@ -91,9 +84,19 @@ def loadDirectory(actions, triggers, robots, subDir, loadActions=True, loadTrigg
                     else:
                         triggers[trigger.name] = trigger
     if loadRobots:
-        if os.path.isfile(robotConfig):
-            r = RobotImporter().getRobot(robotConfig, actions)
-            robots.append(r)
+        if type(robotConfig) == 'str':
+            robotConfig = os.path.join(subDir, 'robot.xml')
+            if not os.path.isfile(robotConfig):
+                return None
+            robotConfig = et.parse(robotConfig).getroot()
+        elif type(robotConfig) != et.Element:
+            return None
+
+        if robotConfig.tag != 'ROBOT':
+            return None
+
+        r = RobotImporter().getRobot(robotConfig, actions)
+        robots.append(r)
 
     return (robots, actions.values(), triggers.values())
 
@@ -113,10 +116,14 @@ class RobotImporter(object):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def getRobot(self, robotConfig, poseDict):
-        if os.path.exists(robotConfig) and os.path.isfile(robotConfig):
+        if type(robotConfig) == 'str':
+            if not os.path.exists(robotConfig) or not os.path.isfile(robotConfig):
+                raise Exception('Cannot locate robot config (path: %s)' % (robotConfig))
             config = et.parse(robotConfig).getroot()
+        elif type(robotConfig) != et.Element:
+            raise Exception('Invalid config type: %s' % type(robotConfig))
         else:
-            raise Exception('Cannot locate robot config (path: %s)' % (robotConfig))
+            config = robotConfig
 
         r = Robot(name=config.get('name'), version=config.get('version'))
         r.model = self._getModel(config.get('type'), config.get('extraData'))
@@ -527,6 +534,8 @@ class ActionImporter(object):
         pose = PoseAction(name=name)
 
         for line in poseLines[1:]:
+            if not line.strip():
+                continue
             idx1 = line.find(',')
             idx2 = line.rfind(',')
             jointName = line[0:idx1].strip()
