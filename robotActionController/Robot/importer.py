@@ -20,7 +20,7 @@ def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=
         for fileName in files:
             loadDirectory(loadedActions, loadedTriggers, loadedRobots, subDir, fileName, loadActions, loadTriggers, loadRobots)
 
-    return (loadedRobots, loadedActions.values(), loadedTriggers.values())
+    return (loadedRobots, loadedActions, loadedTriggers)
 
 
 def getConfigRoot(configFile):
@@ -118,7 +118,7 @@ def loadDirectory(actions, triggers, robots, subDir, robotConfig='robot.xml', lo
         r = RobotImporter().getRobot(robotConfig, actions)
         robots.append(r)
 
-    return (robots, actions.values(), triggers.values())
+    return (robots, actions, triggers)
 
 
 class RobotImporter(object):
