@@ -23,7 +23,7 @@ def loadAllDirectories(rootDir, loadActions=True, loadTriggers=True, loadRobots=
     return (loadedRobots, loadedActions.values(), loadedTriggers.values())
 
 
-def _getConfigRoot(configFile):
+def getConfigRoot(configFile):
     print "Loading file: %s" % configFile
     root = et.parse(configFile).getroot()
     parent = root.attrib.get('parent', None)
@@ -106,7 +106,7 @@ def loadDirectory(actions, triggers, robots, subDir, robotConfig='robot.xml', lo
             if not os.path.isfile(robotConfig):
                 print "Config not found: %s" % robotConfig
                 return None
-            robotConfig = _getConfigRoot(robotConfig)
+            robotConfig = getConfigRoot(robotConfig)
         elif type(robotConfig) != et.Element:
             print "Config not string or Element: %s" % type(robotConfig)
             return None
@@ -139,7 +139,7 @@ class RobotImporter(object):
         if type(robotConfig) == 'str':
             if not os.path.exists(robotConfig) or not os.path.isfile(robotConfig):
                 raise Exception('Cannot locate robot config (path: %s)' % (robotConfig))
-            config = _getConfigRoot(robotConfig)
+            config = getConfigRoot(robotConfig)
         elif type(robotConfig) != et.Element:
             raise Exception('Invalid config type: %s' % type(robotConfig))
         else:
