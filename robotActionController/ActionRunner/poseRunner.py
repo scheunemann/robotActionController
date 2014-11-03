@@ -5,10 +5,10 @@ import logging
 import time
 
 
-class PoseExecutionHandle(ActionExecutionHandle):
+class PoseRunner(ActionExecutionHandle):
 
     def __init__(self, pose, robot):
-        super(PoseExecutionHandle, self).__init__(pose)
+        super(PoseRunner, self).__init__(pose)
         self._robot = robot
 
     def _runInternal(self, action):

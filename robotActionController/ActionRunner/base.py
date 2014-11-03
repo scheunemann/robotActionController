@@ -1,26 +1,23 @@
 import logging
-import time
+import abc
 from collections import namedtuple
 from datetime import datetime, timedelta
-from threading import Thread
-from multiprocessing.pool import ThreadPool
+import gevent
+from gevent.lock import RLock
 
 
-class ActionExecutionHandle(Thread):
+class ActionRunner(gevent.greenlet.Greenlet):
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, action, runner=None):
-        super(ActionExecutionHandle, self).__init__()
+        super(ActionRunner, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
         if not isinstance(action, tuple):
             raise Exception('Action must be a runnable type')
         self._action = action
         self._handles = []
         self._handle = None
-        self._result = False
         self._output = []
-        self._done = False
-        self._callback = None
-        self._callbackData = None
         self._runner = runner
 
     @property
@@ -28,12 +25,8 @@ class ActionExecutionHandle(Thread):
         return self._action
 
     @property
-    def _safeHandles(self):
-        return self._handles or [self._handle, ] if self._handle else []
-
-    @property
     def result(self):
-        return self._result if self._done else None
+        return self.value
 
     @property
     def output(self):
@@ -42,112 +35,116 @@ class ActionExecutionHandle(Thread):
         output.sort(key=lambda (ts, _): ts)
         return output
 
-    def waitForComplete(self):
-        # Wait for the sub-thread to start
-        while not self._safeHandles and not self._done:
-            time.sleep(0.01)
-
-        results = map(lambda h: h.waitForComplete(), self._safeHandles)
-
-        self._result = all(results)
-        return self._result
-
-    def start(self, callback=None, callbackData=None):
-        self._done = False
-        self._callback = callback
-        self._callbackData = callbackData
-        super(ActionExecutionHandle, self).start()
-
+    @property
+    def _safeHandles(self):
+        return self._handles or [self._handle, ] if self._handle else []
+    
+    @abc.abstractmethod
     def _runInternal(self, action):
-        if self._runner:
-            return self._runner.execute(action)
-        else:
-            return False
+        pass
+    
+    @abc.abstractmethod
+    def isValid(self, action):
+        pass
+    
+    @abc.abstractmethod
+    def getRunable(self, action):
+        pass
+    
+    def execute(self):
+        return self._run()
+    
+    def executeAsync(self, callback=None, callbackData=None):
+        if callback:
+            args = callbackData or ()
+            if not isinstance(args, (list, tuple)):
+                args = (args,)
+            cb = lambda x: callback(x, *args)
+            self.link(cb)
+        self.start()
+        return self
 
-    def run(self):
+    def waitForComplete(self):
+        gevent.joinall(self._safeHandles)
+
+    def _run(self):
         self._output.append((datetime.utcnow(), '%s: Starting %s' % (self.__class__.__name__, self._action.name)))
 
+        result = True
         starttime = datetime.utcnow()
         try:
             self._result = self._runInternal(self._action)
         except Exception as e:
             self._logger.critical("Error running action: %s" % self._action.name, exc_info=True)
             self._logger.critical("%s: %s" % (e.__class__.__name__, e))
-            self._result = False
+            result = False
         else:
             endtime = datetime.utcnow()
             if self._action.minLength and timedelta(seconds=self._action.minLength) > (starttime - endtime):
                 sleeptime = (starttime - endtime).total_seconds()
                 self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
-                time.sleep(sleeptime)
+                gevent.sleep(sleeptime)
 
-            if self._result:
+            if result:
                 self._output.append((datetime.utcnow(), '%s: Completed %s' % (self.__class__.__name__, self._action.name)))
             else:
                 self._output.append((datetime.utcnow(), '%s: Failed %s' % (self.__class__.__name__, self._action.name)))
-        finally:
-            self._done = True
 
-        if self._callback:
-            try:
-                args = self._callbackData or ()
-                if not isinstance(args, (list, tuple)):
-                    args = (args,)
-                self._callback(self, *args)
-            except Exception as e:
-                self._logger.error("Error calling callback function: %s" % e, exc_info=True)
+        return result
 
     def stop(self):
-        handles = [h for h in self._safeHandles if h.isAlive()]
-        if handles:
-            pool = ThreadPool(processes=len(handles))
-            pool.map(lambda h: h.stop(), handles)
+        gevent.killall(self._safeHandles)
+        self.waitForComplete()
 
 
-class ActionRunner(object):
+class ActionManager(object):    
 
     # Increase memory usage but hopefully reduce CPU usage...
     # TODO: When to expire cached items?
-    _actionCache = {}
     _runnerClasses = None
-    supportedClass = 'Action'
-    Runable = namedtuple('Action', ('name', 'id', 'type'))
 
     def __init__(self, robot):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._robot = robot
+        self.__actionCache = {}
+        self.__cacheLock = RLock()
+        ActionManager._getRunners()
 
     @property
     def robot(self):
         return self._robot
 
-    def isValid(self, action):
-        return self._getRunner(action).isValid(action)
+    def clearCache(self):
+        with self.__cacheLock:
+            self.__actionCache.clear()
+            
+    def cacheActions(self, actions):
+        for action in actions:
+            self.getRunable(action)
 
-    @staticmethod
-    def getRunable(action):
+    def getRunable(self, action):
         """
             Convert a DAO action into a minimised cacheable action for running
         """
         if action == None:
             return None
-        logger = logging.getLogger(ActionRunner.__name__)
-        if action.id not in ActionRunner._actionCache:
-            runners = ActionRunner._getRunners()
-            if action.type in runners:
-                return runners[action.type].getRunable(action)
-                #ActionRunner._actionCache[action.id] = runners[action.type].getRunable(action)
-                pass
-            elif action.type == 'Action':
-                logger.warn("Action: %s has an undefined action type: %s" % (action.name, action.type))
-                return ActionRunner.Runable(action.name, action.id, action.type, action.minLength)
+        
+        with self.__cacheLock:
+            if action.id not in self.__actionCache:
+                runners = ActionManager._getRunners()
+                if action.type in runners:
+                    runable = runners[action.type].getRunable(action)
+                    self.__actionCache[action.id] = runable
+                elif action.type == 'Action':
+                    self._logger.warn("Action: %s is abstract!" % (action.name, action.type))
+                    return None
+                else:
+                    self._logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
+                    return None
             else:
-                logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
-                return None
-        else:
-            logger.debug("Using cached action: %s" % action.name)
+                self._logger.debug("Using cached action: %s" % action.name)
 
-        return ActionRunner._actionCache[action.id]
+        return self.__actionCache[action.id]
 
     @staticmethod
     def _getRunners():
@@ -192,29 +189,21 @@ class ActionRunner(object):
 
         return ret
 
-    def _getHandle(self, action):
+    def __getRunner(self, action):
         try:
-            return ActionExecutionHandle(action, ActionRunner._getRunners()[action.type](self._robot))
-        except Exception:
-            self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
-            raise ValueError("Could not determine action runner for type %s" % action.type)
-
-    def _getRunner(self, action):
-        try:
-            self._logger.debug("Building runnable action for %s (%s)" % (action.name, action.type))
+            self._logger.debug("Getting action runner for %s (%s)" % (action.name, action.type))
             return ActionRunner._getRunners()[action.type](self._robot)
         except Exception:
             self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
             raise ValueError("Could not determine action runner for type %s" % action.type)
+        
+    def executeAction(self, action):
+        self._logger.debug("Starting %s Sync" % action.name)
+        runner = self.__getRunner(action)
+        return runner.execute()
 
-    def execute(self, action):
-        runner = self._getRunner(action)
-        handle = runner._getHandle(action)
-        handle.run()
-        return handle.result
-
-    def executeAsync(self, action, callback=None, callbackData=None):
-        runner = self._getRunner(action)
-        handle = runner._getHandle(action)
-        handle.start(callback, callbackData)
-        return handle
+    def executeActionAsync(self, action, callback=None, callbackData=None):
+        self._logger.debug("Starting %s Async" % action.name)
+        runner = self.__getRunner(action)
+        runner.executeAsync(callback, callbackData)
+        return runner

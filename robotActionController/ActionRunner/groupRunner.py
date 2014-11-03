@@ -3,10 +3,10 @@ import logging
 from base import ActionRunner, ActionExecutionHandle
 
 
-class GroupExecutionHandle(ActionExecutionHandle):
+class GroupRunner(ActionExecutionHandle):
 
     def __init__(self, group, robot):
-        super(GroupExecutionHandle, self).__init__(group)
+        super(GroupRunner, self).__init__(group)
         self._robot = robot
 
     def _runInternal(self, action):
