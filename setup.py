@@ -1,4 +1,23 @@
 from setuptools import setup
+import platform
+
+requires = [
+          'python-dateutil',
+          'gevent',
+          'pyserial',
+          'pyaudio>=0.2.8',
+          'sqlalchemy==0.9.8',
+      ]
+
+depend_links = [
+          'git+http://people.csail.mit.edu/hubert/git/pyaudio.git#egg=pyaudio-0.2.8',
+]
+
+if platform.system() == 'Linux':
+    requires.append('evdev')
+else:
+    pass
+
 
 def readme():
     with open('README.md') as f:
@@ -18,12 +37,7 @@ setup(name='robotActionController',
       author_email='n.burke@natbur.com',
       license='MIT',
       packages=['robotActionController'],
-      install_requires=[
-          'python-dateutil',
-          'gevent',
-          'pyserial',
-          'pyaudio',
-          'sqlalchemy',
-      ],
+      install_requires=requires,
+      dependency_links=depend_links,
       include_package_data=True,
       zip_safe=False)

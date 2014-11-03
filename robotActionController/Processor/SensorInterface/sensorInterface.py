@@ -19,6 +19,7 @@ def loadModules(path=None):
         path = __file__
 
     path = os.path.realpath(path)
+    logger = logging.getLogger(__name__)
     if path not in _modulesCache:
         modules = []
 
@@ -34,8 +35,8 @@ def loadModules(path=None):
                 continue
             try:
                 modules.append(__import__(module, globals(), locals()))
-            except Exception as e:
-                print >> sys.stderr, "Unable to import module %s, Exception: %s" % (module, e)
+            except Exception:
+                logger.error("Unable to import module %s" % module, exc_info=True)
 
         ret = {}
         for module in modules:
@@ -43,7 +44,7 @@ def loadModules(path=None):
                 if hasattr(type_, "sensorType"):
                     if type_.sensorType:
                         ret[name] = type_
-                        print "Registering sensor interface module %s" % name
+                        logger.debug("Registering sensor interface module %s" % name)
 
         _modulesCache[path] = ret
 

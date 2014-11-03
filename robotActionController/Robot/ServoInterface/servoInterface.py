@@ -1,7 +1,7 @@
 import logging
 import datetime
 import time
-from threading import RLock
+from threading import RLock, Timer
 from robotActionController.connections import Connection
 
 __all__ = ['ServoInterface', ]
@@ -296,6 +296,7 @@ class HerkuleX(ServoInterface):
         self._conn = Connection.getConnection("HERKULEX", self._port, self._portSpeed)
         self._conn.initialize(self._externalId)
         self._positioning = False
+        self._lastSetPosition = self.getPosition()
 
     def isMoving(self):
         with Connection.getLock(self._conn):
@@ -314,31 +315,54 @@ class HerkuleX(ServoInterface):
         if speed == None:
             speed = self._defaultSpeed
 
-        realPosition = int(round(float(self._scaleToRealPos(position))))
-        realSpeed = self._scaleToRealSpeed(speed)  # steps per second
         with Connection.getLock(self._conn):
             currentPosition = int(self._conn.getPosition(self._externalId))
 
+        currentPosition = currentPosition if currentPosition >= 0 else self._lastSetPosition
+        self._lastSetPosition = position
+
+        realPosition = int(round(float(self._scaleToRealPos(position))))
         if currentPosition == -1:
-            totalSteps = 1500  # Default to slow if no position returned
+            self._logger.debug("Could not get position from servo %s, defaulting to slow movement", self._externalId)
+            steps = [(realPosition, self._conn.MAX_PLAY_TIME),]
         else:
+            stepsPerSec = self._scaleToRealSpeed(speed)
             totalSteps = abs(realPosition - currentPosition)
-        realSpeed = (totalSteps / realSpeed) * 1000
-        realSpeed = int(round(float(realSpeed)))
-        realSpeed = max(realSpeed, 0)
-        realSpeed = min(realSpeed, 2856)
+            stepsPerMove = self._conn.MAX_PLAY_TIME * (stepsPerSec / 1000.0) - 10
+            steps = []
+            stepsRemaining = totalSteps
+            endPosition = currentPosition
+            direction = 1 if realPosition > currentPosition else -1
+            while stepsRemaining:
+                thisSteps = min(stepsRemaining, stepsPerMove)
+                endPosition = int(endPosition + (thisSteps * direction))
+                runTime = int((thisSteps / stepsPerSec) * 1000)
+                steps.append((endPosition, runTime))
+                stepsRemaining = max(0, stepsRemaining - thisSteps)
 
         self.__temperatureHackDONOTUSEINRELEASE()
-
-        with Connection.getLock(self._conn):
-            self._logger.debug("Setting ServoID: %s to Position %s at Speed %s" % (self._externalId, realPosition, realSpeed))
-            self._conn.moveOne(self._externalId, realPosition, realSpeed)
-
+        self._logger.debug("Moving Servo %s to from %s to %s in %ss using steps: %s" % (self._externalId,
+                                                                                           currentPosition,
+                                                                                           realPosition,
+                                                                                           round(totalSteps / stepsPerSec, 3),
+                                                                                           steps))
         if blocking:
-            while self.isMoving():
-                time.sleep(0.01)
+            for step in steps:
+                with Connection.getLock(self._conn):
+                    self._conn.moveOne(self._externalId, step[0], step[1])
+                time.sleep(max(0, step[1] - 30) / 1000)
+        else:
+            def callback(steps, currentStep):
+                if currentStep < len(steps):
+                    step = steps[currentStep]
+                    with Connection.getLock(self._conn):
+                        self._conn.moveOne(self._externalId, step[0], step[1])
+                    nextStep = Timer((step[1] - 30) / 1000, callback, [steps, currentStep + 1])
+                    nextStep.start()
+            callback(steps, 0)
 
-        return self._conn.stat(self._externalId) == 0
+        #return self._conn.stat(self._externalId) == 0
+        return True
 
     def getPositioning(self):
         return self._positioning
@@ -353,13 +377,22 @@ class HerkuleX(ServoInterface):
 
     def __temperatureHackDONOTUSEINRELEASE(self):
         with Connection.getLock(self._conn):
-            if self._conn.getTorque(self._externalId) == 0:
-                if self._conn.getTemperature(self._externalId) < 0xD1:
-                    self._logger.warning("AUTOCLEARING TEMPERATURE ERROR ON SERVO %s", self._externalId)
+            errors = self._conn.stat(self._externalId)
+            if errors:
+                if errors & self._conn.H_ERROR_TEMPERATURE_LIMIT:
+                    if self._conn.getTemperature(self._externalId) < 60:
+                        self._logger.warning("AUTOCLEARING TEMPERATURE ERROR ON SERVO %s", self._externalId)
+                        self._conn.clearError(self._externalId)
+                        self._conn.torqueON(self._externalId)
+                    else:
+                        self._logger.warning("SERVO %s STILL IN OVERHEAT, CANNOT CLEAR ERROR", self._externalId)
+                        return
+                if errors & self._conn.H_ERROR_OVERLOAD:
+                    self._logger.warning("AUTOCLEARING TORQUE ERROR ON SERVO %s", self._externalId)
                     self._conn.clearError(self._externalId)
                     self._conn.torqueON(self._externalId)
-                else:
-                    self._logger.warning("SERVO %s STILL IN OVERHEAT, CANNOT CLEAR ERROR", self._externalId)
+                self._conn.clearError(self._externalId)
+                self._conn.torqueON(self._externalId)
 
 
 class SSC32(ServoInterface):

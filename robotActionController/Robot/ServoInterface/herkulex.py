@@ -6,7 +6,7 @@
 * This library is free software you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
 * License as published by the Free Software Foundation either
-* version 2.1 of the License, or (at your option) any later version.
+:* version 2.1 of the License, or (at your option) any later version.
 *
 * This library is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY without even the implied warranty of
@@ -42,6 +42,7 @@ class HerkuleX(object):
 
     BASIC_PKT_SIZE = 7
     WAIT_TIME_BY_ACK = 30
+    MAX_PLAY_TIME = 2856
 
     # SERVO HERKULEX COMMAND - See Manual p40
     HEEPWRITE = 0x01  # Rom write
@@ -80,11 +81,270 @@ class HerkuleX(object):
     H_PKTERR_GARBAGE = 0x20
     H_DETAIL_MOTORON = 0x04
 
+    T_ADC = {
+        0: -79.47,
+        1: -71.78,
+        2: -63.2,
+        3: -57.81,
+        4: -53.8,
+        5: -50.58,
+        6: -47.86,
+        7: -45.49,
+        8: -43.4,
+        9: -41.51,
+        10: -39.79,
+        11: -38.2,
+        12: -36.73,
+        13: -35.35,
+        14: -34.06,
+        15: -32.83,
+        16: -31.67,
+        17: -30.57,
+        18: -29.51,
+        19: -28.5,
+        20: -27.53,
+        21: -26.59,
+        22: -25.69,
+        23: -24.82,
+        24: -23.97,
+        25: -23.15,
+        26: -22.36,
+        27: -21.59,
+        28: -20.83,
+        29: -20.1,
+        30: -19.38,
+        31: -18.68,
+        32: -18,
+        33: -17.33,
+        34: -16.67,
+        35: -16.03,
+        36: -15.39,
+        37: -14.77,
+        38: -14.17,
+        39: -13.57,
+        40: -12.98,
+        41: -12.4,
+        42: -11.83,
+        43: -11.26,
+        44: -10.71,
+        45: -10.16,
+        46: -9.62,
+        47: -9.09,
+        48: -8.56,
+        49: -8.04,
+        50: -7.53,
+        51: -7.02,
+        52: -6.52,
+        53: -6.02,
+        54: -5.53,
+        55: -5.04,
+        56: -4.56,
+        57: -4.08,
+        58: -3.61,
+        59: -3.14,
+        60: -2.67,
+        61: -2.21,
+        62: -1.75,
+        63: -1.29,
+        64: -0.84,
+        65: -0.39,
+        66: 0.05,
+        67: 0.49,
+        68: 0.93,
+        69: 1.37,
+        70: 1.81,
+        71: 2.24,
+        72: 2.67,
+        73: 3.1,
+        74: 3.52,
+        75: 3.94,
+        76: 4.37,
+        77: 4.78,
+        78: 5.2,
+        79: 5.62,
+        80: 6.03,
+        81: 6.44,
+        82: 6.86,
+        83: 7.27,
+        84: 7.67,
+        85: 8.08,
+        86: 8.49,
+        87: 8.89,
+        88: 9.29,
+        89: 9.7,
+        90: 10.1,
+        91: 10.5,
+        92: 10.9,
+        93: 11.3,
+        94: 11.7,
+        95: 12.09,
+        96: 12.49,
+        97: 12.89,
+        98: 13.28,
+        99: 13.68,
+        100: 14.07,
+        101: 14.47,
+        102: 14.86,
+        103: 15.26,
+        104: 15.65,
+        105: 16.05,
+        106: 16.44,
+        107: 16.84,
+        108: 17.23,
+        109: 17.62,
+        110: 18.02,
+        111: 18.41,
+        112: 18.81,
+        113: 19.2,
+        114: 19.6,
+        115: 19.99,
+        116: 20.39,
+        117: 20.79,
+        118: 21.19,
+        119: 21.58,
+        120: 21.98,
+        121: 22.38,
+        122: 22.78,
+        123: 23.18,
+        124: 23.59,
+        125: 23.99,
+        126: 24.39,
+        127: 24.8,
+        128: 25.2,
+        129: 25.61,
+        130: 26.02,
+        131: 26.43,
+        132: 26.84,
+        133: 27.25,
+        134: 27.66,
+        135: 28.08,
+        136: 28.5,
+        137: 28.91,
+        138: 29.33,
+        139: 29.76,
+        140: 30.18,
+        141: 30.6,
+        142: 31.03,
+        143: 31.46,
+        144: 31.89,
+        145: 32.32,
+        146: 32.76,
+        147: 33.2,
+        148: 33.64,
+        149: 34.08,
+        150: 34.53,
+        151: 34.97,
+        152: 35.42,
+        153: 35.88,
+        154: 36.33,
+        155: 36.79,
+        156: 37.25,
+        157: 37.72,
+        158: 38.18,
+        159: 38.66,
+        160: 39.13,
+        161: 39.61,
+        162: 40.09,
+        163: 40.57,
+        164: 41.06,
+        165: 41.56,
+        166: 42.05,
+        167: 42.56,
+        168: 43.06,
+        169: 43.57,
+        170: 44.09,
+        171: 44.61,
+        172: 45.13,
+        173: 45.66,
+        174: 46.19,
+        175: 46.73,
+        176: 47.28,
+        177: 47.83,
+        178: 48.39,
+        179: 48.95,
+        180: 49.52,
+        181: 50.09,
+        182: 50.68,
+        183: 51.27,
+        184: 51.86,
+        185: 52.47,
+        186: 53.08,
+        187: 53.7,
+        188: 54.33,
+        189: 54.96,
+        190: 55.61,
+        191: 56.26,
+        192: 56.93,
+        193: 57.6,
+        194: 58.28,
+        195: 58.98,
+        196: 59.68,
+        197: 60.4,
+        198: 61.13,
+        199: 61.87,
+        200: 62.63,
+        201: 63.39,
+        202: 64.17,
+        203: 64.97,
+        204: 65.78,
+        205: 66.61,
+        206: 67.46,
+        207: 68.32,
+        208: 69.2,
+        209: 70.1,
+        210: 71.02,
+        211: None,
+        212: None,
+        213: None,
+        214: None,
+        215: None,
+        216: None,
+        217: None,
+        218: None,
+        219: None,
+        220: None,
+        221: None,
+        222: None,
+        223: 85,
+        224: None,
+        225: None,
+        226: None,
+        227: None,
+        228: None,
+        229: None,
+        230: None,
+        231: None,
+        232: None,
+        233: None,
+        234: None,
+        235: None,
+        236: None,
+        237: None,
+        238: None,
+        239: None,
+        240: None,
+        241: None,
+        242: None,
+        243: None,
+        244: None,
+        245: None,
+        246: None,
+        247: None,
+        248: None,
+        249: None,
+        250: None,
+        251: None,
+        252: None,
+        253: None,
+        254: None,
+        255: None,
+    }
+
     def __init__(self, portstring, portspeed):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self.portLock = RLock()
         self.mPort = connections.Connection.getConnection('serial', portstring, portspeed)
-        self.mPort.timeout = 0.2
+        self.portLock = connections.Connection.getLock(self.mPort)
+        self.mPort.timeout = 0.05
         self.setAckPolicy(1)  # set ACK policy
         self.multipleMoveData = []
         self.mIDs = []
@@ -183,8 +443,11 @@ class HerkuleX(object):
 #             print "getVoltage: %s" % [str(x) for x in readBuf]
 #             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
-        return adc * 0.074  # return ADC converted back to voltage
+        return round(adc * 0.074, 2)  # return ADC converted back to voltage
 
     """
     * Get servo voltage
@@ -203,8 +466,17 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         adc = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
-        return adc  # return ADC converted back to temperature (need to find a formula or copy the chart...)
+        if adc <= 0xFF:
+            temp = HerkuleX.T_ADC.get(adc, None)
+        else:
+            return -1
+        #The temperature chart after 210 is corrupted in the manual, guestimate the temperature assuming
+        #a linear increase based on the two known values
+        return temp if temp else round(((adc - 210) * 1.0754) + 71.02, 2)
 
     """
     * Get servo torque
@@ -223,6 +495,9 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
         return ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)  # return torque
 
     """
@@ -311,7 +586,11 @@ class HerkuleX(object):
         readBuf = self.sendDataForResult(packetBuf)
 
         if not self.isRightPacket(readBuf):
-            return 0
+            return -1
+
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            return -1
 
         speedy = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
 
@@ -334,18 +613,20 @@ class HerkuleX(object):
         if goalPos > 1023 or goalPos < 0:
             self._logger.warning("Got out of range position: %s", goalPos)
             return  # speed (goal) non correct
-        if playTime < 0 or playTime > 2856:
+        if playTime < 0 or playTime > HerkuleX.MAX_PLAY_TIME:
             self._logger.warning("Got out of range playtime: %s", playTime)
             return
 
         # Position definition
         posLSB = goalPos & 0X00FF  # MSB Pos
         posMSB = (goalPos & 0XFF00) >> 8  # LSB Pos
-        playTime = int(round(playTime / 11.2))  # ms --> value
+        playTimeVal = int(round(playTime / 11.2))  # ms --> value
         led = led & 0xFD  # Pos Ctrl Mode
 
+        self._logger.debug("Moving %s to %s in %sms" % (servoID, goalPos, playTime))
+
         optData = [0] * 5
-        optData[0] = playTime  # Execution time
+        optData[0] = playTimeVal  # Execution time in ms / 11.2
         optData[1] = posLSB
         optData[2] = posMSB
         optData[3] = led
@@ -353,7 +634,7 @@ class HerkuleX(object):
 
         packetBuf = self.buildPacket(servoID, HerkuleX.HSJOG, optData)
         self.sendData(packetBuf)
-        self._logger.debug(self.error_text(servoID))
+        #self._logger.debug(self.error_text(servoID))
 
     """
     * Get servo position
@@ -376,6 +657,10 @@ class HerkuleX(object):
         if not self.isRightPacket(readBuf):
             return -1
 
+        if len(readBuf) < 11:
+            self._logger.error("Strange Packet, expected len=11: %s", [str(x) for x in readBuf])
+            self._logger.error("Sent packet: %s", [str(x) for x in packetBuf])
+            return -1
         pos = ((readBuf[10] & 0x03) << 8) | (readBuf[9] & 0xFF)
         return pos
 
@@ -402,7 +687,7 @@ class HerkuleX(object):
     def getAngle(self, servoID):
         pos = self.getPosition(servoID)
         if pos < 0:
-            return 0
+            return -1
         return (pos - 512) * 0.325
 
     """
@@ -617,11 +902,14 @@ class HerkuleX(object):
 
     def error_text(self, servoID):
         statusCode, detailCode = self.stat(servoID, True)
-        codes = []
-        if statusCode == -1:
+
+        if statusCode <= -1:
             return ['Invalid response recieved, unknown status', ]
-        if statusCode & HerkuleX.H_STATUS_OK == HerkuleX.H_STATUS_OK:
-            pass
+
+        if statusCode == HerkuleX.H_STATUS_OK:
+            return []
+
+        codes = []
         if statusCode & HerkuleX.H_ERROR_INPUT_VOLTAGE == HerkuleX.H_ERROR_INPUT_VOLTAGE:
             codes.append('Exceeded Input Voltage')
         if statusCode & HerkuleX.H_ERROR_POS_LIMIT == HerkuleX.H_ERROR_POS_LIMIT:
@@ -756,16 +1044,18 @@ class HerkuleX(object):
             # print [str(x) for x in buf]
             return False
         if len(buf) != buf[2]:
-            self._logger.warning("Invalid packet! %s", [str(x) for x in buf])
+            self._logger.warning("Invalid packet length! %s", [str(x) for x in buf])
             return False
 
         chksum1 = self.checksum1(buf)  # Checksum1
         chksum2 = self.checksum2(chksum1)  # Checksum2
 
         if chksum1 != buf[5]:
+            self._logger.warning("Invalid packet checksum1! %s", [str(x) for x in buf])
             # print [str(x) for x in buf]
             return False
         if chksum2 != buf[6]:
+            self._logger.warning("Invalid packet checksum2! %s", [str(x) for x in buf])
             # print [str(x) for x in buf]
             return False
 
@@ -811,6 +1101,7 @@ class HerkuleX(object):
 
     def sendData(self, buf):
         with self.portLock:
+            self.mPort.flushInput()
             self._logger.log(1, "Sending packet: [%s]" % ', '.join([str(x) for x in buf]))
             packet = ''.join([chr(x) for x in buf])
             self.mPort.write(packet)
@@ -820,34 +1111,32 @@ class HerkuleX(object):
             self.sendData(buf)
             ackDelay = HerkuleX.WAIT_TIME_BY_ACK / 1000.0
 
-            try:
-                time.sleep(ackDelay)
-            except:
-                self._logger.error(sys.exc_info()[0])
-
-#             readBuf = []
-#             while self.mPort.inWaiting() > 0:
-#                 inBuffer = self.mPort.read(1)
-#                 readBuf.append(ord(inBuffer) & 0xFF)
+            #try:
+            #    time.sleep(ackDelay)
+            #except:
+            #    self._logger.error(sys.exc_info()[0])
+            #readBuf = []
+            #while self.mPort.inWaiting() > 0:
+            #    inBuffer = self.mPort.read(1)
+            #    readBuf.append(ord(inBuffer) & 0xFF)
 
             # Locate the start of the header
             readBuf = [0xFF, 0xFF]
             startTime = time.time()
-            while time.time() - startTime < self.mPort.timeout:
+            while time.time() - startTime < self.mPort.timeout + ackDelay:
+            #while time.time() - startTime < 5 + ackDelay:
                 inBuffer = self.mPort.read(1)
                 if len(inBuffer) == 0:
                     continue
                 byte = ord(inBuffer) & 0xFF
-                if byte == 0xFF:
+                if byte > 0xE9: #max valid packet length
                     continue
                 readBuf.append(byte)
                 break
 
-            if len(readBuf) > 2 and readBuf[2] < 253:
+            if len(readBuf) > 2:
                 inBuffer = self.mPort.read(readBuf[2] - 3)
                 [readBuf.append(ord(c) & 0xFF) for c in inBuffer]
-            else:
-                self._logger.debug("Strange packet received: %s" % ', '.join([str(x) for x in inBuffer]))
 
             if len(readBuf) > 2 and len(readBuf) < readBuf[2] and self.mPort.inWaiting():
                 self._logger.warning("Not all bytes received before timeout!")
@@ -855,6 +1144,7 @@ class HerkuleX(object):
 
         if len(readBuf) == 2:
             readBuf = []
+            self._logger.warning("No data received before timeout! Send packet: %s", [str(x) for x in buf])
         self._logger.log(1, "Received packet: [%s]" % ', '.join([str(x) for x in readBuf]))
 
         return readBuf

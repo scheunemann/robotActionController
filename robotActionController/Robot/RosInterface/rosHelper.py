@@ -3,6 +3,7 @@ import os
 import sys
 import logging
 from subprocess import Popen, PIPE
+from sys import exc_info
 
 ros_config = {}
 
@@ -19,8 +20,7 @@ class ROS(object):
     def __init__(self, *args, **kwargs):
         self._logger = logging.getLogger(self.__class__.__name__)
         ROS.configureROS(packageName='rospy')
-        import rospy
-        self._rospy = rospy
+        self._rospy = __import__('rospy', globals(), locals())
         self._topicTypes = {}
         self._subscribers = {}
         self.initROS()
@@ -73,9 +73,7 @@ class ROS(object):
 
     def getParam(self, paramName):
         try:
-            ROS.configureROS(packageName='rospy')
-            import rospy
-            return rospy.get_param(paramName)
+            self._rospy.get_param(paramName)
         except Exception as e:
             self._logger.critical("Unable to connect to ros parameter server, Error: %s" % e)
             return []
@@ -124,7 +122,7 @@ class ROS(object):
         (manifest, cls) = controller_msgType.split('/')
 
         try:
-            import roslib
+            roslib = __import__('roslib', globals(), locals())
             roslib.load_manifest(manifest)
 
             ns = __import__(manifest + '.msg', globals(), locals(), [cls], -1)
@@ -159,16 +157,25 @@ class ROS(object):
     def _locateRosVersion():
         if ROS._activeVersion == None:
             env = ROS._getUserVars()
-            if 'ROS_DISTRO' not in env:
+            if 'ROS_DISTRO' in env:
                 ROS._activeVersion = env['ROS_DISTRO']
             else:
                 # This is a bit more dangerous as it loads the users .bashrc file in a forced interactive shell
                 # while not actually being in an interactive shell.  any prompts could cause lockups
-                command = ['bash', '-i', '-c', ('%s; roscd; pwd' % ". %s/.bashrc" % os.getenv("HOME")).strip('; ')]
+                command = ['bash', '-i', '-c', ('. %s/.bashrc; roscd; pwd' % os.getenv("HOME"))]
                 pipe = Popen(command, stdout=PIPE, stderr=PIPE)
-                (data, _) = pipe.communicate()
-                version = data[data.rfind('/') + 1:]
-                ROS._activeVersion = version.strip()
+                (data, errors) = pipe.communicate()
+                if not errors:
+                    version = data[data.rfind('/') + 1:]
+                    ROS._activeVersion = version.strip()
+                else:
+                    # Final fallback, check /opt/ros for versions
+                    versions = [d for d in os.listdir('/opt/ros/') if os.path.isdir(os.path.join('/opt/ros', d))]
+                    sorted(versions, lambda x, y: cmp(x.lower(), y.lower()))
+                    if versions:
+                        ROS._activeVersion = versions[-1]
+                    else:
+                        raise ImportError("Could not detect installed ROS version. Please check ROS installation and try again")
 
         return ROS._activeVersion
 
@@ -216,6 +223,7 @@ class ROS(object):
     @staticmethod
     def configureROS(version=None, packagePath=None, packageName=None, rosMaster=None, overlayPath=None):
         """Any values not provided will be read from ros_config in config.py"""
+        logger = logging.getLogger(ROS.__class__.__name__)
         if version == None:
             if 'version' not in ros_config:
                 version = ROS._locateRosVersion()
@@ -242,6 +250,19 @@ class ROS(object):
         for k, v in ROS._parseRosVersionSetupBash(version).items():
             if k == 'PYTHONPATH' and sys.path.count(v) == 0:
                 sys.path.append(v)
+            elif k == 'LD_LIBRARY_PATH':
+                if v:
+                    good = True
+                    if k not in os.environ:
+                        good = False
+                    elif v != os.environ[k]:
+                        for ldP in v.split(':'):
+                            if os.environ[k].find(ldP) == -1:
+                                good = False
+                                break
+                    if not good:
+                        logger.critical("Linked library path has changed.  Changes to shared library path will not be detected at runtime.  Shared libraries may fail to load.")
+                        continue
             elif k not in os.environ:
                 os.environ[k] = v
             elif k.endswith('PATH') and os.environ[k].find(v) == -1:
@@ -251,9 +272,14 @@ class ROS(object):
         if rosMaster != None:
             os.environ['ROS_MASTER_URI'] = rosMaster
 
-        path = '/opt/ros/%(version)s/ros' % {'version': version}
-        if 'ROS_ROOT' not in os.environ.keys() or os.environ['ROS_ROOT'] != path:
-            os.environ['ROS_ROOT'] = path
+        if version[0].lower() <= 'h':
+            path = '/opt/ros/%(version)s/ros' % {'version': version}
+            if 'ROS_ROOT' not in os.environ.keys() or os.environ['ROS_ROOT'] != path:
+                os.environ['ROS_ROOT'] = path
+        else:
+            path = '/opt/ros/%(version)s/share' % {'version': version}
+            if 'ROS_ROOT' not in os.environ.keys() or os.environ['ROS_ROOT'] != path:
+                os.environ['ROS_ROOT'] = path
 
         path = '%(root)s/bin' % {'root': os.environ['ROS_ROOT']}
         if os.environ['PATH'].find(path) == -1:
@@ -280,22 +306,19 @@ class ROS(object):
             sys.path.append(path)
 
         if packageName != None:
-            import roslib
+            roslib = __import__('roslib', globals(), locals())
             try:
                 roslib.load_manifest(packageName)
             except:
                 logger = logging.getLogger(ROS.__class__.__name__)
-                logger.warning("Unable to load manifest %s, module may not be configured correctly." % packageName)
-                import traceback
-                logger.debug(traceback.format_exc())
+                logger.warning("Unable to load manifest %s, module may not be configured correctly." % packageName, exc_info=True)
 
 
 class RosSubscriber(object):
 
     def __init__(self, topic, dataType, idleTime=15):
         ROS.configureROS(packageName='rospy')
-        import rospy
-        self._rospy = rospy
+        self._rospy = __import__('rospy', globals(), locals())
         self._lastAccess = time.time()
         self._subscriber = None
         self._topic = topic
@@ -340,9 +363,8 @@ class Transform(object):
         else:
             self._ros = rosHelper
         self._ros.configureROS(packageName='core_transform')
-        import tf, rospy
-        self._rospy = rospy
-        self._tf = tf
+        self._rospy = __import__('rospy', globals(), locals())
+        self._tf = __import__('tf', globals(), locals())
         self._ros.initROS()
         self._listener = None
         self._defaultFrom = fromFrame
@@ -369,9 +391,9 @@ class Transform(object):
                 now = self._rospy.Time(0)
                 try:
                     self._listener.waitForTransform(toFrame, fromFrame, now, self._rospy.Duration(1.0))
-                except self._tf.Exception as e:
+                except self._tf.Exception:
                     # if str(e) != 'Unable to lookup transform, cache is empty, when looking up transform from frame [' + baseTopic + '] to frame [' + mapTopic + ']':
-                    self._logger.critical("Error while waiting for transform: " + str(e))
+                    self._logger.critical("Error while waiting for transform", exc_info=True)
                     return ((None, None, None), None)
 
             try:
@@ -391,6 +413,3 @@ class Transform(object):
             xyPos = (pose.position.x, pose.position.y, pose.position.z)
             (_, _, orientation) = self._tf.transformations.euler_from_quaternion((pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w))
             return (xyPos, orientation)
-
-if __name__ == '__main__':
-    pass

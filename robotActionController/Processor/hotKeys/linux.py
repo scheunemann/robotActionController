@@ -1,4 +1,4 @@
-# pip install evdev
+import logging
 from evdev import InputDevice, ecodes
 from select import select
 from sets import Set
@@ -23,6 +23,7 @@ class KeyEvents(object):
         # use 'udevadm info --name=/dev/input/by-id/?? --attribute-walk' to find device attrs
         # SUBSYSTEMS=="usb", ATTRS{idVendor}=="1ffb", ATTRS{idProduct}=="008b", ATTRS{iad_bFirstInterface}=="00", SYMLINK+="servos", GROUP="input", MODE="0660"
         # SUBSYSTEMS=="usb", ATTRS{idVendor}=="1ffb", ATTRS{idProduct}=="008b", ATTRS{iad_bFirstInterface}=="02", SYMLINK+="sensors", GROUP="input", MODE="0660"
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._thread = Thread(target=self._bindKeys, args=(inputName, exclusive))
         self._thread.setDaemon(True)
         self._thread.start()
@@ -93,8 +94,8 @@ class KeyEvents(object):
                                 pass
             if grab:
                 self._input.ungrab()
-        except Exception as e:
-            print e
+        except Exception:
+            self._logger.error("Unable to open input: %s" % inputName, exc_info=True)
 
 
 def printEvt(sender, evt):

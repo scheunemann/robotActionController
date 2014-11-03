@@ -6,6 +6,7 @@ import pyaudio
 import cStringIO
 import wave
 import time
+from functools import wraps
 
 
 class SoundExecutionHandle(ActionExecutionHandle):
@@ -16,7 +17,8 @@ class SoundExecutionHandle(ActionExecutionHandle):
     def __init__(self, sound):
         super(SoundExecutionHandle, self).__init__(sound)
         self._cancel = True
-        print "Sound init"
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._file = None
 
     @property
     def _audio(self):
@@ -25,26 +27,39 @@ class SoundExecutionHandle(ActionExecutionHandle):
             SoundExecutionHandle.__audio = pyaudio.PyAudio()
         return SoundExecutionHandle.__audio
 
+    def __callback(self, in_data, frame_count, time_info, status):
+        if self._cancel:
+            return (None, pyaudio.paAbort)
+
+        data = self._file.readframes(frame_count)
+        return (data, pyaudio.paContinue if data else pyaudio.paComplete)
+
     def _runInternal(self, action):
         p = self._audio
-        cb = cStringIO.StringIO(action.data)
-        wf = wave.open(cb, 'rb')
-        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True)
-        data = wf.readframes(SoundExecutionHandle.CHUNK)
+        try:
+            data = cStringIO.StringIO(action.data)
+            self._file = wave.open(data, 'rb')
+            callback = lambda in_data, frame_count, time_info, status: self.__callback(in_data, frame_count, time_info, status)
+
+            stream = p.open(format=p.get_format_from_width(self._file.getsampwidth()), 
+                            channels=self._file.getnchannels(), 
+                            rate=self._file.getframerate(), 
+                            output=True,
+                            stream_callback=callback)
+        except Exception as e:
+            self._logger.error("Error in portaudio: ", exc_info=True)
+            return False
+
         self._cancel = False
-        print "Start sound"
-        while data != '':
-            #if self._cancel:
-            #    break
-            stream.write(data)
-            #python Y U NO THREAD!!?
-            #sleep to, hopefully briefly, release the GIL so other threads can execute
-            #important for simultaneous running, i.e. groups, but potentially causes audio distortion
-            time.sleep(0.0001)
-            data = wf.readframes(SoundExecutionHandle.CHUNK)
+        stream.start_stream()
+        while stream.is_active():
+            time.sleep(0.001)
 
         stream.stop_stream()
         stream.close()
+
+        self._file.close()
+        self._file = None
 
         return not self._cancel
 
