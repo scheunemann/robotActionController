@@ -1,19 +1,14 @@
 import logging
 import abc
 from collections import namedtuple
-<<<<<<< HEAD
 from datetime import datetime, timedelta
 import gevent
 from gevent.lock import RLock
-=======
-from datetime import datetime
-from threading import Thread
-from multiprocessing.pool import ThreadPool
->>>>>>> a385cfa8bf722f0e7b5e170374d9eb70590ee7e1
 
 
 class ActionRunner(gevent.greenlet.Greenlet):
     __metaclass__ = abc.ABCMeta
+    Runable = namedtuple('Action', ('name', 'id', 'type'))
 
     def __init__(self, action, runner=None):
         super(ActionRunner, self).__init__()
@@ -76,11 +71,8 @@ class ActionRunner(gevent.greenlet.Greenlet):
     def _run(self):
         self._output.append((datetime.utcnow(), '%s: Starting %s' % (self.__class__.__name__, self._action.name)))
 
-<<<<<<< HEAD
         result = True
         starttime = datetime.utcnow()
-=======
->>>>>>> a385cfa8bf722f0e7b5e170374d9eb70590ee7e1
         try:
             self._result = self._runInternal(self._action)
         except Exception as e:
@@ -88,7 +80,6 @@ class ActionRunner(gevent.greenlet.Greenlet):
             self._logger.critical("%s: %s" % (e.__class__.__name__, e))
             result = False
         else:
-<<<<<<< HEAD
             endtime = datetime.utcnow()
             if self._action.minLength and timedelta(seconds=self._action.minLength) > (starttime - endtime):
                 sleeptime = (starttime - endtime).total_seconds()
@@ -96,9 +87,6 @@ class ActionRunner(gevent.greenlet.Greenlet):
                 gevent.sleep(sleeptime)
 
             if result:
-=======
-            if self._result:
->>>>>>> a385cfa8bf722f0e7b5e170374d9eb70590ee7e1
                 self._output.append((datetime.utcnow(), '%s: Completed %s' % (self.__class__.__name__, self._action.name)))
             else:
                 self._output.append((datetime.utcnow(), '%s: Failed %s' % (self.__class__.__name__, self._action.name)))
@@ -209,7 +197,6 @@ class ActionManager(object):
         except Exception:
             self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
             raise ValueError("Could not determine action runner for type %s" % action.type)
-<<<<<<< HEAD
         
     def executeAction(self, action):
         self._logger.debug("Starting %s Sync" % action.name)
@@ -221,19 +208,3 @@ class ActionManager(object):
         runner = self.__getRunner(action)
         runner.executeAsync(callback, callbackData)
         return runner
-=======
-
-    def execute(self, action):
-        self._logger.debug("Starting %s Sync" % action.name)
-        runner = self._getRunner(action)
-        handle = runner._getHandle(action)
-        handle.run()
-        return handle.result
-
-    def executeAsync(self, action, callback=None, callbackData=None):
-        self._logger.debug("Starting %s Async" % action.name)
-        runner = self._getRunner(action)
-        handle = runner._getHandle(action)
-        handle.start(callback, callbackData)
-        return handle
->>>>>>> a385cfa8bf722f0e7b5e170374d9eb70590ee7e1
