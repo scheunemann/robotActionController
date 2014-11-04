@@ -24,14 +24,14 @@ class ActionRunner(gevent.greenlet.Greenlet):
 
     @property
     def result(self):
-        return self.value
+        return self.value if self.dead else None
 
     @property
     def output(self):
-        output = self._output
-        output.extend([o for h in self._safeHandles for o in h.output])
-        output.sort(key=lambda (ts, _): ts)
-        return output
+        try:
+            return sorted(self._output, key=lambda (ts, _): ts)
+        except:
+            return sorted(self._output)
 
     @abc.abstractmethod
     def _runInternal(self, action):
@@ -61,7 +61,9 @@ class ActionRunner(gevent.greenlet.Greenlet):
             return None
     
     def execute(self):
-        return self._run()
+	self.start()
+	self.waitForComplete()
+        return self.value
     
     def executeAsync(self, callback=None, callbackData=None):
         if callback:
@@ -74,10 +76,11 @@ class ActionRunner(gevent.greenlet.Greenlet):
         return self
 
     def waitForComplete(self):
-        self.join(self)
+        self.join()
 
     def _run(self):
         self._output.append((datetime.utcnow(), '%s: Starting %s' % (self.__class__.__name__, self._action.name)))
+        self._logger.debug('%s: Starting %s' % (self.__class__.__name__, self._action.name))
 
         result = True
         try:
@@ -90,8 +93,10 @@ class ActionRunner(gevent.greenlet.Greenlet):
             endtime = datetime.utcnow()
             if result:
                 self._output.append((endtime, '%s: Completed %s' % (self.__class__.__name__, self._action.name)))
+                self._logger.debug('%s: Completed %s' % (self.__class__.__name__, self._action.name))
             else:
                 self._output.append((endtime, '%s: Failed %s' % (self.__class__.__name__, self._action.name)))
+                self._logger.debug('%s: Failed %s' % (self.__class__.__name__, self._action.name))
 
         return result
 
@@ -176,11 +181,19 @@ class ActionManager(object):
             self.__actionCache.clear()
 
     def executeAction(self, action):
+        if not action:
+            self._logger.warning("Got NULL action to start")
+            return False
+
         self._logger.debug("Starting %s Sync" % action.name)
         runner = self.__getRunner(action)
         return runner.execute()
 
     def executeActionAsync(self, action, callback=None, callbackData=None):
+        if not action:
+            self._logger.warning("Got NULL action to start")
+            return None
+
         self._logger.debug("Starting %s Async" % action.name)
         runner = self.__getRunner(action)
         runner.executeAsync(callback, callbackData)

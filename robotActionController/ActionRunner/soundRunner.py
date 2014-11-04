@@ -2,15 +2,18 @@ from base import ActionRunner
 from collections import namedtuple
 import logging
 import pyaudio
+import audioop
 import cStringIO
 import wave
+import math
 from gevent import sleep
 
 
 class SoundRunner(ActionRunner):
     supportedClass = 'SoundAction'
-    Runable = namedtuple('SoundAction', ActionRunner.Runable._fields + ('data',))
+    Runable = namedtuple('SoundAction', ActionRunner.Runable._fields + ('data','uuid','volume'))
     __audio = None
+    _CHUNKSIZE = 1024
 
     def __init__(self, sound, *args, **kwargs):
         super(SoundRunner, self).__init__(sound)
@@ -25,22 +28,29 @@ class SoundRunner(ActionRunner):
             SoundRunner.__audio = pyaudio.PyAudio()
         return SoundRunner.__audio
 
-    def __callback(self, in_data, frame_count, time_info, status):
+    #def __callback(self, in_data, frame_count, time_info, status):
+    def _callback(self, frame_count, frame_width, volume):
         if self._cancel:
-            return (None, pyaudio.paAbort)
-
-        data = self._file.readframes(frame_count)
-        return (data, pyaudio.paContinue if data else pyaudio.paComplete)
+            ret = (None, pyaudio.paAbort)
+        else:
+            data = self._file.readframes(frame_count)
+            data = audioop.mul(data, frame_width, volume)
+            ret = (data, pyaudio.paContinue if data else pyaudio.paComplete)
+        return ret
 
     def _runInternal(self, action):
         p = self._audio
         try:
+            volume = (action.volume / 100.0) or 1
+            volMul = (math.exp(volume)-1)/(math.e-1)
+            print "Volume: %s, Raw: %s (%s), %s" % (volMul, action.volume, (action.volume / 100.0), type(action.volume))
             data = cStringIO.StringIO(action.data)
             self._file = wave.open(data, 'rb')
-            callback = lambda in_data, frame_count, time_info, status: self.__callback(in_data, frame_count, time_info, status)
-
-            stream = p.open(format=p.get_format_from_width(self._file.getsampwidth()), 
-                            channels=self._file.getnchannels(), 
+            frame_width = self._file.getsampwidth()
+            callback = lambda in_data, frame_count, time_info, status: self._callback(SoundRunner._CHUNKSIZE, frame_width, volMul)
+            self._cancel = False
+            stream = p.open(format=p.get_format_from_width(frame_width),
+                            channels=self._file.getnchannels(),
                             rate=self._file.getframerate(), 
                             output=True,
                             stream_callback=callback)
@@ -68,7 +78,7 @@ class SoundRunner(ActionRunner):
     @staticmethod
     def getRunable(action):
         if action.type == SoundRunner.supportedClass:
-            return SoundRunner.Runable(action.name, action.id, action.type, action.data)
+            return SoundRunner.Runable(action.name, action.id, action.type, action.data, action.uuid, action.volume)
         else:
             logger = logging.getLogger(SoundRunner.__name__)
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))

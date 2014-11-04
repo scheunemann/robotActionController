@@ -11,13 +11,15 @@ class GroupRunner(ActionRunner):
     def __init__(self, group, robot, *args, **kwargs):
         super(GroupRunner, self).__init__(group)
         self._robot = robot
+        self._handle = None
 
     def _runInternal(self, action):
         manager = ActionManager.getManager(self._robot)
         self._handle = Group()
         [self._handle.add(manager.executeActionAsync(a)) for a in action.actions]
         self.waitForComplete()
-        return all([x.value for x in self._handles])
+        self._output.extend([o for h in self._handle.greenlets for o in h.output])
+        return all([x.value for x in self._handle.greenlets])
 
     @staticmethod
     def getRunable(action):
@@ -35,3 +37,8 @@ class GroupRunner(ActionRunner):
             valid = valid & ActionRunner(self._robot).isValid(action)
             if not valid:
                 break
+
+    def waitForComplete(self):
+        if self._handle:
+            self._handle.join()
+

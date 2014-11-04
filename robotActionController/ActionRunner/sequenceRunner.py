@@ -10,33 +10,36 @@ class SequenceRunner(ActionRunner):
     OrderedAction = namedtuple('OrderedAction', ('forcedLength', 'action'))
 
     def __init__(self, sequence, robot, *args, **kwargs):
-        super(SequenceRunner, self).__init__(sequence, ActionRunner(robot))
+        super(SequenceRunner, self).__init__(sequence)
         self._robot = robot
 
     def _runInternal(self, action):
         result = True
         manager = ActionManager.getManager(self._robot)
+        
         for orderedAction in action.actions:
+            handle = manager.executeActionAsync(orderedAction.action)
             if orderedAction.forcedLength:
                 starttime = datetime.utcnow()
-                handle = manager.executeActionAsync(orderedAction.action)
-                while not self._cancel:
+                while True:
                     elapsed = datetime.utcnow() - starttime
                     if elapsed.total_seconds() < 0:
                         break  # system clock rolled back
                     if elapsed.total_seconds() >= orderedAction.forcedLength:
                         break
                     sleep(0.01)
-                actionResult = handle.value
             else:
-                actionResult = manager.executeAction(orderedAction.action)
+                handle.waitForComplete()
 
-            if self._cancel or not actionResult:
+            actionResult = handle.value
+            self._output.extend(handle.output)
+
+            if not actionResult:
                 result = False
                 break
             else:
                 result = result and actionResult
-            #Release the GIL
+            #Allow other greenlets to run
             sleep(0)
 
         return result
