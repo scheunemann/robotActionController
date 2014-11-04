@@ -68,6 +68,7 @@ class Action(StandardMixin, Base):
 class SoundAction(Action):
 
     id = Column(Integer, ForeignKey(Action.id), primary_key=True)
+    volume = Column(Integer)
     __mapper_args__ = {
             'polymorphic_identity': 'SoundAction',
             'inherit_condition': (id == Action.id),
@@ -122,9 +123,10 @@ class SoundAction(Action):
 
         return (uuid_, os.path.join(basePath, uuid_))
 
-    def __init__(self, uuid=None, **kwargs):
+    def __init__(self, uuid=None, volume=100, **kwargs):
         super(SoundAction, self).__init__(**kwargs)
         self.uuid = uuid
+        self.volume = volume
 
 
 class JointPosition(StandardMixin, Base):
