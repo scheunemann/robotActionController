@@ -48,13 +48,13 @@ class Sensor_Poller(Greenlet):
             with self._threadLock:
                 sensors = self._sensors.items()
             if not sensors:
-                time.sleep(1)
+                sleep(1)
                 continue
             sTime = self._rateMS / len(sensors)
             for (sid, hist) in sensors:
                 if not self._run:
                     break
-                startTime = time.time()
+                startTime = datetime.utcnow()
                 try:
                     with self._portLock:
                         val = self._conn.getPosition(sid)
@@ -69,8 +69,8 @@ class Sensor_Poller(Greenlet):
 
                 hist.hist.append(val)
                 # hist.lastValue = sum(hist.hist) / len(hist.hist)
-                sTime = time.time() - startTime
-                if sTime > 0:
+                sTime = datetime.utcnow() - startTime
+                if sTime.total_seconds() > 0:
                     sleep(sTime)
                 else:
                     sleep(0)
