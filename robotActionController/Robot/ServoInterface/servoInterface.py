@@ -2,7 +2,7 @@ import logging
 import datetime
 import time
 from gevent.lock import RLock
-from gevent import spawn_later
+from gevent import spawn_later, sleep
 from robotActionController.connections import Connection
 
 __all__ = ['ServoInterface', ]
@@ -239,7 +239,7 @@ class AX12(ServoInterface):
                 self._logger.warning("Requested default value of %s outside allowed interval [%s,%s] for servo %s", self._defaultPosition, self._minPos, self._maxPos, self._externalId)
                 self._defaultPosition = self._posScaleValue / 2
         except Exception:
-            self._logger.warn("Error reading angle limits", exc_info=True)
+            self._logger.warning("Error reading angle limits", exc_info=True)
 
 
 class MINISSC(ServoInterface):
@@ -342,7 +342,7 @@ class HerkuleX(ServoInterface):
                 stepsRemaining = max(0, stepsRemaining - thisSteps)
 
         self.__temperatureHackDONOTUSEINRELEASE()
-        self._logger.debug("Moving Servo %s to from %s to %s in %ss using steps: %s" % (self._externalId,
+        self._logger.log(1, "Moving Servo %s to from %s to %s in %ss using steps: %s" % (self._externalId,
                                                                                            currentPosition,
                                                                                            realPosition,
                                                                                            round(totalSteps / stepsPerSec, 3),
@@ -438,7 +438,7 @@ class SSC32(ServoInterface):
         spd = self._scaleToRealSpeed(speed)
 
         send = "#%sP%s T%s\r" % (self._externalId, pos, spd)
-        self._logger.info("Sending SSC32 String: %s", send)
+        self._logger.log(1, "Sending SSC32 String: %s", send)
         with Connection.getLock(self._conn):
             self._moving = True
             self._conn.write(send)
@@ -476,7 +476,7 @@ class HS82MG(ServoInterface):
             return self._realToScalePos(posSteps)
 
     def setPosition(self, position=None, speed=None, blocking=False):
-        self._logger.debug("%s Got scaled Position: %s, Speed: %s", self._externalId, position, speed)
+        self._logger.log(1, "%s Got scaled Position: %s, Speed: %s", self._externalId, position, speed)
         if position == None:
             position = self._defaultPosition
         if speed == None:
@@ -496,11 +496,11 @@ class HS82MG(ServoInterface):
             self._conn.setTarget(self._externalId, int(pos))
 
         self._lastPosition = (datetime.datetime.utcnow(), pos, spd * 0.025 * abs(self._lastPosition[1] - pos))
-        self._logger.debug("%s Setting real pos: %s spd: %s time: %s", self._externalId, pos, spd, self._lastPosition[2])
+        self._logger.log(1, "%s Setting real pos: %s spd: %s time: %s", self._externalId, pos, spd, self._lastPosition[2])
 
         if blocking:
             while self.isMoving():
-                time.sleep(0.01)
+                sleep(0.01)
 
         return True
 
@@ -553,7 +553,7 @@ class Dummy(ServoInterface):
         self._logger.log(1, "%s Seting position to: %s, speed: %s", self._servoId, position, speed)
         time.sleep(secs / (speed / 100.0))
         self._writeData()
-        self._logger.debug("%s Set position to: %s", self._servoId, position)
+        self._logger.log(1, "%s Set position to: %s", self._servoId, position)
         if blocking:
             time.sleep(0.5)
 
@@ -621,7 +621,7 @@ class Virtual(ServoInterface):
             diff = position - curMaster
             slavePosition = curSlave + (diff * self._ratio)
 
-        self._logger.debug("%s Master Pos: %s, Slave Pos: %s", self._jointName, position, slavePosition)
+        self._logger.log(1, "%s Master Pos: %s, Slave Pos: %s", self._jointName, position, slavePosition)
         masterSuccess = self._master.setPosition(position, speed, blocking)
         slaveSuccess = self._slave.setPosition(slavePosition, speed, blocking)
         return masterSuccess & slaveSuccess

@@ -623,7 +623,7 @@ class HerkuleX(object):
         playTimeVal = int(round(playTime / 11.2))  # ms --> value
         led = led & 0xFD  # Pos Ctrl Mode
 
-        self._logger.debug("Moving %s to %s in %sms" % (servoID, goalPos, playTime))
+        self._logger.log(1, "Moving %s to %s in %sms" % (servoID, goalPos, playTime))
 
         optData = [0] * 5
         optData[0] = playTimeVal  # Execution time in ms / 11.2
