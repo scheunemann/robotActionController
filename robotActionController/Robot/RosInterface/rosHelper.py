@@ -7,7 +7,7 @@ from sys import exc_info
 
 ros_config = {}
 
-from threading import RLock
+from gevent.lock import RLock
 
 _threadLock = RLock()
 

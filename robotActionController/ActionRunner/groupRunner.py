@@ -1,22 +1,23 @@
 from collections import namedtuple
 import logging
-from base import ActionRunner, ActionExecutionHandle
-
-
-class GroupRunner(ActionExecutionHandle):
-
-    def __init__(self, group, robot):
-        super(GroupRunner, self).__init__(group)
-        self._robot = robot
-
-    def _runInternal(self, action):
-        self._handles = [ActionRunner(self._robot).executeAsync(a) for a in action.actions]
-        return self.waitForComplete()
+from base import ActionRunner, ActionManager
+from gevent.pool import Group
 
 
 class GroupRunner(ActionRunner):
     supportedClass = 'GroupAction'
     Runable = namedtuple('GroupAction', ActionRunner.Runable._fields + ('actions', ))
+
+    def __init__(self, group, robot, *args, **kwargs):
+        super(GroupRunner, self).__init__(group)
+        self._robot = robot
+
+    def _runInternal(self, action):
+        manager = ActionManager.getManager(self._robot)
+        self._handle = Group()
+        [self._handle.add(manager.executeActionAsync(a)) for a in action.actions]
+        self.waitForComplete()
+        return all([x.value for x in self._handles])
 
     @staticmethod
     def getRunable(action):
@@ -28,15 +29,9 @@ class GroupRunner(ActionRunner):
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
             return None
 
-    def __init__(self, robot):
-        super(GroupRunner, self).__init__(robot)
-
     def isValid(self, group):
         valid = True
         for action in group.actions:
             valid = valid & ActionRunner(self._robot).isValid(action)
             if not valid:
                 break
-
-    def _getHandle(self, action):
-        return GroupExecutionHandle(action, self._robot)

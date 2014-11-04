@@ -26,7 +26,7 @@
 import sys
 import time
 import logging
-from threading import RLock
+from gevent.lock import RLock
 from robotActionController import connections
 
 __all__ = ['HerkuleX', ]

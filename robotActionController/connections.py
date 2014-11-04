@@ -1,4 +1,4 @@
-from threading import RLock
+from gevent.lock import RLock
 import serial
 import logging
 import platform

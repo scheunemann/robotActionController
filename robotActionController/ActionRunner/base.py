@@ -16,10 +16,7 @@ class ActionRunner(gevent.greenlet.Greenlet):
         if not isinstance(action, tuple):
             raise Exception('Action must be a runnable type')
         self._action = action
-        self._handles = []
-        self._handle = None
         self._output = []
-        self._runner = runner
 
     @property
     def action(self):
@@ -36,10 +33,6 @@ class ActionRunner(gevent.greenlet.Greenlet):
         output.sort(key=lambda (ts, _): ts)
         return output
 
-    @property
-    def _safeHandles(self):
-        return self._handles or [self._handle, ] if self._handle else []
-    
     @abc.abstractmethod
     def _runInternal(self, action):
         pass
@@ -48,9 +41,24 @@ class ActionRunner(gevent.greenlet.Greenlet):
     def isValid(self, action):
         pass
     
-    @abc.abstractmethod
-    def getRunable(self, action):
-        pass
+    @staticmethod
+    def getRunable(action):
+        """
+            Convert a DAO action into a minimised cacheable action for running
+        """
+        if action == None:
+            return None
+        
+        logger = logging.getLogger(ActionRunner.__name__)
+        runners = ActionManager._getRunners()
+        if action.type in runners:
+            return runners[action.type].getRunable(action)
+        elif action.type == 'Action':
+            logger.warn("Action: %s is abstract!" % (action.name, action.type))
+            return None
+        else:
+            logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
+            return None
     
     def execute(self):
         return self._run()
@@ -66,13 +74,12 @@ class ActionRunner(gevent.greenlet.Greenlet):
         return self
 
     def waitForComplete(self):
-        gevent.joinall(self._safeHandles)
+        self.join(self)
 
     def _run(self):
         self._output.append((datetime.utcnow(), '%s: Starting %s' % (self.__class__.__name__, self._action.name)))
 
         result = True
-        starttime = datetime.utcnow()
         try:
             self._result = self._runInternal(self._action)
         except Exception as e:
@@ -81,20 +88,15 @@ class ActionRunner(gevent.greenlet.Greenlet):
             result = False
         else:
             endtime = datetime.utcnow()
-            if self._action.minLength and timedelta(seconds=self._action.minLength) > (starttime - endtime):
-                sleeptime = (starttime - endtime).total_seconds()
-                self._logger.info("%s: Sleeping for %s seconds" % self.__class__.__name__, sleeptime)
-                gevent.sleep(sleeptime)
-
             if result:
-                self._output.append((datetime.utcnow(), '%s: Completed %s' % (self.__class__.__name__, self._action.name)))
+                self._output.append((endtime, '%s: Completed %s' % (self.__class__.__name__, self._action.name)))
             else:
-                self._output.append((datetime.utcnow(), '%s: Failed %s' % (self.__class__.__name__, self._action.name)))
+                self._output.append((endtime, '%s: Failed %s' % (self.__class__.__name__, self._action.name)))
 
         return result
 
     def stop(self):
-        gevent.killall(self._safeHandles)
+        gevent.kill(self)
         self.waitForComplete()
 
 
@@ -103,6 +105,7 @@ class ActionManager(object):
     # Increase memory usage but hopefully reduce CPU usage...
     # TODO: When to expire cached items?
     _runnerClasses = None
+    __managers = {}
 
     def __init__(self, robot):
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -114,45 +117,19 @@ class ActionManager(object):
     @property
     def robot(self):
         return self._robot
-
-    def clearCache(self):
-        with self.__cacheLock:
-            self.__actionCache.clear()
-            
-    def cacheActions(self, actions):
-        for action in actions:
-            self.getRunable(action)
-
-    def getRunable(self, action):
-        """
-            Convert a DAO action into a minimised cacheable action for running
-        """
-        if action == None:
-            return None
-        
-        with self.__cacheLock:
-            if action.id not in self.__actionCache:
-                runners = ActionManager._getRunners()
-                if action.type in runners:
-                    runable = runners[action.type].getRunable(action)
-                    self.__actionCache[action.id] = runable
-                elif action.type == 'Action':
-                    self._logger.warn("Action: %s is abstract!" % (action.name, action.type))
-                    return None
-                else:
-                    self._logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
-                    return None
-            else:
-                self._logger.debug("Using cached action: %s" % action.name)
-
-        return self.__actionCache[action.id]
-
+    
+    @staticmethod
+    def getManager(robot):
+        if not robot.id in ActionManager.__managers:
+            ActionManager.__managers[robot.id] = ActionManager(robot)
+        return ActionManager.__managers[robot.id]
+    
     @staticmethod
     def _getRunners():
-        if ActionRunner._runnerClasses == None:
-            ActionRunner._runnerClasses = ActionRunner.loadModules(ofType=ActionRunner)
+        if ActionManager._runnerClasses == None:
+            ActionManager._runnerClasses = ActionManager.loadModules(ofType=ActionRunner)
 
-        return ActionRunner._runnerClasses
+        return ActionManager._runnerClasses
 
     @staticmethod
     def loadModules(path=None, ofType=None):
@@ -185,19 +162,19 @@ class ActionManager(object):
                         ret[type_.supportedClass] = type_
 
             except Exception as e:
-                logger = logging.getLogger(ActionRunner.__name__)
+                logger = logging.getLogger(ActionManager.__name__)
                 logger.critical("Unable to import module %s, Exception: %s" % (module, e))
 
         return ret
+            
+    def cacheActions(self, actions):
+        for action in actions:
+            self.getRunable(action)
 
-    def __getRunner(self, action):
-        try:
-            self._logger.debug("Getting action runner for %s (%s)" % (action.name, action.type))
-            return ActionRunner._getRunners()[action.type](self._robot)
-        except Exception:
-            self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
-            raise ValueError("Could not determine action runner for type %s" % action.type)
-        
+    def clearCache(self):
+        with self.__cacheLock:
+            self.__actionCache.clear()
+
     def executeAction(self, action):
         self._logger.debug("Starting %s Sync" % action.name)
         runner = self.__getRunner(action)
@@ -208,3 +185,28 @@ class ActionManager(object):
         runner = self.__getRunner(action)
         runner.executeAsync(callback, callbackData)
         return runner
+
+    def getRunable(self, action):
+        """
+            Convert a DAO action into a minimised cacheable action for running
+        """
+        with self.__cacheLock:
+            if action.id not in self.__actionCache:
+                runable = ActionRunner.getRunable(action)
+                if runable:
+                    self.__actionCache[action.id] = runable
+                else:
+                    return None
+            else:
+                self._logger.debug("Using cached action: %s" % action.name)
+
+            return self.__actionCache[action.id]
+
+    def __getRunner(self, action):
+        try:
+            self._logger.debug("Getting action runner for %s (%s)" % (action.name, action.type))
+            return ActionManager._getRunners()[action.type](action, self._robot)
+        except Exception:
+            self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
+            raise ValueError("Could not determine action runner for type %s" % action.type)
+        

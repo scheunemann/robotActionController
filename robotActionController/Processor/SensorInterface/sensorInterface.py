@@ -4,7 +4,7 @@ import sys
 import inspect
 import logging
 import random
-from threading import RLock
+from gevent.lock import RLock
 
 __all__ = ['SensorInterface', ]
 

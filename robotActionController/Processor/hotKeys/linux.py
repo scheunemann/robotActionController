@@ -4,7 +4,7 @@ from select import select
 from sets import Set
 from collections import namedtuple
 from robotActionController.Processor.event import Event
-from threading import Thread
+from gevent import spawn
 
 __all__ = ['KeyEvents']
 
@@ -24,9 +24,7 @@ class KeyEvents(object):
         # SUBSYSTEMS=="usb", ATTRS{idVendor}=="1ffb", ATTRS{idProduct}=="008b", ATTRS{iad_bFirstInterface}=="00", SYMLINK+="servos", GROUP="input", MODE="0660"
         # SUBSYSTEMS=="usb", ATTRS{idVendor}=="1ffb", ATTRS{idProduct}=="008b", ATTRS{iad_bFirstInterface}=="02", SYMLINK+="sensors", GROUP="input", MODE="0660"
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._thread = Thread(target=self._bindKeys, args=(inputName, exclusive))
-        self._thread.setDaemon(True)
-        self._thread.start()
+        self._thread = spawn(self._bindKeys, inputName, exclusive)
         self._altKeys = ['KEY_LEFTALT', 'KEY_RIGHTALT']
         self._shiftKeys = ['KEY_LEFTSHIFT', 'KEY_RIGHTSHIFT']
         self._ctrlKeys = ['KEY_LEFTCTRL', 'KEY_RIGHTCTRL']

@@ -1,31 +1,29 @@
-import threading
-from base import ActionRunner, ActionExecutionHandle
+from base import ActionRunner
 from collections import namedtuple
 import logging
 import pyaudio
 import cStringIO
 import wave
-import time
-from functools import wraps
+from gevent import sleep
 
 
-class SoundExecutionHandle(ActionExecutionHandle):
-
-    CHUNK = 1024
+class SoundRunner(ActionRunner):
+    supportedClass = 'SoundAction'
+    Runable = namedtuple('SoundAction', ActionRunner.Runable._fields + ('data',))
     __audio = None
 
-    def __init__(self, sound):
-        super(SoundExecutionHandle, self).__init__(sound)
+    def __init__(self, sound, *args, **kwargs):
+        super(SoundRunner, self).__init__(sound)
         self._cancel = True
         self._logger = logging.getLogger(self.__class__.__name__)
         self._file = None
 
     @property
     def _audio(self):
-        if SoundExecutionHandle.__audio == None:
+        if SoundRunner.__audio == None:
             #TODO: when to call PyAudio.terminate()?
-            SoundExecutionHandle.__audio = pyaudio.PyAudio()
-        return SoundExecutionHandle.__audio
+            SoundRunner.__audio = pyaudio.PyAudio()
+        return SoundRunner.__audio
 
     def __callback(self, in_data, frame_count, time_info, status):
         if self._cancel:
@@ -46,37 +44,26 @@ class SoundExecutionHandle(ActionExecutionHandle):
                             rate=self._file.getframerate(), 
                             output=True,
                             stream_callback=callback)
-        except Exception as e:
+        except Exception:
             self._logger.error("Error in portaudio: ", exc_info=True)
             return False
 
-        self._cancel = False
         stream.start_stream()
-        while stream.is_active():
-            time.sleep(0.001)
+        try:
+            while stream.is_active():
+                sleep(0.001)
+        except:
+            self._cancel = True
+            raise
+        finally:
+            stream.stop_stream()
+            stream.close()
 
-        stream.stop_stream()
-        stream.close()
-
-        self._file.close()
-        self._file = None
+            self._file.close()
+            self._file = None
 
         return not self._cancel
 
-    def waitForComplete(self):
-        if not self is threading.current_thread():
-            self.join()
-
-        return self._result
-
-    def stop(self):
-        self._cancel = True
-        self.waitForComplete()
-
-
-class SoundRunner(ActionRunner):
-    supportedClass = 'SoundAction'
-    Runable = namedtuple('SoundAction', ActionRunner.Runable._fields + ('data',))
 
     @staticmethod
     def getRunable(action):
@@ -87,11 +74,5 @@ class SoundRunner(ActionRunner):
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
             return None
 
-    def __init__(self, robot):
-        super(SoundRunner, self).__init__(robot)
-
     def isValid(self, sound):
         return len(sound.data) > 0
-
-    def _getHandle(self, sound):
-        return SoundExecutionHandle(sound)

@@ -2,7 +2,7 @@ import io
 import math
 import time
 import logging
-from threading import RLock
+from gevent.lock import RLock
 
 _states = {
         0: 'PENDING',

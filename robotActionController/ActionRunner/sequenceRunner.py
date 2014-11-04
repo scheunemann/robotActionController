@@ -1,34 +1,35 @@
-from base import ActionRunner
+from base import ActionRunner, ActionManager
 from collections import namedtuple
 import logging
-import time
-
+from datetime import datetime
+from gevent import sleep
 
 class SequenceRunner(ActionRunner):
     supportedClass = 'SequenceAction'
     Runable = namedtuple('SequenceAction', ActionRunner.Runable._fields + ('actions', ))
     OrderedAction = namedtuple('OrderedAction', ('forcedLength', 'action'))
 
-    def __init__(self, sequence, robot):
+    def __init__(self, sequence, robot, *args, **kwargs):
         super(SequenceRunner, self).__init__(sequence, ActionRunner(robot))
         self._robot = robot
 
     def _runInternal(self, action):
         result = True
+        manager = ActionManager.getManager(self._robot)
         for orderedAction in action.actions:
             if orderedAction.forcedLength:
-                start = time.time()
-                handle = self._runner.executeAsync(orderedAction.action)
+                starttime = datetime.utcnow()
+                handle = manager.executeActionAsync(orderedAction.action)
                 while not self._cancel:
-                    elapsed = time.time() - start
-                    if elapsed < 0:
+                    elapsed = datetime.utcnow() - starttime
+                    if elapsed.total_seconds() < 0:
                         break  # system clock rolled back
-                    if elapsed * 1000 >= orderedAction.forcedLength:
+                    if elapsed.total_seconds() >= orderedAction.forcedLength:
                         break
-                    time.sleep(0.01)
-                actionResult = handle.result
+                    sleep(0.01)
+                actionResult = handle.value
             else:
-                actionResult = self._runner.execute(orderedAction.action)
+                actionResult = manager.executeAction(orderedAction.action)
 
             if self._cancel or not actionResult:
                 result = False
@@ -36,7 +37,7 @@ class SequenceRunner(ActionRunner):
             else:
                 result = result and actionResult
             #Release the GIL
-            time.sleep(0.0001)
+            sleep(0)
 
         return result
 

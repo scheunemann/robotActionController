@@ -1,11 +1,11 @@
-from threading import Thread
 from TriggerInterface import TriggerInterface
-from robotActionController.ActionRunner import ActionRunner
+from robotActionController.ActionRunner import ActionManager
+from robotActionController.Processor.event import Event
 from datetime import datetime, timedelta
 from collections import namedtuple
-import time
-import event
 import logging
+from gevent.greenlet import Greenlet
+from gevent import sleep
 
 
 __all__ = ['TriggerProcessor', ]
@@ -14,7 +14,7 @@ TriggerActivatedEventArg = namedtuple('TriggerActivatedEvent', ['trigger_id', 'v
 
 
 class TriggerProcessor(object):
-    triggerActivated = event.Event('Trigger activated event')
+    triggerActivated = Event('Trigger activated event')
 
     def __init__(self, triggers, robot, maxUpdateInterval=None):
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -54,27 +54,18 @@ class TriggerProcessor(object):
         self.stop()
 
 
-class _TriggerHandler(Thread):
+class _TriggerHandler(Greenlet):
 
     def __init__(self, trigger, activatedEvent, robot, maxUpdateInterval=None, maxPollRate=None):
         super(_TriggerHandler, self).__init__()
         self._triggerId = trigger.id
         self._triggerInt = TriggerInterface.getTriggerInterface(trigger, robot)
-        self._action = ActionRunner.getRunable(trigger.action)
+        self._action = ActionManager.getManager(robot).getRunable(trigger.action)
         self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
         self._activatedEvent = activatedEvent
-        self._cancel = False
 
-    def start(self):
-        super(_TriggerHandler, self).start()
-
-    def stop(self):
-        self._cancel = True
-        if self.isAlive():
-            self.join()
-
-    def run(self, *args, **kwargs):
+    def _run(self, *args, **kwargs):
         last_update = datetime.utcnow()
         last_value = False
         while not self._cancel:
@@ -87,4 +78,4 @@ class _TriggerHandler(Thread):
                 self._activatedEvent(TriggerActivatedEventArg(self._triggerId, value, self._action))
 
             sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
-            time.sleep(sleepTime)
+            sleep(sleepTime)

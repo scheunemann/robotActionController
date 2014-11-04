@@ -2,7 +2,7 @@ from select import select
 from sets import Set
 from collections import namedtuple
 from robotActionController.Processor.event import Event
-from threading import Thread
+from gevent import spawn
 
 __all__ = ['KeyEvents']
 
@@ -13,7 +13,7 @@ class KeyEvents(object):
     keyDownEvent = Event('Key down event')
 
     def __init__(self, inputName=None, exclusive=False):
-        self._thread = Thread(target=self._bindKeys, args=(inputName, exclusive))
+        self._thread = spawn(self._bindKeys, inputName, exclusive)
         self._thread.setDaemon(True)
         self._thread.start()
         self._altKeys = ['KEY_LEFTALT', 'KEY_RIGHTALT']

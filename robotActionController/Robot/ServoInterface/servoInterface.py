@@ -1,7 +1,8 @@
 import logging
 import datetime
 import time
-from threading import RLock, Timer
+from gevent.lock import RLock
+from gevent import spawn_later
 from robotActionController.connections import Connection
 
 __all__ = ['ServoInterface', ]
@@ -357,8 +358,7 @@ class HerkuleX(ServoInterface):
                     step = steps[currentStep]
                     with Connection.getLock(self._conn):
                         self._conn.moveOne(self._externalId, step[0], step[1])
-                    nextStep = Timer((step[1] - 30) / 1000, callback, [steps, currentStep + 1])
-                    nextStep.start()
+                    spawn_later((step[1] - 30) / 1000, callback, steps, currentStep + 1)
             callback(steps, 0)
 
         #return self._conn.stat(self._externalId) == 0
