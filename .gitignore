@@ -35,3 +35,6 @@ nosetests.xml
 .project
 .pydevproject
 .pyproj
+
+#Kaspar Files
+robotActionController/Data/Model/soundFiles/*
