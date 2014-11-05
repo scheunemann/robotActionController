@@ -94,3 +94,5 @@ class ButtonTrigger(TriggerInterface):
 
     def handleKeyPress(self, sender, keyEventArg):
         self._active = self._formatKeyEvent(keyEventArg) in self._keybindings
+        if self._active:
+            self._logger.debug("KeyEvent: %s, active: %s, keybindings: %s" % (keyEventArg, self._active, self._keybindings))

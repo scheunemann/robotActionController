@@ -62,8 +62,7 @@ class SequenceRunner(ActionRunner):
                 else:
                     action = ActionRunner.getRunable(orderedAction['action'])
 
-                actionCopy['actions'].append(SequenceRunner.OrderedAction(
-                                                                          int(orderedAction['forcedLength'])
+                actionCopy['actions'].append(SequenceRunner.OrderedAction(int(orderedAction['forcedLength']),
                                                                           int(orderedAction['order']),
                                                                           action))
             return SequenceRunner.Runable(actionCopy['name'], actionCopy.get('id'), actionCopy['type'], actionCopy['actions'])

@@ -44,7 +44,7 @@ class SoundRunner(ActionRunner):
         try:
             volume = (action.volume / 100.0) or 1
             volMul = (math.exp(volume) - 1) / (math.e - 1)
-            self._logger.log(1, "Volume: %s, Raw: %s (%s)" % (volMul, action.volume, (volMul))
+            self._logger.log(1, "Volume: %s, Raw: %s (%s)" % (volMul, action.volume, volMul))
             data = cStringIO.StringIO(action.data)
             self._file = wave.open(data, 'rb')
             frame_width = self._file.getsampwidth()

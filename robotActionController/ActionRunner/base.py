@@ -162,15 +162,16 @@ class ActionManager(object):
         sys.path.append(os.path.dirname(path))
 
         ret = {}
+        logger = logging.getLogger(ActionManager.__name__)
         for moduleName in toLoad:
             try:
                 module = __import__(moduleName, globals(), locals())
                 for _, type_ in inspect.getmembers(module, inspect.isclass):
                     if issubclass(type_, ofType) and not type_ == ofType:
                         ret[type_.supportedClass] = type_
+                        logger.debug("Registering runner for type %s" % type_.supportedClass)
 
             except Exception as e:
-                logger = logging.getLogger(ActionManager.__name__)
                 logger.critical("Unable to import module %s, Exception: %s" % (module, e))
 
         return ret
