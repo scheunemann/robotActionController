@@ -7,11 +7,12 @@ import cStringIO
 import wave
 import math
 from gevent import sleep
+from robotActionController.Data.Model import SoundAction
 
 
 class SoundRunner(ActionRunner):
     supportedClass = 'SoundAction'
-    Runable = namedtuple('SoundAction', ActionRunner.Runable._fields + ('data','uuid','volume'))
+    Runable = namedtuple('SoundAction', ActionRunner.Runable._fields + ('data', 'uuid', 'volume'))
     __audio = None
     _CHUNKSIZE = 1024
 
@@ -24,11 +25,11 @@ class SoundRunner(ActionRunner):
     @property
     def _audio(self):
         if SoundRunner.__audio == None:
-            #TODO: when to call PyAudio.terminate()?
+            # TODO: when to call PyAudio.terminate()?
             SoundRunner.__audio = pyaudio.PyAudio()
         return SoundRunner.__audio
 
-    #def __callback(self, in_data, frame_count, time_info, status):
+    # def __callback(self, in_data, frame_count, time_info, status):
     def _callback(self, frame_count, frame_width, volume):
         if self._cancel:
             ret = (None, pyaudio.paAbort)
@@ -42,7 +43,7 @@ class SoundRunner(ActionRunner):
         p = self._audio
         try:
             volume = (action.volume / 100.0) or 1
-            volMul = (math.exp(volume)-1)/(math.e-1)
+            volMul = (math.exp(volume) - 1) / (math.e - 1)
             print "Volume: %s, Raw: %s (%s), %s" % (volMul, action.volume, (action.volume / 100.0), type(action.volume))
             data = cStringIO.StringIO(action.data)
             self._file = wave.open(data, 'rb')
@@ -51,7 +52,7 @@ class SoundRunner(ActionRunner):
             self._cancel = False
             stream = p.open(format=p.get_format_from_width(frame_width),
                             channels=self._file.getnchannels(),
-                            rate=self._file.getframerate(), 
+                            rate=self._file.getframerate(),
                             output=True,
                             stream_callback=callback)
         except Exception:
@@ -77,7 +78,19 @@ class SoundRunner(ActionRunner):
 
     @staticmethod
     def getRunable(action):
-        if action.type == SoundRunner.supportedClass:
+        if type(action) == dict and action.get('type', None) == SoundRunner.supportedClass:
+            if action.get('data', None):
+                data = action['data']
+            else:
+                data = SoundAction.readData(action['uuid'])
+            return SoundRunner.Runable(
+                                       action['name'],
+                                       action.get('id', None),
+                                       action['type'],
+                                       data,
+                                       action.get('uuid', None),
+                                       int(action.get('volume', None)))
+        elif action.type == SoundRunner.supportedClass:
             return SoundRunner.Runable(action.name, action.id, action.type, action.data, action.uuid, action.volume)
         else:
             logger = logging.getLogger(SoundRunner.__name__)

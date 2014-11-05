@@ -1,13 +1,14 @@
 import logging
 import abc
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime
 import gevent
 from gevent.lock import RLock
 
 
 class ActionRunner(gevent.greenlet.Greenlet):
     __metaclass__ = abc.ABCMeta
+
     Runable = namedtuple('Action', ('name', 'id', 'type'))
 
     def __init__(self, action, runner=None):
@@ -36,11 +37,11 @@ class ActionRunner(gevent.greenlet.Greenlet):
     @abc.abstractmethod
     def _runInternal(self, action):
         pass
-    
+
     @abc.abstractmethod
     def isValid(self, action):
         pass
-    
+
     @staticmethod
     def getRunable(action):
         """
@@ -48,23 +49,25 @@ class ActionRunner(gevent.greenlet.Greenlet):
         """
         if action == None:
             return None
-        
+
         logger = logging.getLogger(ActionRunner.__name__)
         runners = ActionManager._getRunners()
-        if action.type in runners:
-            return runners[action.type].getRunable(action)
-        elif action.type == 'Action':
-            logger.warn("Action: %s is abstract!" % (action.name, action.type))
+        actionType = action.get('type', None) if type(action) == dict else action.type
+        actionName = action.get('name', None) if type(action) == dict else action.name
+        if actionType in runners:
+            return runners[actionType].getRunable(action)
+        elif actionType == 'Action':
+            logger.warn("Action: %s is abstract!" % (actionName, actionType))
             return None
         else:
-            logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
+            logger.error("Action: %s has an unknown action type: %s" % (actionName, actionType))
             return None
-    
+
     def execute(self):
-	self.start()
-	self.waitForComplete()
+        self.start()
+        self.waitForComplete()
         return self.value
-    
+
     def executeAsync(self, callback=None, callbackData=None):
         if callback:
             args = callbackData or ()
@@ -105,7 +108,7 @@ class ActionRunner(gevent.greenlet.Greenlet):
         self.waitForComplete()
 
 
-class ActionManager(object):    
+class ActionManager(object):
 
     # Increase memory usage but hopefully reduce CPU usage...
     # TODO: When to expire cached items?
@@ -122,13 +125,13 @@ class ActionManager(object):
     @property
     def robot(self):
         return self._robot
-    
+
     @staticmethod
     def getManager(robot):
         if not robot.id in ActionManager.__managers:
             ActionManager.__managers[robot.id] = ActionManager(robot)
         return ActionManager.__managers[robot.id]
-    
+
     @staticmethod
     def _getRunners():
         if ActionManager._runnerClasses == None:
@@ -171,7 +174,7 @@ class ActionManager(object):
                 logger.critical("Unable to import module %s, Exception: %s" % (module, e))
 
         return ret
-            
+
     def cacheActions(self, actions):
         for action in actions:
             self.getRunable(action)
@@ -222,4 +225,4 @@ class ActionManager(object):
         except Exception:
             self._logger.critical("Could not determine action runner for type %s" % action.type, exc_info=True)
             raise ValueError("Could not determine action runner for type %s" % action.type)
-        
+

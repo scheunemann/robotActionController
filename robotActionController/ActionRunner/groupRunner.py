@@ -1,12 +1,14 @@
-from collections import namedtuple
 import logging
 from base import ActionRunner, ActionManager
+from collections import namedtuple
 from gevent.pool import Group
+from robotActionController.Data.storage import StorageFactory
+from robotActionController.Data.Model import Action
 
 
 class GroupRunner(ActionRunner):
     supportedClass = 'GroupAction'
-    Runable = namedtuple('GroupAction', ActionRunner.Runable._fields + ('actions', ))
+    Runable = namedtuple('GroupAction', ActionRunner.Runable._fields + ('actions',))
 
     def __init__(self, group, robot, *args, **kwargs):
         super(GroupRunner, self).__init__(group)
@@ -23,7 +25,27 @@ class GroupRunner(ActionRunner):
 
     @staticmethod
     def getRunable(action):
-        if action.type == GroupRunner.supportedClass:
+        if type(action) == dict and action.get('type', None) == GroupRunner.supportedClass:
+            actionCopy = dict(action)
+            actions = actionCopy['actions']
+            actionCopy['actions'] = []
+            for groupAction in actions:
+                action = None
+                if 'action' not in groupAction:
+                    id_ = groupAction.get('action_id', None) or groupAction.get('id', None)
+                    if id_:
+                        session = StorageFactory.getNewSession()
+                        action = ActionRunner.getRunable(session.query(Action).get(id_))
+                        session.close()
+                else:
+                    action = ActionRunner.getRunable(groupAction['action'])
+
+                actionCopy['actions'].append(action)
+            return GroupRunner.Runable(actionCopy['name'],
+                                       actionCopy.get('id', None),
+                                       actionCopy['type'],
+                                       actionCopy['actions'])
+        elif action.type == GroupRunner.supportedClass:
             actions = [ActionRunner.getRunable(a) for a in action.actions]
             return GroupRunner.Runable(action.name, action.id, action.type, actions)
         else:

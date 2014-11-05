@@ -50,7 +50,24 @@ class PoseRunner(ActionRunner):
 
     @staticmethod
     def getRunable(action):
-        if action.type == PoseRunner.supportedClass:
+        if type(action) == dict and action.get('type', None) == PoseRunner.supportedClass:
+            actionCopy = dict(action)
+            positions = actionCopy['jointPositions']
+            actionCopy['jointPositions'] = []
+            for position in positions:
+                actionCopy['jointPositions'].appen(PoseRunner.JointPosition(
+                                                                            position['jointName'],
+                                                                            int(position['speed']),
+                                                                            float(position['position']),
+                                                                            [float(p) for p in position['positions']]))
+
+            return PoseRunner.Runable(
+                                      actionCopy['name'],
+                                      actionCopy.get('id'),
+                                      actionCopy['type'],
+                                      actionCopy['speedModifier'],
+                                      actionCopy['jointPositions'])
+        elif action.type == PoseRunner.supportedClass:
             positions = []
             for position in action.jointPositions:
                 positions.append(PoseRunner.JointPosition(position.jointName, position.speed, position.position, position.positions))
