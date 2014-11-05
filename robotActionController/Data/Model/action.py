@@ -1,7 +1,7 @@
 import os
 import uuid
 from base import StandardMixin, Base
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, Float
+from sqlalchemy import Column, String, Integer, ForeignKey, Table, Float, event
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.orderinglist import ordering_list
 
@@ -43,9 +43,7 @@ class Action(StandardMixin, Base):
                 if 'type' in dictObj:
                     actionType = dictObj.pop('type')
                     actionClass = None
-                    if actionType.lower() == 'expressionaction':
-                        actionClass = ExpressionAction
-                    elif actionType.lower() == 'groupaction':
+                    if actionType.lower() == 'groupaction':
                         actionClass = GroupAction
                     elif actionType.lower() == 'poseaction':
                         actionClass = PoseAction
@@ -91,8 +89,8 @@ class SoundAction(Action):
 
     @staticmethod
     def saveData(value, uuid=None):
+        uuid, fileName = SoundAction.__fileName(uuid)
         if value:
-            uuid, fileName = SoundAction.__fileName(uuid)
             with open(fileName, 'wb') as f:
                 f.write(value)
         elif uuid != None:
@@ -128,6 +126,9 @@ class SoundAction(Action):
         self.uuid = uuid
         self.volume = volume
 
+@event.listens_for(SoundAction, 'after_delete')
+def receive_after_delete(mapper, connection, target):
+    target.data = None
 
 class JointPosition(StandardMixin, Base):
 
