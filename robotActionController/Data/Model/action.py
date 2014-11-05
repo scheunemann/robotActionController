@@ -1,5 +1,6 @@
 import os
 import uuid
+from robotActionController.Data.config import database_config
 from base import StandardMixin, Base
 from sqlalchemy import Column, String, Integer, ForeignKey, Table, Float, event
 from sqlalchemy.orm import relationship
@@ -112,7 +113,7 @@ class SoundAction(Action):
 
     @staticmethod
     def __fileName(uuid_=None):
-        basePath = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soundFiles'))
+        basePath = os.path.join(database_config['dataFolder'], 'soundFiles')
         if not os.path.isdir(basePath):
             os.makedirs(basePath)
 
