@@ -92,6 +92,11 @@ class ActionRunner(gevent.greenlet.Greenlet):
             self._logger.critical("Error running action: %s" % self._action.name, exc_info=True)
             self._logger.critical("%s: %s" % (e.__class__.__name__, e))
             result = False
+        except gevent.GreenletExit:
+            endtime = datetime.utcnow()
+            self._output.append((endtime, '%s: Cancelled %s' % (self.__class__.__name__, self._action.name)))
+            self._logger.debug('%s: Cancelled %s' % (self.__class__.__name__, self._action.name))
+            raise
         else:
             endtime = datetime.utcnow()
             if result:

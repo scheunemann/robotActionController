@@ -2,63 +2,34 @@ from triggerInterface import TriggerInterface
 from collections import namedtuple
 from robotActionController.Processor.hotKeys import KeyEvents
 import logging
+from gevent.lock import RLock
+from gevent import spawn, sleep
 
 
 class ButtonTrigger(TriggerInterface):
     supportedClass = 'ButtonTrigger'
     Runable = namedtuple('ButtonTrigger', TriggerInterface.Runable._fields + ('keybindings', ))
     keyEvents = None
-
-    # Match with the javscript side of things, should cover most common keys
-    # Unfortunately evdev doesn't take the KB layout into account, hopefully won't be an issue with our usage
-    keyMap = {
-            '102ND': '\\',  # This is due to US vs UK kb layout (see above)
-            'APOSTROPHE': '\'',
-            'BACKSLASH': '#',  # This is due to US vs UK kb layout (see above)
-            'COMMA': ',',
-            'DELETE': 'del',
-            'DOT': '.',
-            'EQUAL': '=',
-            'ESC': 'escape',
-            'GRAVE': '`',
-            'INSERT': 'ins',
-            'KP0': '0',
-            'KP1': '1',
-            'KP2': '2',
-            'KP3': '3',
-            'KP4': '4',
-            'KP5': '5',
-            'KP6': '6',
-            'KP7': '7',
-            'KP8': '8',
-            'KP9': '9',
-            'KPASTERISK': '*',
-            'KPDOT': '.',
-            'KPENTER': 'enter',
-            'KPMINUS': '-',
-            'KPPLUS': '+',
-            'KPSLASH': '/',
-            'LEFTBRACE': '[',
-            'MINUS': '-',
-            'RIGHTBRACE': ']',
-            'SEMICOLON': ';',
-            'SLASH': '/',
-          }
+    __threadLock = RLock()
 
     def __init__(self, trigger, **kwargs):
         super(ButtonTrigger, self).__init__(trigger, **kwargs)
-        if ButtonTrigger.keyEvents == None:
-            ButtonTrigger.keyEvents = KeyEvents()
+        with ButtonTrigger.__threadLock:
+            if ButtonTrigger.keyEvents == None:
+                ButtonTrigger.keyEvents = KeyEvents()
 
         if trigger.keybindings:
-            ButtonTrigger.keyEvents.keyUpEvent += self.handleKeyPress
+            ButtonTrigger.keyEvents.keyDownEvent += self.handleKeyPress
+            ButtonTrigger.keyEvents.keyUpEvent += self.handleKeyRelease
             self._keybindings = trigger.keybindings
 
         self._active = False
+        self._disableActive = False
 
     def __del__(self):
         try:
-            ButtonTrigger.keyEvents.keyUpEvent -= self.handleKeyPress
+            ButtonTrigger.keyEvents.keyDownEvent -= self.handleKeyPress
+            ButtonTrigger.keyEvents.keyUpEvent -= self.handleKeyRelease
         except:
             pass
 
@@ -73,7 +44,10 @@ class ButtonTrigger(TriggerInterface):
             return None
 
     def getActive(self):
-        return self._active
+        active = self._active
+        if self._disableActive:
+            self._active = False
+        return active
 
     def _formatKeyEvent(self, keyEventArg):
         modifiers = ""
@@ -86,13 +60,33 @@ class ButtonTrigger(TriggerInterface):
         if keyEventArg.shift:
             modifiers += "shift+"
 
-        disp = keyEventArg.keyValue
-        if disp in ButtonTrigger.keyMap:
-            disp = ButtonTrigger.keyMap[disp]
+        if modifiers and keyEventArg.keyValue:
+            return (modifiers + keyEventArg.keyValue).upper()
+        elif modifiers:
+            return modifiers.rstrip('+').upper()
+        elif keyEventArg.keyValue:
+            return keyEventArg.keyValue.upper()
+        else:
+            return None
 
-        return (modifiers + disp).upper().strip('+')
+    def delayDisable(self, delayTime):
+        sleep(delayTime)
+        if self._disableActive:
+            self._active = False
+
+    def handleKeyRelease(self, sender, keyEventArg):
+        released = self._formatKeyEvent(keyEventArg) in self._keybindings
+        if self._active and released:
+            self._disableActive = True
+            # Prevent missing brief presses
+            spawn(self.delayDisable, 0.1)
+        if released:
+            self._logger.debug("KeyEvent: %s, active: %s, keybindings: %s" % (keyEventArg, self._active, self._keybindings))
 
     def handleKeyPress(self, sender, keyEventArg):
-        self._active = self._formatKeyEvent(keyEventArg) in self._keybindings
+        pressed = self._formatKeyEvent(keyEventArg) in self._keybindings
+        if not self._active and pressed:
+            self._disableActive = False
+            self._active = True
         if self._active:
             self._logger.debug("KeyEvent: %s, active: %s, keybindings: %s" % (keyEventArg, self._active, self._keybindings))

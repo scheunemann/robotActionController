@@ -1,79 +1,10 @@
 from robotActionController import connections
-from collections import namedtuple, deque
+from robotActionController.Processor.SensorInterface import SensorPoller
 import logging
-from gevent.greenlet import Greenlet
-from gevent import sleep, spawn
+from gevent import spawn
 from gevent.lock import RLock
 
 __all__ = ['FSR_Arduino', ]
-
-
-class Sensor_Poller(Greenlet):
-
-    HistItem = namedtuple('SensorHist', ['hist', 'sensor_id', 'lastValue'])
-
-    def __init__(self, connection, rate=60, maxHistory=60, ids=[]):
-        """
-        @param connection: connection object to use, must support getPosition(id)
-        @param rate: rate of the polling loop
-        @param maxHistory: size of the history for each sensor
-        @param ids: the initial id set to poll
-        """
-        super(Sensor_Poller, self).__init__()
-        self.daemon = True
-        self._conn = connection
-        self._portLock = connections.Connection.getLock(connection)
-        self._rate = rate
-        self._rateMS = 1.0 / rate
-        self._maxHistory = maxHistory
-        self._sensors = {}
-        self._threadLock = RLock()
-        map(self.addId, ids)
-
-    def addId(self, sid):
-        with self._threadLock:
-            if id not in self._sensors:
-                self._sensors[sid] = deque(maxlen=self._maxHistory)
-
-    def getValues(self, sid, default=None):
-        with self._threadLock:
-            if id in self._sensors:
-                return self._sensors[sid].hist
-            else:
-                return default
-
-    def _run(self):
-        self._run = True
-        while self._run:
-            with self._threadLock:
-                sensors = self._sensors.items()
-            if not sensors:
-                sleep(1)
-                continue
-            sTime = self._rateMS / len(sensors)
-            for (sid, hist) in sensors:
-                if not self._run:
-                    break
-                startTime = datetime.utcnow()
-                try:
-                    with self._portLock:
-                        val = self._conn.getPosition(sid)
-                    self._logger.log(1, "Got value for sensor %s: %s" % sid, val)
-                except Exception as e:
-                    self._logger.warning(e, exc_info=True)
-                    continue
-
-                if val < 0:
-                    # maestro/herkulex specific, might need to look into a general 'error_value' param
-                    continue
-
-                hist.hist.append(val)
-                # hist.lastValue = sum(hist.hist) / len(hist.hist)
-                sTime = datetime.utcnow() - startTime
-                if sTime.total_seconds() > 0:
-                    sleep(sTime)
-                else:
-                    sleep(0)
 
 
 class FSR_Arduino(object):
@@ -172,8 +103,6 @@ class FSR_Arduino(object):
 
 class FSR_MiniMaestro(object):
     sensorType = 'FSR_MiniMaestro'
-    _pollers = {}
-    _pollerLock = RLock()
 
     def __init__(self, sensor, config):
         port = config.port
@@ -187,10 +116,7 @@ class FSR_MiniMaestro(object):
 
         self._numSamples = sensor.extraData.get('numSamples', 10)
         conn = connections.Connection.getConnection('minimaestro', port, speed)
-        with FSR_MiniMaestro._pollerLock:
-            if port not in FSR_MiniMaestro._pollers:
-                FSR_MiniMaestro._pollers[port] = Sensor_Poller(conn)
-                FSR_MiniMaestro._pollers[port].start()
+        self._poller = SensorPoller.getPoller(conn)
 
 
     def getCurrentValue(self):
@@ -208,8 +134,6 @@ class FSR_MiniMaestro(object):
 class FSR_MiniMaestro2(FSR_MiniMaestro):
     sensorType = 'FSR_MiniMaestro2'
 
-    def __init__(self, sensor, config):
-        super(FSR_MiniMaestro2, self).__init__(sensor, config)
 
 if __name__ == '__main__':
     class S(object):

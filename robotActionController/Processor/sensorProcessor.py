@@ -2,8 +2,8 @@ import logging
 from datetime import datetime, timedelta
 from collections import namedtuple
 from SensorInterface.sensorInterface import SensorInterface
-from gevent import sleep
 import gevent
+from gevent import sleep, spawn
 from gevent.greenlet import Greenlet
 from robotActionController.Processor.event import Event
 
@@ -49,7 +49,7 @@ class _SensorHandler(Greenlet):
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
         self._updateEvent = updateEvent
 
-    def run(self):
+    def _run(self):
         last_update = datetime.utcnow()
         last_value = None
         while not self._cancel:
@@ -72,7 +72,7 @@ class _SensorHandler(Greenlet):
                 if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
                     last_update = datetime.utcnow()
                     last_value = value
-                    self._updateEvent(SensorDataEventArg(self._sensorId, value))
+                    spawn(self._updateEvent, SensorDataEventArg(self._sensorId, value))
 
             sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
             sleep(sleepTime)

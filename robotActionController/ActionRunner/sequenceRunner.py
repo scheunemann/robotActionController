@@ -22,14 +22,10 @@ class SequenceRunner(ActionRunner):
         for orderedAction in action.actions:
             handle = manager.executeActionAsync(orderedAction.action)
             if orderedAction.forcedLength:
-                starttime = datetime.utcnow()
-                while True:
-                    elapsed = datetime.utcnow() - starttime
-                    if elapsed.total_seconds() < 0:
-                        break  # system clock rolled back
-                    if elapsed.total_seconds() >= orderedAction.forcedLength:
-                        break
-                    sleep(0.01)
+                sleep(orderedAction.forcedLength / 1000.0)
+                if not handle.ready():
+                    handle.kill()
+                    handle.join(timeout=0.1)
             else:
                 handle.waitForComplete()
 

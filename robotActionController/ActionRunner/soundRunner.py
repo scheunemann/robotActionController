@@ -6,7 +6,7 @@ import audioop
 import cStringIO
 import wave
 import math
-from gevent import sleep
+from gevent import sleep, GreenletExit
 from robotActionController.Data.Model import SoundAction
 
 
@@ -37,6 +37,7 @@ class SoundRunner(ActionRunner):
             data = self._file.readframes(frame_count)
             data = audioop.mul(data, frame_width, volume)
             ret = (data, pyaudio.paContinue if data else pyaudio.paComplete)
+        sleep(0)
         return ret
 
     def _runInternal(self, action):
@@ -62,8 +63,8 @@ class SoundRunner(ActionRunner):
         stream.start_stream()
         try:
             while stream.is_active():
-                sleep(0.001)
-        except:
+                sleep(0)
+        except Exception, GreenletExit:
             self._cancel = True
             raise
         finally:

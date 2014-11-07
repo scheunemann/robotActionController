@@ -15,8 +15,9 @@ depend_links = [
 
 if platform.system() == 'Linux':
     requires.append('evdev')
-else:
-    pass
+elif platform.system() == 'Windows':
+    requires.append('pyHook')
+    requires.append('pywin32')
 
 
 def readme():

@@ -2,6 +2,7 @@ import logging
 from base import ActionRunner, ActionManager
 from collections import namedtuple
 from gevent.pool import Group
+from gevent import sleep
 from robotActionController.Data.storage import StorageFactory
 from robotActionController.Data.Model import Action
 
@@ -17,11 +18,11 @@ class GroupRunner(ActionRunner):
 
     def _runInternal(self, action):
         manager = ActionManager.getManager(self._robot)
-        self._handle = Group()
-        [self._handle.add(manager.executeActionAsync(a)) for a in action.actions]
+        handles = [manager.executeActionAsync(a) for a in action.actions]
+        self._handle = Group([h for h in handles if h])
         self.waitForComplete()
-        self._output.extend([o for h in self._handle.greenlets for o in h.output])
-        return all([x.value for x in self._handle.greenlets])
+        self._output.extend([o for h in handles for o in h.output if h])
+        return all([h.value for h in handles if h])
 
     @staticmethod
     def getRunable(action):
