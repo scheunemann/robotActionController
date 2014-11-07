@@ -83,7 +83,10 @@ class SoundRunner(ActionRunner):
             if action.get('data', None):
                 data = action['data']
             else:
-                data = SoundAction.readData(action['uuid'])
+                if 'uuid' in action:
+                    data = SoundAction.readData(action['uuid'])
+                else:
+                    data = None
             return SoundRunner.Runable(
                                        action['name'],
                                        action.get('id', None),
