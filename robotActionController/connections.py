@@ -1,4 +1,4 @@
-from threading import RLock
+from gevent.lock import RLock
 import serial
 import logging
 import platform
@@ -17,17 +17,19 @@ if platform.system() == 'Linux':
             self._rlock = RLock()
 
         def __enter__(self):
-            if self._rlock._is_owned():
-                self._rlock.acquire()
-                return
-            else:
-                self._rlock.acquire()
-                fcntl.flock(self._serial.fileno(), fcntl.LOCK_EX)
+            pass
+            #if self._rlock._is_owned():
+            #    self._rlock.acquire()
+            #    return
+            #else:
+            #    self._rlock.acquire()
+            #    fcntl.flock(self._serial.fileno(), fcntl.LOCK_EX)
 
         def __exit__(self, type, value, tb):
-            self._rlock.release()
-            if not self._rlock._is_owned():
-                fcntl.flock(self._serial.fileno(), fcntl.LOCK_UN)
+            pass
+            #self._rlock.release()
+            #if not self._rlock._is_owned():
+            #    fcntl.flock(self._serial.fileno(), fcntl.LOCK_UN)
 else:
     SerialLock = lambda x: RLock()
 

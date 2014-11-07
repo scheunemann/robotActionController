@@ -1,10 +1,11 @@
-from threading import Thread
 import logging
 from datetime import datetime, timedelta
 from collections import namedtuple
 from SensorInterface.sensorInterface import SensorInterface
-import time
-import event
+import gevent
+from gevent import sleep, spawn
+from gevent.greenlet import Greenlet
+from robotActionController.Processor.event import Event
 
 
 __all__ = ['SensorProcessor', ]
@@ -14,7 +15,7 @@ SensorDataEventArg = namedtuple('SensorDataEvent', ['sensor_id', 'value'])
 
 class SensorProcessor(object):
 
-    newSensorData = event.Event('Sensor update event')
+    newSensorData = Event('Sensor update event')
 
     def __init__(self, sensors, maxUpdateInterval=None):
         self._handlers = []
@@ -28,13 +29,13 @@ class SensorProcessor(object):
         map(lambda h: h.start(), self._handlers)
 
     def stop(self):
-        map(lambda h: h.stop(), self._handlers)
+        gevent.killall(self._handlers)
 
     def __del__(self):
         self.stop()
 
 
-class _SensorHandler(Thread):
+class _SensorHandler(Greenlet):
 
     def __init__(self, sensor, updateEvent, maxUpdateInterval=None, maxPollRate=None):
         super(_SensorHandler, self).__init__()
@@ -47,14 +48,8 @@ class _SensorHandler(Thread):
         self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
         self._updateEvent = updateEvent
-        self._cancel = False
 
-    def stop(self):
-        self._cancel = True
-        if self.isAlive():
-            self.join()
-
-    def run(self):
+    def _run(self):
         last_update = datetime.utcnow()
         last_value = None
         while not self._cancel:
@@ -77,7 +72,7 @@ class _SensorHandler(Thread):
                 if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
                     last_update = datetime.utcnow()
                     last_value = value
-                    self._updateEvent(SensorDataEventArg(self._sensorId, value))
+                    spawn(self._updateEvent, SensorDataEventArg(self._sensorId, value))
 
             sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
-            time.sleep(sleepTime)
+            sleep(sleepTime)

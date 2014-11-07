@@ -1,20 +1,20 @@
-from threading import Thread
 from TriggerInterface import TriggerInterface
-from robotActionController.ActionRunner import ActionRunner
+from robotActionController.ActionRunner import ActionManager
+from robotActionController.Processor.event import Event
 from datetime import datetime, timedelta
 from collections import namedtuple
-import time
-import event
 import logging
+from gevent.greenlet import Greenlet
+from gevent import sleep, spawn
 
 
 __all__ = ['TriggerProcessor', ]
 
-TriggerActivatedEventArg = namedtuple('TriggerActivatedEvent', ['trigger_id', 'value', 'action'])
+TriggerActivatedEventArg = namedtuple('TriggerActivatedEvent', ['trigger_id', 'value', 'action', 'type'])
 
 
 class TriggerProcessor(object):
-    triggerActivated = event.Event('Trigger activated event')
+    triggerActivated = Event('Trigger activated event')
 
     def __init__(self, triggers, robot, maxUpdateInterval=None):
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -28,63 +28,69 @@ class TriggerProcessor(object):
 
     def start(self):
         self._running = True
+        self._logger.info("Starting trigger handlers")
         map(lambda h: h.start(), self._handlers)
+        sleep(0)
 
     def stop(self):
         self._running = False
-        map(lambda h: h.stop(), self._handlers)
+        self._logger.info("Stopping trigger handlers")
+        map(lambda h: h.kill(), self._handlers)
 
     def setTriggers(self, triggers):
-        if self._running:
+        running = self._running
+        if running:
             self.stop()
-        
+
         self._handlers = []
         for trigger in triggers:
             try:
-                handler = _TriggerHandler(trigger, self.triggerActivated, self._robot, self._maxUpdateInterval, timedelta(seconds=self._maxUpdateInterval.seconds / 10.0))
+                handler = _TriggerHandler(trigger,
+                                          self.triggerActivated,
+                                          self._robot,
+                                          self._maxUpdateInterval,
+                                          timedelta(seconds=self._maxUpdateInterval.seconds / 10.0))
                 self._handlers.append(handler)
             except Exception:
                 self._logger.warning("Error handling trigger! %s" % trigger, exc_info=True)
                 continue
-        
-        if self._running:
+
+        self._logger.debug("Handlers: %s" % self._handlers)
+        if running:
             self.start()
 
     def __del__(self):
         self.stop()
 
 
-class _TriggerHandler(Thread):
+class _TriggerHandler(Greenlet):
 
     def __init__(self, trigger, activatedEvent, robot, maxUpdateInterval=None, maxPollRate=None):
         super(_TriggerHandler, self).__init__()
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._triggerId = trigger.id
         self._triggerInt = TriggerInterface.getTriggerInterface(trigger, robot)
-        self._action = ActionRunner.getRunable(trigger.action)
+        self._action = ActionManager.getManager(robot).getRunable(trigger.action)
         self._maxUpdateInterval = maxUpdateInterval
         self._maxPollRate = maxPollRate or timedelta(milliseconds=100)
         self._activatedEvent = activatedEvent
-        self._cancel = False
 
-    def start(self):
-        super(_TriggerHandler, self).start()
-
-    def stop(self):
-        self._cancel = True
-        if self.isAlive():
-            self.join()
-
-    def run(self, *args, **kwargs):
+    def _run(self, *args, **kwargs):
         last_update = datetime.utcnow()
         last_value = False
-        while not self._cancel:
+        self._logger.debug("Handler for %s Starting" % self._triggerInt)
+        while True:
             value = self._triggerInt.getActive()
-            if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
+            if value and value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
                 last_update = datetime.utcnow()
                 last_value = value
                 # Fire the handlers in thread to prevent long handlers from interrupting the loop
-                #Thread(target=self._activatedEvent, args=(TriggerActivatedEventArg(self._trigger, value), )).start()
-                self._activatedEvent(TriggerActivatedEventArg(self._triggerId, value, self._action))
+                spawn(self._activatedEvent, TriggerActivatedEventArg(self._triggerId,
+                                                                    value,
+                                                                    self._action,
+                                                                    self._triggerInt.supportedClass))
+                self._logger.debug("Activated trigger event for action %s" % (self._action.name, ))
 
+            last_value = value
             sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
-            time.sleep(sleepTime)
+            sleep(sleepTime)

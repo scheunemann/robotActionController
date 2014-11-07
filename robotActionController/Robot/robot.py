@@ -8,7 +8,7 @@ class Robot(object):
     _robots = {}
 
     @staticmethod
-    def getRunnableRobot(robot):
+    def getRunableRobot(robot):
         if robot.id not in Robot._robots:
             interfaces = []
             sensors = []

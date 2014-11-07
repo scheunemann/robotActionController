@@ -4,12 +4,115 @@ import sys
 import inspect
 import logging
 import random
-from threading import RLock
+from gevent.lock import RLock
+from gevent import Greenlet
+from collections import deque
+from datetime import datetime
+from gevent import sleep
+from robotActionController import connections
 
-__all__ = ['SensorInterface', ]
+__all__ = ['SensorInterface', 'SensorPoller']
 
 
 _modulesCache = {}
+
+class SensorPoller(Greenlet):
+
+    __pollers = {}
+    __pollerLock = RLock()
+
+    def __init__(self, connection, rate=20, maxHistory=60, ids=[]):
+        """
+        @param connection: connection object to use, must support getPosition(id)
+        @param rate: rate of the polling loop in Hz
+        @param maxHistory: size of the history for each sensor
+        @param ids: the initial id set to poll
+        """
+        super(SensorPoller, self).__init__()
+        self.daemon = True
+        self._conn = connection
+        self._portLock = connections.Connection.getLock(connection)
+        self._rate = rate
+        self._loopTime = 1.0 / rate
+        self._maxHistory = maxHistory
+        self._sensors = {}
+        self._threadLock = RLock()
+        map(self.addId, ids)
+
+    @staticmethod
+    def getPoller(connection):
+        with SensorPoller.__pollerLock:
+            if connection not in SensorPoller.__pollers:
+                SensorPoller.__pollers[connection] = SensorPoller(connection)
+                SensorPoller.__pollers[connection].start()
+
+            return SensorPoller.__pollerLock
+
+    def clear(self):
+        with self._threadLock:
+            self._sensors.clear()
+
+    def removeId(self, sid):
+        with self._threadLock:
+            if sid in self._sensors:
+                self._sensors.pop(sid)
+
+    def addId(self, sid):
+        with self._threadLock:
+            if id not in self._sensors:
+                self._sensors[sid] = deque(maxlen=self._maxHistory)
+
+    def getValue(self, sid, default=None, smoothing=1):
+        with self._threadLock:
+            if id in self._sensors:
+                if self._sensors[sid] != None:
+                    if smoothing > 1:
+                        vals = list(self._sensors[sid])[:-smoothing]
+                        return sum(vals) / float(len(vals))
+                    else:
+                        return self._sensors[sid][-1]
+                else:
+                    return default
+            else:
+                raise ValueError("Sensor %s is not tracked" % sid)
+
+    def getValues(self, sid, default=None):
+        with self._threadLock:
+            if id in self._sensors:
+                return list(self._sensors[sid]) if self._sensors[sid] else default
+            else:
+                raise ValueError("Sensor %s is not tracked" % sid)
+
+    def _run(self):
+        self._run = True
+        while self._run:
+            with self._threadLock:
+                sensors = self._sensors.items()
+
+            if not sensors:
+                sleep(0.1)
+                continue
+
+            startTime = datetime.utcnow()
+            for (sid, hist) in sensors:
+                if not self._run:
+                    break
+                try:
+                    with self._portLock:
+                        val = self._conn.getPosition(sid)
+                    self._logger.log(1, "Got value for sensor %s: %s" % sid, val)
+                except Exception as e:
+                    self._logger.warning(e, exc_info=True)
+                    continue
+
+                if val < 0:
+                    # maestro/herkulex specific, might need to look into a general 'error_value' param
+                    continue
+
+                hist.append(val)
+
+            sTime = (datetime.utcnow() - startTime).total_seconds() - self._loopTime
+            sleep(min(sTime, 0))
 
 
 def loadModules(path=None):

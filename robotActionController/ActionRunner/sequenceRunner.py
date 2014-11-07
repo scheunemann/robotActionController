@@ -1,61 +1,71 @@
-from base import ActionRunner, ActionExecutionHandle
+from base import ActionRunner, ActionManager
 from collections import namedtuple
 import logging
-import time
-
-
-class SequenceExecutionHandle(ActionExecutionHandle):
-
-    def __init__(self, sequence, robot):
-        super(SequenceExecutionHandle, self).__init__(sequence, ActionRunner(robot))
-        self._robot = robot
-        self._cancel = False
-
-    def _runInternal(self, action):
-        result = True
-        for orderedAction in action.actions:
-            if orderedAction.forcedLength:
-                start = time.time()
-                handle = self._runner.executeAsync(orderedAction.action)
-                while not self._cancel:
-                    elapsed = time.time() - start
-                    if elapsed < 0:
-                        break  # system clock rolled back
-                    if elapsed * 1000 >= orderedAction.forcedLength:
-                        break
-                    time.sleep(0.01)
-                actionResult = handle.result
-                if self._cancel:
-                    handle.stop()
-            else:
-                actionResult = self._runner.execute(orderedAction.action)
-
-            if self._cancel or not actionResult:
-                result = False
-                break
-            else:
-                result = result and actionResult
-            #Release the GIL
-            time.sleep(0.0001)
-
-        return result
-
-    def stop(self):
-        self._cancel = True
-        self.waitForComplete()
-
+from datetime import datetime
+from gevent import sleep
+from robotActionController.Data.storage import StorageFactory
+from robotActionController.Data.Model import Action
 
 class SequenceRunner(ActionRunner):
     supportedClass = 'SequenceAction'
     Runable = namedtuple('SequenceAction', ActionRunner.Runable._fields + ('actions', ))
-    OrderedAction = namedtuple('OrderedAction', ('forcedLength', 'action'))
+    OrderedAction = namedtuple('OrderedAction', ('forcedLength', 'order', 'action'))
+
+    def __init__(self, sequence, robot, *args, **kwargs):
+        super(SequenceRunner, self).__init__(sequence)
+        self._robot = robot
+
+    def _runInternal(self, action):
+        result = True
+        manager = ActionManager.getManager(self._robot)
+
+        for orderedAction in action.actions:
+            handle = manager.executeActionAsync(orderedAction.action)
+            if orderedAction.forcedLength:
+                sleep(orderedAction.forcedLength / 1000.0)
+                if not handle.ready():
+                    handle.kill()
+                    handle.join(timeout=0.1)
+            else:
+                handle.waitForComplete()
+
+            actionResult = handle.value
+            self._output.extend(handle.output)
+
+            if not actionResult:
+                result = False
+                break
+            else:
+                result = result and actionResult
+            #Allow other greenlets to run
+            sleep(0)
+
+        return result
 
     @staticmethod
     def getRunable(action):
-        if action.type == SequenceRunner.supportedClass:
+        if type(action) == dict and action.get('type', None) == SequenceRunner.supportedClass:
+            actionCopy = dict(action)
+            actions = actionCopy['actions']
+            actionCopy['actions'] = []
+            for orderedAction in actions:
+                action = None
+                if 'action' not in orderedAction:
+                    if 'action_id' in orderedAction:
+                        session = StorageFactory.getNewSession()
+                        action = ActionRunner.getRunable(session.query(Action).get(orderedAction['action_id']))
+                        session.close()
+                else:
+                    action = ActionRunner.getRunable(orderedAction['action'])
+
+                actionCopy['actions'].append(SequenceRunner.OrderedAction(int(orderedAction['forcedLength']),
+                                                                          int(orderedAction['order']),
+                                                                          action))
+            return SequenceRunner.Runable(actionCopy['name'], actionCopy.get('id'), actionCopy['type'], actionCopy['actions'])
+        elif action.type == SequenceRunner.supportedClass:
             actions = []
             for orderedAction in action.actions:
-                actions.append(SequenceRunner.OrderedAction(orderedAction.forcedLength, ActionRunner.getRunable(orderedAction.action)))
+                actions.append(SequenceRunner.OrderedAction(orderedAction.forcedLength, orderedAction.order, ActionRunner.getRunable(orderedAction.action)))
 
             return SequenceRunner.Runable(action.name, action.id, action.type, actions)
         else:
@@ -63,15 +73,9 @@ class SequenceRunner(ActionRunner):
             logger.error("Action: %s has an unknown action type: %s" % (action.name, action.type))
             return None
 
-    def __init__(self, robot):
-        super(SequenceRunner, self).__init__(robot)
-
     def isValid(self, sequence):
         valid = True
         for action in sequence.actions:
             valid = valid & ActionRunner(self.robot).isValid(action)
             if not valid:
                 break
-
-    def _getHandle(self, action):
-        return SequenceExecutionHandle(action, self._robot)

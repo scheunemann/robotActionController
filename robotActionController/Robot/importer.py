@@ -46,27 +46,35 @@ def loadDirectory(actions, triggers, robots, subDir, robotConfig='robot.xml', lo
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
             for fileName in files:
+                fName = os.path.basename(fileName)
                 f = open(fileName)
                 lines = f.readlines()
-                pose = a.getPose(lines)
-                if pose.name not in actions:
-                    actions[pose.name] = pose
+                name = lines[0].strip()
+                if name not in actions:
+                    pose = a.getPose(lines)
+                    if pose:
+                        actions[pose.name] = pose
+                    else:
+                        logger.info("Unable to load pose (%s)" % (fName))
                 else:
-                    logger.info("Skipping pose %s, another by the same name already exists" % pose.name)
+                    logger.info("Skipping pose %s (%s), another by the same name already exists" % (pose.name, fName))
 
         searchDir = os.path.join(subDir, 'seq')
         recheck = []
         if os.path.exists(searchDir):
             files = [os.path.join(searchDir, o) for o in os.listdir(searchDir) if os.path.isfile(os.path.join(searchDir, o))]
             for fileName in files:
+                fName = os.path.basename(fileName)
                 f = open(fileName)
                 lines = f.readlines()
-                seq = a.getSequence(lines, actions)
-                if seq == None:
-                    recheck.append(lines)
-                    continue
-                if seq.name not in actions:
-                    actions[seq.name] = seq
+                name = lines[0].strip()
+                if name not in actions:
+                    seq = a.getSequence(lines, actions)
+                    if seq == None:
+                        recheck.append(lines)
+                        continue
+                    else:
+                        actions[seq.name] = seq
                 else:
                     logger.info("Skipping sequence %s, another by the same name already exists" % seq.name)
         progress = True
