@@ -353,6 +353,7 @@ class HerkuleX(ServoInterface):
                     self._conn.moveOne(self._externalId, step[0], step[1])
                 time.sleep(max(0, step[1] - 30) / 1000)
         else:
+            #Todo, if another setPosition happens while callback is running, cancel callback
             def callback(steps, currentStep):
                 if currentStep < len(steps):
                     step = steps[currentStep]

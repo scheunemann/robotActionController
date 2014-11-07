@@ -46,7 +46,7 @@ class SensorPoller(Greenlet):
                 SensorPoller.__pollers[connection] = SensorPoller(connection)
                 SensorPoller.__pollers[connection].start()
 
-            return SensorPoller.__pollerLock
+            return SensorPoller.__pollers[connection]
 
     def clear(self):
         with self._threadLock:
