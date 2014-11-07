@@ -120,8 +120,7 @@ class FSR_MiniMaestro(object):
 
 
     def getCurrentValue(self):
-        with FSR_MiniMaestro._pollerLock:
-            hist = FSR_MiniMaestro._pollers[self._port].getValues(self._externalId)
+        hist = self._poller.getValues(self._externalId)
 
         if hist:
             samples = hist[-1 * min(len(hist), self._numSamples):]
