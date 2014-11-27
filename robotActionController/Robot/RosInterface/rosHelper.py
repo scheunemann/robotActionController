@@ -3,7 +3,6 @@ import os
 import sys
 import logging
 from subprocess import Popen, PIPE
-from sys import exc_info
 
 ros_config = {}
 
