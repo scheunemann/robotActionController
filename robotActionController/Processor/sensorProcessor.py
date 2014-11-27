@@ -42,6 +42,7 @@ class _SensorHandler(Greenlet):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._sensorId = sensor.id
         self._sensorIndex = sensor.extraData.get('arrayIndex', None)
+        self._sensorResolution = sensor.extraData.get('resolution', 3)
         self._minValue = sensor.value_type.minValue if sensor.value_type.type == 'Continuous' else None
         self._maxValue = sensor.value_type.maxValue if sensor.value_type.type == 'Continuous' else None
         self._sensorInt = SensorInterface.getSensorInterface(sensor)
@@ -52,7 +53,7 @@ class _SensorHandler(Greenlet):
     def _run(self):
         last_update = datetime.utcnow()
         last_value = None
-        while not self._cancel:
+        while True:
             value = self._sensorInt.getCurrentValue()
             if self._sensorIndex != None:
                 if self._sensorIndex > len(value) - 1:
@@ -69,6 +70,7 @@ class _SensorHandler(Greenlet):
                     self._logger.debug("Sensor %s returned %s.  Value more than max value, changing to %s" % (self._sensorId, value, self._maxValue))
                     value = self._maxValue
 
+                value = round(value, self._sensorResolution)
                 if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
                     last_update = datetime.utcnow()
                     last_value = value
