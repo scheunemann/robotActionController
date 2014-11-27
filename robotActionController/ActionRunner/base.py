@@ -189,16 +189,41 @@ class ActionManager(object):
         with self.__cacheLock:
             self.__actionCache.clear()
 
+    def getCachedActionByName(self, actionName):
+        with self.__cacheLock:
+            actions = filter(lambda x: x.name==actionName, self.__actionCache.itervalues())
+        return actions[0] if actions else None
+
+    def getCachedActionById(self, actionId):
+        with self.__cacheLock:
+            return self.__actionCache.get(actionId, None)
+
     def executeAction(self, action):
+        if type(action) == str:
+            aName = action
+            action = self.getCachedActionByName(aName)
+        
+        if type(action) == int:
+            aId = action
+            action = self.getCachedActionById(aId)
+
         if not action:
             self._logger.warning("Got NULL action to start")
             return False
-
+        
         self._logger.debug("Starting %s Sync" % action.name)
         runner = self.__getRunner(action)
         return runner.execute()
 
     def executeActionAsync(self, action, callback=None, callbackData=None):
+        if type(action) == str:
+            aName = action
+            action = self.getCachedActionByName(aName)
+        
+        if type(action) == int:
+            aId = action
+            action = self.getCachedActionById(aId)
+
         if not action:
             self._logger.warning("Got NULL action to start")
             return None
