@@ -10,19 +10,19 @@ from robotActionController.Processor.event import Event
 
 __all__ = ['SensorProcessor', ]
 
-SensorDataEventArg = namedtuple('SensorDataEvent', ['sensor_id', 'value'])
+SensorDataEventArg = namedtuple('SensorDataEvent', ['sensor_id', 'sensor_name', 'value'])
 
 
 class SensorProcessor(object):
 
     newSensorData = Event('Sensor update event')
 
-    def __init__(self, sensors, maxUpdateInterval=None):
+    def __init__(self, sensors, maxUpdateInterval=None, maxPollRate=None):
         self._handlers = []
         for sensor in sensors:
             config = [c for c in sensor.robot.sensorConfigs if c.model == sensor.model]
             if config and config[0].type == 'active':
-                handler = _SensorHandler(sensor, self.newSensorData, maxUpdateInterval, timedelta(seconds=maxUpdateInterval.seconds / 10.0))
+                handler = _SensorHandler(sensor, self.newSensorData, maxUpdateInterval, maxPollRate)
                 self._handlers.append(handler)
 
     def start(self):
@@ -41,7 +41,7 @@ class _SensorHandler(Greenlet):
         super(_SensorHandler, self).__init__()
         self._logger = logging.getLogger(self.__class__.__name__)
         self._sensorId = sensor.id
-        self._sensorIndex = sensor.extraData.get('arrayIndex', None)
+        self._sensorName = sensor.name
         self._sensorResolution = sensor.extraData.get('resolution', 3)
         self._minValue = sensor.value_type.minValue if sensor.value_type.type == 'Continuous' else None
         self._maxValue = sensor.value_type.maxValue if sensor.value_type.type == 'Continuous' else None
@@ -53,28 +53,43 @@ class _SensorHandler(Greenlet):
     def _run(self):
         last_update = datetime.utcnow()
         last_value = None
+        sensorIndex = None
+        if ':' in self._sensorName:
+            sensorIndex = self._sensorName[self._sensorName.rindex(':'):]
+            if sensorIndex.isdigit():
+                sensorIndex = int(sensorIndex)
+
         while True:
             value = self._sensorInt.getCurrentValue()
-            if self._sensorIndex != None:
-                if self._sensorIndex > len(value) - 1:
-                    self._logger.warn("Sensor %s expected to be at index %s.  Actual data length %s.  Data: %s" % (self._sensorId, self._sensorIndex, len(value), value))
+            if sensorIndex != None:
+                if sensorIndex > len(value) - 1:
+                    self._logger.warn("Sensor %s expected to be at index %s.  Actual data length %s.  Data: %s" % (self._sensorName, 
+                                                                                                                   sensorIndex, 
+                                                                                                                   len(value), value))
                     value = None
                 else:
-                    value = value[self._sensorIndex]
+                    value = value[sensorIndex]
 
             if value != None:
                 if self._minValue != None and value < self._minValue:
-                    self._logger.debug("Sensor %s returned %s.  Value less than min value, changing to %s" % (self._sensorId, value, self._minValue))
+                    self._logger.debug("Sensor %s returned %s.  Value less than min value, changing to %s" % (self._sensorName, value, self._minValue))
                     value = self._minValue
                 if self._maxValue != None and value > self._maxValue:
-                    self._logger.debug("Sensor %s returned %s.  Value more than max value, changing to %s" % (self._sensorId, value, self._maxValue))
+                    self._logger.debug("Sensor %s returned %s.  Value more than max value, changing to %s" % (self._sensorName, value, self._maxValue))
                     value = self._maxValue
 
                 value = round(value, self._sensorResolution)
-                if value != last_value and datetime.utcnow() - last_update >= self._maxUpdateInterval:
+                if value != last_value and (self._maxUpdateInterval == None or datetime.utcnow() - last_update >= self._maxUpdateInterval):
                     last_update = datetime.utcnow()
                     last_value = value
-                    spawn(self._updateEvent, SensorDataEventArg(self._sensorId, value))
+                    spawn(self._updateEvent, SensorDataEventArg(self._sensorId, self._sensorName, value))
 
-            sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
+            if self._maxUpdateInterval and self._maxPollRate:
+                sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
+            elif self._maxUpdateInterval:
+                sleepTime = self._maxUpdateInterval - (datetime.utcnow() - last_update)
+            elif self._maxPollRate:
+                sleepTime = 1.0 / self._maxPollRate
+            else:
+                sleepTime = 0
             sleep(sleepTime)
