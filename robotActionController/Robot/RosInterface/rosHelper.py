@@ -6,7 +6,8 @@ from subprocess import Popen, PIPE
 
 ros_config = {}
 
-from gevent.lock import RLock
+#from gevent.lock import RLock
+from threading import RLock
 
 _threadLock = RLock()
 

@@ -672,4 +672,10 @@ class Robot(ServoInterface):
             speed = self._defaultSpeed
 
         scaledPosition = self._scaleToRealPos(position)
-        return self._robot.setComponentState(self._componentName, scaledPosition, blocking) == 'SUCCEEDED'
+        if blocking:
+            return self._robot.setComponentState(self._componentName, scaledPosition, blocking) == 'SUCCEEDED'
+        else:
+            self._moving = True
+            def callback(result):
+                self._moving = False
+            return self._robot.setComponentState(self._componentName, scaledPosition, blocking, callback) == 'ACTIVE'

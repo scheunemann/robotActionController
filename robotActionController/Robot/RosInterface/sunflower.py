@@ -25,12 +25,12 @@ class Sunflower(ROSRobot):
         else:
             return ('', ret)
 
-    def setComponentState(self, name, value, blocking=True):
+    def setComponentState(self, name, value, blocking=True, callback=None):
         # check if the component has been initialised, and init if it hasn't
         if name == 'base' or name == 'base_direct':
             self._robInt.initComponent(name)
 
-        return super(Sunflower, self).setComponentState(name, value, blocking)
+        return super(Sunflower, self).setComponentState(name, value, blocking, callback)
 
 
 class ActionLib(RosActionLib):

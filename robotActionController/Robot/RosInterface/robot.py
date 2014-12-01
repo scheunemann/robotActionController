@@ -1,8 +1,8 @@
 import io
 import math
-import time
 import logging
-from gevent.lock import RLock
+from threading import RLock
+from gevent import sleep
 
 _states = {
         0: 'PENDING',
@@ -51,7 +51,7 @@ class Robot(object):
         self._logger.debug("Say (%s): %s" % (languageCode, text))
 
     def sleep(self, milliseconds):
-        time.sleep(milliseconds / 1000.0)
+        sleep(milliseconds / 1000.0)
 
     def executeFunction(self, funcName, kwargs):
         return self._robInt.runFunction(funcName, kwargs)
@@ -62,8 +62,8 @@ class Robot(object):
     def setLight(self, colour):
         self._robInt.runComponent('light', colour)
 
-    def setComponentState(self, name, value, blocking=True):
-        status = self._robInt.runComponent(name, value, None, blocking)
+    def setComponentState(self, name, value, blocking=True, callback=None):
+        status = self._robInt.runComponent(name, value, None, blocking, callback)
         return _states[status]
 
     def getComponentPositions(self, componentName):
@@ -126,7 +126,8 @@ class ROSRobot(Robot):
 
     def __init__(self, name, robotInterface, serverTopic):
         super(ROSRobot, self).__init__(name, robotInterface)
-        self._rs = None
+        import rosHelper
+        self._rs = rosHelper.ROS()
         self._serverTopic = serverTopic
 
         self._tfLock = RLock()
@@ -191,13 +192,13 @@ class ROSRobot(Robot):
 
         return ('', pos)
 
-    def setComponentState(self, name, value, blocking=True):
-        status = super(ROSRobot, self).setComponentState(name, value, blocking)
+    def setComponentState(self, name, value, blocking=True, callback=None):
+        status = super(ROSRobot, self).setComponentState(name, value, blocking, callback)
         # There is a bug in the Gazebo COB interface that prevents proper trajectory tracking
         # this causes most status messages to come back as aborted while the operation is still
         # commencing, time delay to attempt to compensate...
         if status != 3 and len(self._ros.getTopics('/gazebo')) > 0:
-            time.sleep(1)
+            sleep(1)
             self._logger.warning('Gazebo hack: state ' + self._rs._states[status] + ' changed to state ' + self._rs._states[3])
             return _states[3]
 
@@ -220,12 +221,15 @@ class ActionLib(object):
 
         import rosHelper
         ros = rosHelper.ROS()
+        ros.configureROS(packageName='rospy')
         ros.configureROS(packageName='actionlib')
         ros.configureROS(packageName=packageName)
 
         ns = __import__(packageName + '.msg', globals(), locals())
         self._controlMsgs = getattr(ns, 'msg')
         self._goalName = goalName
+        rospy = __import__('rospy', globals(), locals())
+        self._timeout = rospy.Duration(0.001)
 
         actionlib = __import__('actionlib', globals(), locals())
         self._controlClient = actionlib.SimpleActionClient('/%s' % controllerName, getattr(self._controlMsgs, actionName))
@@ -243,7 +247,7 @@ class ActionLib(object):
         client = self._controlClient
         return client.send_goal_and_wait(goal)
 
-    def runComponent(self, name, value, mode=None, blocking=True):
+    def runComponent(self, name, value, mode=None, blocking=True, callback=None):
         (namedPosition, joints) = (value, []) if str == type(value) else ('', value)
         if type(joints) != list:
             joints = [joints, ]
@@ -256,9 +260,15 @@ class ActionLib(object):
         client = self._controlClient
 
         if(blocking):
-            status = client.send_goal_and_wait(goal)
-        else:
             client.send_goal(goal)
+            while not client.wait_for_result(timeout = self._timeout):
+                sleep(0)
+            status = client.get_state()
+        else:
+            if callable(callback):
+                client.send_goal(goal, done_cb=lambda status, result: callback(_states.get(status, None)))
+            else:
+                client.send_goal(goal)
             status = 1
 
         return status
