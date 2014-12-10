@@ -132,7 +132,10 @@ class minimaestro(object):
         data = chr(cmd) + chr(param)
         with self._lock:
             self._conn.write(data)
-            return ord(self._conn.read())
+            byte = self._conn.read()
+        if len(byte) == 0:
+            return -1
+        return ord(byte)
 
     def getPosition(self, id_):
         cmd = minimaestro.uscCommand.COMMAND_GET_POSITION
@@ -158,7 +161,10 @@ class minimaestro(object):
         data = chr(cmd)
         with self._lock:
             self._conn.write(data)
-            return ord(self._conn.read())
+            byte = self._conn.read()
+        if len(byte) == 0:
+            return -1
+        return ord(byte)
 
     def getErrors(self):
         cmd = minimaestro.uscCommand.COMMAND_GET_ERRORS
