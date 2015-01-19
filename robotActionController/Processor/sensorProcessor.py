@@ -11,7 +11,7 @@ from robotActionController.Processor.event import Event
 
 __all__ = ['SensorProcessor', ]
 
-SensorDataEventArg = namedtuple('SensorDataEvent', ['sensor_id', 'sensor_name', 'value'])
+SensorDataEventArg = namedtuple('SensorDataEvent', ['sensor_id', 'sensor_name', 'value', 'normalValue'])
 
 
 class SensorProcessor(Thread):
@@ -77,8 +77,8 @@ class _SensorHandler(Greenlet):
         sensorId = sensor.id
         sensorName = sensor.name
         sensorResolution = sensor.extraData.get('resolution', 3)
-        minValue = sensor.value_type.minValue if sensor.value_type.type == 'Continuous' else None
-        maxValue = sensor.value_type.maxValue if sensor.value_type.type == 'Continuous' else None
+        minValue = sensor.value_type.minValue if sensor.value_type.type == 'ContinuousValueType' else None
+        maxValue = sensor.value_type.maxValue if sensor.value_type.type == 'ContinuousValueType' else None
         sensorInt = SensorInterface.getSensorInterface(sensor)
         return _SensorHandler.Sensor(
                                      id=sensorId, 
@@ -96,6 +96,8 @@ class _SensorHandler(Greenlet):
             sensorIndex = self._sensor.name[self._sensor.name.rindex(':'):]
             if sensorIndex.isdigit():
                 sensorIndex = int(sensorIndex)
+                
+        normFactor = 1 / (self._sensor.maxValue - self._sensor.minValue)
 
         while not self._stop:
             value = self._sensor.interface.getCurrentValue()
@@ -124,7 +126,8 @@ class _SensorHandler(Greenlet):
                 if value != last_value and (self._maxUpdateInterval == None or datetime.utcnow() - last_update >= self._maxUpdateInterval):
                     last_update = datetime.utcnow()
                     last_value = value
-                    self._updateEvent(SensorDataEventArg(self._sensor.id, self._sensor.name, value))
+                    normal = round((value - self._sensor.minValue) * normFactor, self._sensor.resolution)
+                    self._updateEvent(SensorDataEventArg(self._sensor.id, self._sensor.name, value, normal))
 
             if self._maxUpdateInterval and self._maxPollRate:
                 sleepTime = max(self._maxUpdateInterval - (datetime.utcnow() - last_update), self._maxPollRate).total_seconds()
